@@ -1,0 +1,175 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+import { Plus, Check, Clock, Trash2 } from "lucide-react";
+import { z } from "zod";
+
+interface LicensePlateManagerProps {
+  userId: string;
+}
+
+interface LicensePlate {
+  id: string;
+  plate_number: string;
+  is_approved: boolean;
+  requested_at: string;
+  approved_at: string | null;
+}
+
+const plateSchema = z.object({
+  plateNumber: z.string()
+    .trim()
+    .min(4, "La matrícula debe tener al menos 4 caracteres")
+    .max(10, "La matrícula no puede tener más de 10 caracteres")
+    .regex(/^[A-Z0-9]+$/, "La matrícula solo puede contener letras mayúsculas y números"),
+});
+
+const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
+  const [plates, setPlates] = useState<LicensePlate[]>([]);
+  const [newPlate, setNewPlate] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPlates();
+  }, [userId]);
+
+  const loadPlates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("license_plates")
+        .select("*")
+        .eq("user_id", userId)
+        .order("requested_at", { ascending: false });
+
+      if (error) throw error;
+      setPlates(data || []);
+    } catch (error: any) {
+      console.error("Error loading plates:", error);
+      toast.error("Error al cargar las matrículas");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPlate = async () => {
+    try {
+      const upperPlate = newPlate.toUpperCase();
+      const validated = plateSchema.parse({ plateNumber: upperPlate });
+
+      const { error } = await supabase
+        .from("license_plates")
+        .insert({
+          user_id: userId,
+          plate_number: validated.plateNumber,
+          is_approved: false,
+        });
+
+      if (error) {
+        if (error.message.includes("duplicate")) {
+          toast.error("Esta matrícula ya está registrada");
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      toast.success("Matrícula añadida. Pendiente de aprobación del administrador");
+      setNewPlate("");
+      loadPlates();
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        console.error("Error adding plate:", error);
+        toast.error("Error al añadir la matrícula");
+      }
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-8">Cargando...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Add New Plate */}
+      <Card className="p-4">
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="plate">Nueva Matrícula</Label>
+            <div className="flex gap-2 mt-2">
+              <Input
+                id="plate"
+                placeholder="1234ABC"
+                value={newPlate}
+                onChange={(e) => setNewPlate(e.target.value.toUpperCase())}
+                maxLength={10}
+                className="flex-1"
+              />
+              <Button onClick={handleAddPlate} disabled={!newPlate.trim()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Añadir
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              La matrícula debe ser aprobada por un administrador antes de poder usarse
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Plates List */}
+      <div className="space-y-3">
+        <h3 className="font-semibold text-lg">Mis Matrículas</h3>
+        
+        {plates.length === 0 ? (
+          <Card className="p-8">
+            <div className="text-center text-muted-foreground">
+              <p>No tienes matrículas registradas</p>
+              <p className="text-sm mt-2">Añade tu primera matrícula para empezar</p>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid gap-3">
+            {plates.map((plate) => (
+              <Card key={plate.id} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg">
+                      {plate.plate_number}
+                    </div>
+                    <div>
+                      {plate.is_approved ? (
+                        <Badge variant="default" className="bg-success text-success-foreground">
+                          <Check className="h-3 w-3 mr-1" />
+                          Aprobada
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-warning text-warning">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pendiente
+                        </Badge>
+                      )}
+                      {plate.approved_at && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Aprobada el {new Date(plate.approved_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default LicensePlateManager;
