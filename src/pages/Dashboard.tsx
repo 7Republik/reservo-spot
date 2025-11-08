@@ -69,7 +69,7 @@ const Dashboard = () => {
         
         // Get highest priority role
         const roleOrder = ["admin", "director", "preferred", "visitor", "general"];
-        const userRoles = roles.map(r => r.role);
+        const userRoles = roles.map(r => r.role as string);
         const highestRole = roleOrder.find(role => userRoles.includes(role)) || "general";
         setUserRole(highestRole);
       }
