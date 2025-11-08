@@ -95,32 +95,33 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
     const dateStr = format(date, "yyyy-MM-dd");
 
     try {
-      // Find an available spot
-      const { data: spots, error: spotsError } = await supabase
+      // Get all active spots
+      const { data: allSpots, error: spotsError } = await supabase
         .from("parking_spots")
         .select("id")
-        .eq("is_active", true)
-        .limit(1);
+        .eq("is_active", true);
 
       if (spotsError) throw spotsError;
 
-      if (!spots || spots.length === 0) {
+      if (!allSpots || allSpots.length === 0) {
         toast.error("No hay plazas disponibles");
         return;
       }
 
-      // Check if spot is available for this date
-      const { data: existing, error: checkError } = await supabase
+      // Get occupied spots for this date
+      const { data: occupied, error: occupiedError } = await supabase
         .from("reservations")
-        .select("id")
-        .eq("spot_id", spots[0].id)
+        .select("spot_id")
         .eq("reservation_date", dateStr)
         .eq("status", "active");
 
-      if (checkError) throw checkError;
+      if (occupiedError) throw occupiedError;
 
-      if (existing && existing.length > 0) {
-        toast.error("Esta plaza ya está ocupada para este día");
+      const occupiedIds = occupied?.map(r => r.spot_id) || [];
+      const availableSpot = allSpots.find(spot => !occupiedIds.includes(spot.id));
+
+      if (!availableSpot) {
+        toast.error("No hay plazas disponibles para este día");
         loadAvailableSpots();
         return;
       }
@@ -130,7 +131,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         .from("reservations")
         .insert({
           user_id: userId,
-          spot_id: spots[0].id,
+          spot_id: availableSpot.id,
           reservation_date: dateStr,
           status: "active",
         });
@@ -205,16 +206,17 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-2">
-        {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
-          <div key={day} className="text-center font-medium text-sm text-muted-foreground p-2">
-            {day}
+      <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        {["L", "M", "X", "J", "V", "S", "D"].map((day, index) => (
+          <div key={day} className="text-center font-semibold text-xs sm:text-sm text-muted-foreground py-2">
+            <span className="hidden sm:inline">{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][index]}</span>
+            <span className="sm:hidden">{day}</span>
           </div>
         ))}
         
         {/* Add empty cells for days before month starts */}
         {Array.from({ length: startOfMonth(currentMonth).getDay() === 0 ? 6 : startOfMonth(currentMonth).getDay() - 1 }).map((_, index) => (
-          <div key={`empty-${index}`} className="p-2" />
+          <div key={`empty-${index}`} />
         ))}
         
         {days.map((day) => {
@@ -227,55 +229,56 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
           return (
             <Card
               key={day.toString()}
-              className={`p-3 min-h-[100px] flex flex-col justify-between transition-all ${
-                !isSameMonth(day, currentMonth) ? "opacity-50" : ""
-              } ${isToday(day) ? "ring-2 ring-primary" : ""} ${
+              className={`p-2 sm:p-3 min-h-[80px] sm:min-h-[100px] flex flex-col justify-between transition-all relative ${
+                !isSameMonth(day, currentMonth) ? "opacity-30" : ""
+              } ${isToday(day) ? "ring-2 ring-primary shadow-md" : ""} ${
                 reserved ? "bg-success/10 border-success" : 
-                available > 0 && !isPast ? "hover:border-primary cursor-pointer" : ""
-              } ${isPast ? "opacity-50" : ""}`}
+                available > 0 && !isPast ? "hover:border-primary hover:shadow-sm cursor-pointer active:scale-95" : ""
+              } ${isPast ? "opacity-40 cursor-not-allowed" : ""}`}
               onClick={() => {
                 if (!reserved && available > 0 && isSameMonth(day, currentMonth) && !isPast) {
                   handleReserve(day);
                 }
               }}
             >
-              <div className="flex items-start justify-between">
-                <span className={`text-sm font-medium ${isToday(day) ? "text-primary" : ""}`}>
+              <div className="flex items-start justify-between gap-1">
+                <span className={`text-xs sm:text-sm font-semibold ${
+                  isToday(day) ? "text-primary" : 
+                  reserved ? "text-success" : 
+                  "text-foreground"
+                }`}>
                   {format(day, "d")}
                 </span>
                 {reserved && (
-                  <Badge variant="default" className="bg-success text-success-foreground text-xs">
-                    <Check className="h-3 w-3" />
-                  </Badge>
+                  <div className="bg-success rounded-full p-0.5">
+                    <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
+                  </div>
                 )}
               </div>
               
-              <div className="space-y-1">
-                {!isPast && available > 0 && (
-                  <Badge 
-                    variant="outline" 
-                    className={`text-xs ${available > 5 ? "border-available text-available" : "border-warning text-warning"}`}
-                  >
-                    {available} libres
-                  </Badge>
+              <div className="space-y-1 mt-auto">
+                {!isPast && !reserved && (
+                  <div className="text-[10px] sm:text-xs font-medium text-center">
+                    {available > 0 ? (
+                      <span className={available > 5 ? "text-available" : "text-warning"}>
+                        {available}
+                      </span>
+                    ) : (
+                      <span className="text-occupied">0</span>
+                    )}
+                  </div>
                 )}
-                {!isPast && available === 0 && !reserved && (
-                  <Badge variant="outline" className="text-xs border-occupied text-occupied">
-                    Completo
-                  </Badge>
-                )}
-                {reserved && reservation && (
+                {reserved && reservation && !isPast && (
                   <Button
                     size="sm"
-                    variant="destructive"
-                    className="w-full text-xs h-6"
+                    variant="ghost"
+                    className="w-full text-[10px] sm:text-xs h-5 sm:h-6 text-destructive hover:text-destructive hover:bg-destructive/10 px-1"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCancel(reservation.id);
                     }}
                   >
-                    <X className="h-3 w-3 mr-1" />
-                    Cancelar
+                    <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                   </Button>
                 )}
               </div>
@@ -285,17 +288,23 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 justify-center text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded border-2 border-available bg-success/10" />
+      <div className="flex flex-wrap gap-3 sm:gap-4 justify-center text-xs sm:text-sm bg-muted/50 rounded-lg p-3">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded border-2 border-success bg-success/10 flex items-center justify-center">
+            <Check className="h-2 w-2 text-success" />
+          </div>
           <span className="text-muted-foreground">Tu reserva</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded border-2 border-primary" />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded border-2 border-available">
+            <div className="text-[8px] font-bold text-available text-center leading-[8px]">5+</div>
+          </div>
           <span className="text-muted-foreground">Disponible</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded border-2 border-occupied" />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded border-2 border-occupied">
+            <div className="text-[8px] font-bold text-occupied text-center leading-[8px]">0</div>
+          </div>
           <span className="text-muted-foreground">Completo</span>
         </div>
       </div>
