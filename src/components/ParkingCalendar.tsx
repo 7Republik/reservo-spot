@@ -185,32 +185,37 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Month Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Button
           variant="outline"
+          size="sm"
+          className="h-8 sm:h-10 px-2 sm:px-4 text-xs sm:text-sm"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
         >
-          ← Anterior
+          <span className="hidden sm:inline">← Anterior</span>
+          <span className="sm:hidden">←</span>
         </Button>
-        <h2 className="text-xl font-semibold capitalize">
+        <h2 className="text-sm sm:text-xl font-semibold capitalize flex-1 text-center">
           {format(currentMonth, "MMMM yyyy", { locale: es })}
         </h2>
         <Button
           variant="outline"
+          size="sm"
+          className="h-8 sm:h-10 px-2 sm:px-4 text-xs sm:text-sm"
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
         >
-          Siguiente →
+          <span className="hidden sm:inline">Siguiente →</span>
+          <span className="sm:hidden">→</span>
         </Button>
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1 sm:gap-2">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1 md:gap-2">
         {["L", "M", "X", "J", "V", "S", "D"].map((day, index) => (
-          <div key={day} className="text-center font-semibold text-xs sm:text-sm text-muted-foreground py-2">
-            <span className="hidden sm:inline">{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][index]}</span>
-            <span className="sm:hidden">{day}</span>
+          <div key={day} className="text-center font-semibold text-[10px] sm:text-xs md:text-sm text-muted-foreground py-1 sm:py-2">
+            {day}
           </div>
         ))}
         
@@ -229,7 +234,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
           return (
             <Card
               key={day.toString()}
-              className={`p-2 sm:p-3 min-h-[80px] sm:min-h-[100px] flex flex-col justify-between transition-all relative ${
+              className={`p-1.5 sm:p-2 md:p-3 min-h-[70px] sm:min-h-[80px] md:min-h-[100px] flex flex-col justify-between transition-all relative ${
                 !isSameMonth(day, currentMonth) ? "opacity-30" : ""
               } ${isToday(day) ? "ring-2 ring-primary shadow-md" : ""} ${
                 reserved ? "bg-success/10 border-success" : 
@@ -241,8 +246,8 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
                 }
               }}
             >
-              <div className="flex items-start justify-between gap-1">
-                <span className={`text-xs sm:text-sm font-semibold ${
+              <div className="flex items-start justify-between gap-0.5 sm:gap-1">
+                <span className={`text-[11px] sm:text-xs md:text-sm font-semibold leading-tight ${
                   isToday(day) ? "text-primary" : 
                   reserved ? "text-success" : 
                   "text-foreground"
@@ -251,14 +256,14 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
                 </span>
                 {reserved && (
                   <div className="bg-success rounded-full p-0.5">
-                    <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
+                    <Check className="h-2 w-2 sm:h-2.5 sm:w-2.5 md:h-3 md:w-3 text-white" />
                   </div>
                 )}
               </div>
               
-              <div className="space-y-1 mt-auto">
+              <div className="space-y-0.5 sm:space-y-1 mt-auto">
                 {!isPast && !reserved && (
-                  <div className="text-[10px] sm:text-xs font-medium text-center">
+                  <div className="text-[9px] sm:text-[10px] md:text-xs font-bold text-center leading-tight">
                     {available > 0 ? (
                       <span className={available > 5 ? "text-available" : "text-warning"}>
                         {available}
@@ -272,13 +277,13 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="w-full text-[10px] sm:text-xs h-5 sm:h-6 text-destructive hover:text-destructive hover:bg-destructive/10 px-1"
+                    className="w-full text-[9px] sm:text-[10px] md:text-xs h-4 sm:h-5 md:h-6 text-destructive hover:text-destructive hover:bg-destructive/10 px-0.5 sm:px-1"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCancel(reservation.id);
                     }}
                   >
-                    <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                    <X className="h-2 w-2 sm:h-2.5 sm:w-2.5 md:h-3 md:w-3" />
                   </Button>
                 )}
               </div>
@@ -288,22 +293,22 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 sm:gap-4 justify-center text-xs sm:text-sm bg-muted/50 rounded-lg p-3">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded border-2 border-success bg-success/10 flex items-center justify-center">
-            <Check className="h-2 w-2 text-success" />
+      <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4 justify-center text-[10px] sm:text-xs md:text-sm bg-muted/50 rounded-lg p-2 sm:p-3">
+        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
+          <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 rounded border-2 border-success bg-success/10 flex items-center justify-center">
+            <Check className="h-1.5 w-1.5 sm:h-2 sm:w-2 text-success" />
           </div>
           <span className="text-muted-foreground">Tu reserva</span>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded border-2 border-available">
-            <div className="text-[8px] font-bold text-available text-center leading-[8px]">5+</div>
+        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
+          <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 rounded border-2 border-available flex items-center justify-center">
+            <span className="text-[8px] sm:text-[9px] font-bold text-available">5+</span>
           </div>
           <span className="text-muted-foreground">Disponible</span>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded border-2 border-occupied">
-            <div className="text-[8px] font-bold text-occupied text-center leading-[8px]">0</div>
+        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
+          <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 rounded border-2 border-occupied flex items-center justify-center">
+            <span className="text-[8px] sm:text-[9px] font-bold text-occupied">0</span>
           </div>
           <span className="text-muted-foreground">Completo</span>
         </div>

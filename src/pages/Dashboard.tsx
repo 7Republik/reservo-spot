@@ -104,19 +104,19 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary p-2 rounded-lg">
-                <Car className="h-6 w-6 text-primary-foreground" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="bg-primary p-1.5 sm:p-2 rounded-lg">
+                <Car className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground">ParkingManager</h1>
-                <p className="text-sm text-muted-foreground">Gestión de Aparcamiento</p>
+                <h1 className="text-base sm:text-xl font-bold text-foreground">ParkingManager</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Gestión de Aparcamiento</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-foreground">{user.email}</p>
                 <Badge variant="secondary" className="text-xs">
@@ -125,8 +125,8 @@ const Dashboard = () => {
                    userRole === "preferred" ? "Preferente" : "General"}
                 </Badge>
               </div>
-              <Button variant="outline" size="icon" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
+              <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10" onClick={handleLogout}>
+                <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </div>
           </div>
@@ -134,61 +134,61 @@ const Dashboard = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue={isAdmin ? "admin" : "calendar"} className="space-y-6">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        <Tabs defaultValue={isAdmin ? "admin" : "calendar"} className="space-y-3 sm:space-y-6">
           <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="calendar" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Calendario</span>
+            <TabsTrigger value="calendar" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Calendario</span>
             </TabsTrigger>
-            <TabsTrigger value="licenses" className="gap-2">
-              <ParkingSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Matrículas</span>
+            <TabsTrigger value="licenses" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <ParkingSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Matrículas</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="admin" className="gap-2">
-                <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Administración</span>
+              <TabsTrigger value="admin" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Admin</span>
               </TabsTrigger>
             )}
           </TabsList>
 
-          <TabsContent value="calendar" className="space-y-6">
+          <TabsContent value="calendar" className="space-y-3 sm:space-y-6 mt-3 sm:mt-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
+              <CardHeader className="px-3 py-4 sm:px-6 sm:py-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
                   Reservar Plaza de Aparcamiento
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Selecciona un día para reservar tu plaza de aparcamiento
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 pb-4 sm:px-6 sm:pb-6">
                 <ParkingCalendar userId={user.id} userRole={userRole} />
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="licenses" className="space-y-6">
+          <TabsContent value="licenses" className="space-y-3 sm:space-y-6 mt-3 sm:mt-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ParkingSquare className="h-5 w-5" />
+              <CardHeader className="px-3 py-4 sm:px-6 sm:py-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <ParkingSquare className="h-4 w-4 sm:h-5 sm:w-5" />
                   Gestión de Matrículas
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Añade y gestiona tus matrículas de vehículos
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 pb-4 sm:px-6 sm:pb-6">
                 <LicensePlateManager userId={user.id} />
               </CardContent>
             </Card>
           </TabsContent>
 
           {isAdmin && (
-            <TabsContent value="admin" className="space-y-6">
+            <TabsContent value="admin" className="space-y-3 sm:space-y-6 mt-3 sm:mt-6">
               <AdminPanel />
             </TabsContent>
           )}
