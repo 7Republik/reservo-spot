@@ -59,6 +59,7 @@ export type Database = {
           id: string
           is_approved: boolean | null
           plate_number: string
+          rejected_at: string | null
           requested_at: string | null
           user_id: string
         }
@@ -68,6 +69,7 @@ export type Database = {
           id?: string
           is_approved?: boolean | null
           plate_number: string
+          rejected_at?: string | null
           requested_at?: string | null
           user_id: string
         }
@@ -77,6 +79,7 @@ export type Database = {
           id?: string
           is_approved?: boolean | null
           plate_number?: string
+          rejected_at?: string | null
           requested_at?: string | null
           user_id?: string
         }

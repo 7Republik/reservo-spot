@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Plus, Check, Clock, Trash2 } from "lucide-react";
+import { Plus, Check, Clock, Trash2, X, AlertCircle } from "lucide-react";
 import { z } from "zod";
 
 interface LicensePlateManagerProps {
@@ -19,6 +19,7 @@ interface LicensePlate {
   is_approved: boolean;
   requested_at: string;
   approved_at: string | null;
+  rejected_at: string | null;
 }
 
 const plateSchema = z.object({
@@ -91,6 +92,23 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
     }
   };
 
+  const handleDeletePlate = async (plateId: string) => {
+    try {
+      const { error } = await supabase
+        .from("license_plates")
+        .delete()
+        .eq("id", plateId);
+
+      if (error) throw error;
+
+      toast.success("Matrícula eliminada. Puedes volver a solicitarla");
+      loadPlates();
+    } catch (error: any) {
+      console.error("Error deleting plate:", error);
+      toast.error("Error al eliminar la matrícula");
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Cargando...</div>;
   }
@@ -144,25 +162,55 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
                       {plate.plate_number}
                     </div>
                     <div>
-                      {plate.is_approved ? (
-                        <Badge variant="default" className="bg-success text-success-foreground">
-                          <Check className="h-3 w-3 mr-1" />
-                          Aprobada
-                        </Badge>
+                      {plate.rejected_at ? (
+                        <>
+                          <Badge variant="destructive" className="gap-1">
+                            <X className="h-3 w-3" />
+                            Rechazada
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Rechazada el {new Date(plate.rejected_at).toLocaleDateString()}
+                          </p>
+                        </>
+                      ) : plate.is_approved ? (
+                        <>
+                          <Badge variant="default" className="bg-success text-success-foreground gap-1">
+                            <Check className="h-3 w-3" />
+                            Aprobada
+                          </Badge>
+                          {plate.approved_at && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Aprobada el {new Date(plate.approved_at).toLocaleDateString()}
+                            </p>
+                          )}
+                        </>
                       ) : (
-                        <Badge variant="outline" className="border-warning text-warning">
-                          <Clock className="h-3 w-3 mr-1" />
+                        <Badge variant="outline" className="border-warning text-warning gap-1">
+                          <Clock className="h-3 w-3" />
                           Pendiente
                         </Badge>
                       )}
-                      {plate.approved_at && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Aprobada el {new Date(plate.approved_at).toLocaleDateString()}
-                        </p>
-                      )}
                     </div>
                   </div>
+                  {plate.rejected_at && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDeletePlate(plate.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar
+                    </Button>
+                  )}
                 </div>
+                {plate.rejected_at && (
+                  <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-destructive">
+                      Tu solicitud de matrícula fue rechazada. Puedes eliminarla y volver a solicitarla después de verificar los datos con la empresa.
+                    </p>
+                  </div>
+                )}
               </Card>
             ))}
           </div>

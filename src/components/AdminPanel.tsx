@@ -55,6 +55,7 @@ const AdminPanel = () => {
         .from("license_plates")
         .select("*")
         .eq("is_approved", false)
+        .is("rejected_at", null)
         .order("requested_at", { ascending: false });
 
       if (error) throw error;
@@ -152,12 +153,14 @@ const AdminPanel = () => {
     try {
       const { error } = await supabase
         .from("license_plates")
-        .delete()
+        .update({
+          rejected_at: new Date().toISOString(),
+        })
         .eq("id", plateId);
 
       if (error) throw error;
 
-      toast.success("Matrícula rechazada y eliminada");
+      toast.success("Matrícula rechazada. El usuario será notificado");
       loadPendingPlates();
     } catch (error: any) {
       console.error("Error rejecting plate:", error);
