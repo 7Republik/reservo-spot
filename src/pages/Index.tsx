@@ -2,9 +2,12 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Calendar, Shield, Users, CheckCircle2, ArrowRight, Sparkles, Zap, Lock } from "lucide-react";
+
 const Index = () => {
   const navigate = useNavigate();
-  return <div className="min-h-screen bg-background overflow-hidden">
+
+  return (
+    <div className="min-h-screen bg-background overflow-hidden">
       {/* Hero Section - Modern & Bold */}
       <section className="relative min-h-[90vh] flex items-center justify-center px-4 py-20 overflow-hidden">
         {/* Animated gradient background */}
@@ -25,12 +28,12 @@ const Index = () => {
 
             {/* Main headline */}
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight animate-fade-in">
-              <span className="bg-gradient-to-r from-primary via-primary-glow to-accent bg-clip-text text-transparent">
-                Reserveo
+              <span className="bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
+                Gestión de
               </span>
               <br />
-              <span className="bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
-                Gestión de Aparcamiento
+              <span className="bg-gradient-to-r from-primary via-primary-glow to-accent bg-clip-text text-transparent">
+                Aparcamiento
               </span>
               <br />
               <span className="bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -46,11 +49,20 @@ const Index = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4 animate-fade-in">
-              <Button size="lg" className="text-lg px-10 py-7 rounded-full bg-gradient-to-r from-primary to-primary-glow hover:shadow-2xl hover:shadow-primary/50 transition-all hover:scale-105 group" onClick={() => navigate("/auth")}>
+              <Button 
+                size="lg" 
+                className="text-lg px-10 py-7 rounded-full bg-gradient-to-r from-primary to-primary-glow hover:shadow-2xl hover:shadow-primary/50 transition-all hover:scale-105 group"
+                onClick={() => navigate("/auth")}
+              >
                 Comenzar Gratis
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button size="lg" variant="outline" className="text-lg px-10 py-7 rounded-full border-2 hover:bg-primary/5 hover:border-primary transition-all hover:scale-105" onClick={() => navigate("/auth")}>
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="text-lg px-10 py-7 rounded-full border-2 hover:bg-primary/5 hover:border-primary transition-all hover:scale-105"
+                onClick={() => navigate("/auth")}
+              >
                 Ver Demo
               </Button>
             </div>
@@ -197,7 +209,11 @@ const Index = () => {
                 </div>
               </div>
 
-              <Button size="lg" className="text-lg px-8 py-6 rounded-full group" onClick={() => navigate("/auth")}>
+              <Button 
+                size="lg" 
+                className="text-lg px-8 py-6 rounded-full group"
+                onClick={() => navigate("/auth")}
+              >
                 Prueba Gratuita
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
@@ -253,7 +269,11 @@ const Index = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <Button size="lg" className="text-xl px-12 py-8 rounded-full bg-gradient-to-r from-primary to-accent hover:shadow-2xl hover:shadow-primary/50 transition-all hover:scale-105 group" onClick={() => navigate("/auth")}>
+              <Button 
+                size="lg" 
+                className="text-xl px-12 py-8 rounded-full bg-gradient-to-r from-primary to-accent hover:shadow-2xl hover:shadow-primary/50 transition-all hover:scale-105 group"
+                onClick={() => navigate("/auth")}
+              >
                 Comenzar Ahora
                 <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
               </Button>
@@ -287,8 +307,8 @@ const Index = () => {
                 <Car className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <div className="font-bold text-lg">Reserveo</div>
-                <div className="text-sm text-muted-foreground">by 7Republik</div>
+                <div className="font-bold text-lg">ParkingManager</div>
+                <div className="text-sm text-muted-foreground">by Lovable</div>
               </div>
             </div>
             
@@ -300,6 +320,8 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
+
 export default Index;
