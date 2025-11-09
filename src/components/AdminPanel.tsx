@@ -70,6 +70,7 @@ const AdminPanel = () => {
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedIsAdmin, setSelectedIsAdmin] = useState(false);
 
   useEffect(() => {
     loadPendingPlates();
@@ -216,15 +217,46 @@ const AdminPanel = () => {
     setRejectDialogOpen(true);
   };
 
-  const handleUpdateUserRoles = async (userId: string, roles: string[]) => {
+  const handleUpdateUserRoles = async (userId: string, roles: string[], isAdmin: boolean) => {
     try {
-      // Delete existing roles
-      await supabase
+      // Delete existing non-admin roles (preserve admin if not being changed)
+      const { data: currentRoles } = await supabase
         .from("user_roles")
-        .delete()
+        .select("id, role")
         .eq("user_id", userId);
 
-      // Insert new roles
+      // Delete all parking spot roles (not admin)
+      if (currentRoles) {
+        const parkingRoleIds = currentRoles
+          .filter(r => r.role !== 'admin')
+          .map(r => r.id);
+        
+        if (parkingRoleIds.length > 0) {
+          await supabase
+            .from("user_roles")
+            .delete()
+            .in("id", parkingRoleIds);
+        }
+      }
+
+      // Handle admin role separately
+      const hasAdminRole = currentRoles?.some(r => r.role === 'admin');
+      
+      if (isAdmin && !hasAdminRole) {
+        // Add admin role
+        await supabase
+          .from("user_roles")
+          .insert({ user_id: userId, role: 'admin' });
+      } else if (!isAdmin && hasAdminRole) {
+        // Remove admin role
+        await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", userId)
+          .eq("role", "admin");
+      }
+
+      // Insert new parking spot roles
       if (roles.length > 0) {
         const { error } = await supabase
           .from("user_roles")
@@ -305,7 +337,10 @@ const AdminPanel = () => {
 
   const startEditingRoles = (userId: string, currentRoles: string[]) => {
     setEditingUserId(userId);
-    setSelectedRoles(currentRoles);
+    const parkingRoles = currentRoles.filter(r => r !== 'admin');
+    const isAdmin = currentRoles.includes('admin');
+    setSelectedRoles(parkingRoles);
+    setSelectedIsAdmin(isAdmin);
   };
 
   const toggleRole = (role: string) => {
@@ -511,70 +546,112 @@ const AdminPanel = () => {
                       <CollapsibleContent>
                         <div className="border-t p-4 space-y-4 bg-muted/20">
                           {/* Roles Section */}
-                          <div>
-                            <Label className="text-sm font-semibold mb-2 block">Roles Asignados</Label>
-                            {editingUserId === user.id ? (
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                  {["general", "preferred", "director", "visitor", "admin"].map((role) => (
-                                    <div key={role} className="flex items-center space-x-2">
-                                      <Checkbox
-                                        id={`${user.id}-${role}`}
-                                        checked={selectedRoles.includes(role)}
-                                        onCheckedChange={() => toggleRole(role)}
-                                      />
-                                      <label
-                                        htmlFor={`${user.id}-${role}`}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize"
-                                      >
-                                        {role}
-                                      </label>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => handleUpdateUserRoles(user.id, selectedRoles)}
+                          <div className="space-y-4">
+                            <div>
+                              <Label className="text-sm font-semibold mb-2 block">Permisos de Administrador</Label>
+                              {editingUserId === user.id ? (
+                                <div className="flex items-center space-x-2 p-3 bg-background rounded-lg border">
+                                  <Checkbox
+                                    id={`${user.id}-admin-toggle`}
+                                    checked={selectedIsAdmin}
+                                    onCheckedChange={(checked) => setSelectedIsAdmin(!!checked)}
+                                  />
+                                  <label
+                                    htmlFor={`${user.id}-admin-toggle`}
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                   >
-                                    Guardar
-                                  </Button>
+                                    Acceso al Panel de Administración
+                                  </label>
+                                </div>
+                              ) : (
+                                <div>
+                                  {user.user_roles.some(ur => ur.role === 'admin') ? (
+                                    <Badge variant="default" className="bg-destructive">Administrador</Badge>
+                                  ) : (
+                                    <Badge variant="outline">Usuario Normal</Badge>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label className="text-sm font-semibold mb-2 block">Grupos de Plazas de Aparcamiento</Label>
+                              {editingUserId === user.id ? (
+                                <div className="space-y-3">
+                                  <p className="text-xs text-muted-foreground">
+                                    Selecciona los tipos de plazas que este usuario puede reservar
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {["general", "preferred", "director", "visitor"].map((role) => (
+                                      <div key={role} className="flex items-center space-x-2">
+                                        <Checkbox
+                                          id={`${user.id}-${role}`}
+                                          checked={selectedRoles.includes(role)}
+                                          onCheckedChange={() => toggleRole(role)}
+                                        />
+                                        <label
+                                          htmlFor={`${user.id}-${role}`}
+                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize"
+                                        >
+                                          {role === 'general' ? 'General' : 
+                                           role === 'preferred' ? 'Preferente' :
+                                           role === 'director' ? 'Director' :
+                                           'Visitante'}
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      size="sm" 
+                                      onClick={() => handleUpdateUserRoles(user.id, selectedRoles, selectedIsAdmin)}
+                                    >
+                                      Guardar Cambios
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => {
+                                        setEditingUserId(null);
+                                        setSelectedRoles([]);
+                                        setSelectedIsAdmin(false);
+                                      }}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {user.user_roles.filter(ur => ur.role !== 'admin').length === 0 ? (
+                                      <Badge variant="outline">Sin grupos asignados</Badge>
+                                    ) : (
+                                      user.user_roles
+                                        .filter(ur => ur.role !== 'admin')
+                                        .map((ur) => (
+                                          <Badge key={ur.id}>
+                                            {ur.role === 'general' ? 'General' : 
+                                             ur.role === 'preferred' ? 'Preferente' :
+                                             ur.role === 'director' ? 'Director' :
+                                             ur.role === 'visitor' ? 'Visitante' : ur.role}
+                                          </Badge>
+                                        ))
+                                    )}
+                                  </div>
                                   <Button 
                                     size="sm" 
                                     variant="outline"
-                                    onClick={() => setEditingUserId(null)}
+                                    onClick={() => startEditingRoles(
+                                      user.id, 
+                                      user.user_roles.map(ur => ur.role)
+                                    )}
                                   >
-                                    Cancelar
+                                    Editar
                                   </Button>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <div className="flex flex-wrap gap-1">
-                                  {user.user_roles.length === 0 ? (
-                                    <Badge>general</Badge>
-                                  ) : (
-                                    user.user_roles.map((ur) => (
-                                      <Badge key={ur.id}>
-                                        {ur.role}
-                                      </Badge>
-                                    ))
-                                  )}
-                                </div>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => startEditingRoles(
-                                    user.id, 
-                                    user.user_roles.length === 0 
-                                      ? ["general"] 
-                                      : user.user_roles.map(ur => ur.role)
-                                  )}
-                                >
-                                  Editar Roles
-                                </Button>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
 
                           {/* License Plates Section */}
