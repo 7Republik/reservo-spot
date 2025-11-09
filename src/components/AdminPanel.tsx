@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Check, X, Users, ParkingSquare, Calendar, Plus, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { z } from "zod";
 
 interface LicensePlate {
   id: string;
@@ -191,8 +192,25 @@ const AdminPanel = () => {
   };
 
   const handleAddSpot = async () => {
-    if (!newSpotNumber.trim()) {
-      toast.error("Introduce un número de plaza");
+    // Validate input with Zod schema
+    const spotSchema = z.object({
+      spotNumber: z.string()
+        .trim()
+        .min(1, "El número de plaza no puede estar vacío")
+        .max(20, "El número de plaza no puede tener más de 20 caracteres")
+        .regex(/^[A-Z0-9-]+$/i, "Solo se permiten letras, números y guiones"),
+      spotType: z.enum(['general', 'preferred', 'director', 'visitor', 'admin'] as const, {
+        errorMap: () => ({ message: "Tipo de plaza no válido" })
+      })
+    });
+
+    const validation = spotSchema.safeParse({
+      spotNumber: newSpotNumber,
+      spotType: newSpotType
+    });
+
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
       return;
     }
 
@@ -200,8 +218,8 @@ const AdminPanel = () => {
       const { error } = await supabase
         .from("parking_spots")
         .insert([{
-          spot_number: newSpotNumber.trim(),
-          spot_type: newSpotType as any,
+          spot_number: validation.data.spotNumber,
+          spot_type: validation.data.spotType,
           is_active: true,
         }]);
 
