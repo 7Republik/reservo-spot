@@ -60,6 +60,7 @@ export type Database = {
           is_approved: boolean | null
           plate_number: string
           rejected_at: string | null
+          rejection_reason: string | null
           requested_at: string | null
           user_id: string
         }
@@ -70,6 +71,7 @@ export type Database = {
           is_approved?: boolean | null
           plate_number: string
           rejected_at?: string | null
+          rejection_reason?: string | null
           requested_at?: string | null
           user_id: string
         }
@@ -80,6 +82,7 @@ export type Database = {
           is_approved?: boolean | null
           plate_number?: string
           rejected_at?: string | null
+          rejection_reason?: string | null
           requested_at?: string | null
           user_id?: string
         }

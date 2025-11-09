@@ -10,6 +10,15 @@ import { toast } from "sonner";
 import { Check, X, Users, ParkingSquare, Calendar, Plus, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface LicensePlate {
   id: string;
@@ -42,6 +51,9 @@ const AdminPanel = () => {
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [newSpotNumber, setNewSpotNumber] = useState("");
   const [newSpotType, setNewSpotType] = useState("general");
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [selectedPlateId, setSelectedPlateId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
     loadPendingPlates();
@@ -149,23 +161,36 @@ const AdminPanel = () => {
     }
   };
 
-  const handleRejectPlate = async (plateId: string) => {
+  const handleRejectPlate = async () => {
+    if (!selectedPlateId) return;
+    
     try {
       const { error } = await supabase
         .from("license_plates")
         .update({
           rejected_at: new Date().toISOString(),
+          is_approved: false,
+          rejection_reason: rejectionReason.trim() || "No se especificó motivo",
         })
-        .eq("id", plateId);
+        .eq("id", selectedPlateId);
 
       if (error) throw error;
 
       toast.success("Matrícula rechazada. El usuario será notificado");
+      setRejectDialogOpen(false);
+      setSelectedPlateId(null);
+      setRejectionReason("");
       loadPendingPlates();
     } catch (error: any) {
       console.error("Error rejecting plate:", error);
       toast.error("Error al rechazar la matrícula");
     }
+  };
+
+  const openRejectDialog = (plateId: string) => {
+    setSelectedPlateId(plateId);
+    setRejectionReason("");
+    setRejectDialogOpen(true);
   };
 
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
@@ -311,14 +336,14 @@ const AdminPanel = () => {
                             <Check className="h-4 w-4 mr-2" />
                             Aprobar
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleRejectPlate(plate.id)}
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Rechazar
-                          </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => openRejectDialog(plate.id)}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Rechazar
+                    </Button>
                         </div>
                       </div>
                     </Card>
@@ -451,6 +476,38 @@ const AdminPanel = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Rejection Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rechazar Matrícula</DialogTitle>
+            <DialogDescription>
+              Especifica el motivo del rechazo. El usuario podrá ver esta información.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reason">Motivo del rechazo</Label>
+              <Textarea
+                id="reason"
+                placeholder="Ej: Matrícula no coincide con los registros de la empresa"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleRejectPlate}>
+              Rechazar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

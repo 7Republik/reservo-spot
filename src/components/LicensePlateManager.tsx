@@ -20,6 +20,7 @@ interface LicensePlate {
   requested_at: string;
   approved_at: string | null;
   rejected_at: string | null;
+  rejection_reason: string | null;
 }
 
 const plateSchema = z.object({
@@ -27,7 +28,7 @@ const plateSchema = z.object({
     .trim()
     .min(4, "La matrícula debe tener al menos 4 caracteres")
     .max(10, "La matrícula no puede tener más de 10 caracteres")
-    .regex(/^[A-Z0-9]+$/, "La matrícula solo puede contener letras mayúsculas y números"),
+    .regex(/^([A-Z]{1,2}\d{4}[A-Z]{0,2}|\d{4}[A-Z]{3})$/, "Formato inválido. Use formato español: 1234ABC, A1234BC, o AB1234C"),
 });
 
 const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
@@ -158,8 +159,20 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
               <Card key={plate.id} className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg">
-                      {plate.plate_number}
+                    {/* European License Plate Design */}
+                    <div className="flex items-center border-2 border-black rounded overflow-hidden shadow-md">
+                      {/* Blue EU Section */}
+                      <div className="bg-[#003399] flex flex-col items-center justify-center px-2 py-3 text-white">
+                        <div className="text-[10px] leading-none mb-1">★ ★ ★</div>
+                        <div className="text-xs font-bold leading-none mb-1">E</div>
+                        <div className="text-[10px] leading-none">★ ★ ★</div>
+                      </div>
+                      {/* White Plate Section */}
+                      <div className="bg-white px-4 py-2">
+                        <div className="font-mono font-bold text-2xl text-black tracking-wider">
+                          {plate.plate_number}
+                        </div>
+                      </div>
                     </div>
                     <div>
                       {plate.rejected_at ? (
@@ -206,9 +219,19 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
                 {plate.rejected_at && (
                   <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-destructive">
-                      Tu solicitud de matrícula fue rechazada. Puedes eliminarla y volver a solicitarla después de verificar los datos con la empresa.
-                    </p>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-destructive mb-1">
+                        Matrícula rechazada
+                      </p>
+                      {plate.rejection_reason && (
+                        <p className="text-sm text-destructive/90 mb-2">
+                          <span className="font-medium">Motivo:</span> {plate.rejection_reason}
+                        </p>
+                      )}
+                      <p className="text-sm text-destructive/80">
+                        Puedes eliminarla y volver a solicitarla después de verificar los datos con la empresa.
+                      </p>
+                    </div>
                   </div>
                 )}
               </Card>
