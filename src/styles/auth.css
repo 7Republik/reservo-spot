@@ -1,0 +1,256 @@
+/* Estilos personalizados para la página de autenticación */
+
+/* Animaciones de entrada */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+  }
+}
+
+/* Clases de utilidad */
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.8s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* Transiciones suaves */
+.auth-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Efectos hover mejorados */
+.auth-card {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.dark .auth-card {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Botones con efectos mejorados */
+.auth-button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.auth-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.auth-button:hover::before {
+  left: 100%;
+}
+
+.auth-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.auth-button:active {
+  transform: translateY(0);
+}
+
+/* Inputs con estilo mejorado */
+.auth-input {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.auth-input:focus {
+  background: rgba(255, 255, 255, 1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dark .auth-input {
+  background: rgba(15, 23, 42, 0.8);
+  color: white;
+}
+
+.dark .auth-input:focus {
+  background: rgba(15, 23, 42, 1);
+  border-color: #60a5fa;
+}
+
+/* Logo con efecto flotante */
+.auth-logo {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Responsive design mejorado */
+@media (max-width: 640px) {
+  .auth-container {
+    padding: 1rem;
+  }
+  
+  .auth-card {
+    margin: 0 1rem;
+    backdrop-filter: blur(5px);
+  }
+  
+  .auth-title {
+    font-size: 1.875rem; /* 30px */
+    line-height: 2.25rem; /* 36px */
+  }
+  
+  .auth-button {
+    font-size: 1rem;
+    padding: 0.875rem 1.25rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .auth-title {
+    font-size: 1.5rem; /* 24px */
+    line-height: 2rem; /* 32px */
+  }
+  
+  .auth-description {
+    font-size: 0.875rem; /* 14px */
+  }
+}
+
+/* Tablets y pantallas medianas */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .auth-card {
+    max-width: 28rem; /* 448px */
+    margin: 0 auto;
+  }
+}
+
+/* Pantallas grandes */
+@media (min-width: 1024px) {
+  .auth-card {
+    max-width: 32rem; /* 512px */
+  }
+  
+  .auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Modo oscuro mejorado */
+@media (prefers-color-scheme: dark) {
+  .auth-gradient {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+  }
+}
+
+/* Preferencias de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .auth-button::before,
+  .auth-logo {
+    animation: none;
+    transition: none;
+  }
+  
+  .auth-transition {
+    transition: none;
+  }
+}
+
+/* Alto contraste para accesibilidad */
+@media (prefers-contrast: high) {
+  .auth-input {
+    border-width: 3px;
+  }
+  
+  .auth-button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Focus visible para navegación con teclado */
+.auth-button:focus-visible,
+.auth-input:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Loading states */
+.auth-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}

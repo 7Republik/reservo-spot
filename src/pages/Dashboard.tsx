@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Calendar, Car, LogOut, Settings, ParkingSquare, AlertCircle } from "lucide-react";
+import { Calendar, Car, LogOut, Settings, ParkingSquare, Loader2 } from "lucide-react";
 import ParkingCalendar from "@/components/ParkingCalendar";
 import LicensePlateManager from "@/components/LicensePlateManager";
 import AdminPanel from "@/components/AdminPanel";
@@ -19,6 +19,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string>("general");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener
@@ -28,7 +29,10 @@ const Dashboard = () => {
         setUser(session?.user ?? null);
         
         if (!session) {
-          navigate("/auth");
+          // Navegamos con un pequeño retraso para evitar abortar llamadas en curso (p.ej. logout global)
+          setTimeout(() => {
+            navigate("/auth");
+          }, 500);
         } else {
           // Defer role checking
           setTimeout(() => {
@@ -54,6 +58,10 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  /**
+   * Obtiene y establece el rol del usuario actual desde Supabase.
+   * @param userId ID del usuario autenticado
+   */
   const checkUserRole = async (userId: string) => {
     try {
       const { data: roles, error } = await supabase
@@ -78,13 +86,73 @@ const Dashboard = () => {
     }
   };
 
+  /**
+   * Pausa asíncrona.
+   */
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /**
+   * Cierra sesión con intentos de reintento si hay errores de red/Abort.
+   * Si el cierre global falla persistentemente por red, aplica fallback local.
+   * @param maxRetries Número máximo de reintentos para el cierre global
+   * @returns "global" si cerró con alcance global, "local" si se aplicó fallback
+   */
+  const signOutWithRetry = async (maxRetries = 2): Promise<"global" | "local"> => {
+    let attempt = 0;
+    while (attempt <= maxRetries) {
+      const { error } = await supabase.auth.signOut({ scope: "global" });
+      if (!error) {
+        return "global";
+      }
+
+      const message = (typeof error?.message === "string" ? error.message : "").toLowerCase();
+      const isAbortOrNetwork = message.includes("abort") || message.includes("network") || error?.name === "AbortError";
+
+      // Si no es error de red/Abort, no reintentamos
+      if (!isAbortOrNetwork) {
+        throw error;
+      }
+
+      attempt += 1;
+      if (attempt <= maxRetries) {
+        // Backoff simple: 200ms, 400ms, ...
+        await sleep(200 * attempt);
+      }
+    }
+
+    // Fallback local si persisten problemas de red
+    const { error: localError } = await supabase.auth.signOut({ scope: "local" });
+    if (localError) {
+      throw localError;
+    }
+    return "local";
+  };
+
+  /**
+   * Cierra la sesión del usuario manejando errores de red.
+   * Evita navegar manualmente para no abortar la petición; la redirección
+   * se realiza desde el listener de `onAuthStateChange` cuando la sesión es nula.
+   */
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
-      await supabase.auth.signOut();
-      toast.success("Sesión cerrada correctamente");
-      navigate("/auth");
-    } catch (error: any) {
-      toast.error("Error al cerrar sesión");
+      const result = await signOutWithRetry(2);
+      if (result === "global") {
+        toast.success("Sesión cerrada correctamente");
+      } else {
+        toast.success("Sesión cerrada localmente. Si el problema persiste, vuelve a intentar.");
+      }
+      // No navegamos aquí; `onAuthStateChange` redirige a /auth al quedar sin sesión.
+    } catch (err: any) {
+      const message = (typeof err?.message === "string" ? err.message : "")?.toLowerCase();
+      const isNetwork = message.includes("network") || message.includes("abort") || err?.name === "AbortError";
+      if (isNetwork) {
+        toast.error("Problema de red al cerrar sesión. Revisa tu conexión e inténtalo de nuevo.");
+      } else {
+        toast.error("No hemos podido cerrar tu sesión. Intenta de nuevo.");
+      }
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -125,8 +193,20 @@ const Dashboard = () => {
                    userRole === "preferred" ? "Preferente" : "General"}
                 </Badge>
               </div>
-              <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10" onClick={handleLogout}>
-                <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 sm:h-10 sm:w-10"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                aria-busy={isLoggingOut}
+                aria-label="Cerrar sesión"
+              >
+                {isLoggingOut ? (
+                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                ) : (
+                  <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                )}
               </Button>
             </div>
           </div>
