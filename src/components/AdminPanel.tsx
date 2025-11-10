@@ -659,8 +659,8 @@ const AdminPanel = () => {
     setActiveTab(prev => ({ ...prev, [userId]: tab }));
   };
 
-  const getRoleCount = (user: UserWithRole) => {
-    return user.user_roles.filter(ur => ur.role !== 'admin').length;
+  const getGroupCount = (user: UserWithRole) => {
+    return (userGroupAssignments[user.id] || []).length;
   };
 
   const getPlateCount = (user: UserWithRole) => {
@@ -1223,7 +1223,7 @@ const AdminPanel = () => {
                                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                   <span className="flex items-center gap-1">
                                     <ParkingSquare className="h-3 w-3" />
-                                    {getRoleCount(user)} grupos
+                                    {getGroupCount(user)} grupos
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <CreditCard className="h-3 w-3" />
@@ -1281,36 +1281,81 @@ const AdminPanel = () => {
 
                             <TabsContent value="groups" className="space-y-3 mt-4">
                               <p className="text-xs text-muted-foreground">
-                                Selecciona los tipos de plazas que este usuario puede reservar
+                                Selecciona los grupos de parking a los que este usuario tendrá acceso
                               </p>
-                              <div className="grid grid-cols-2 gap-2">
-                                {["general", "preferred", "director", "visitor"].map((role) => (
-                                  <div key={role} className="flex items-center space-x-2 p-2 bg-background rounded-lg border">
-                                    <Checkbox
-                                      id={`${user.id}-${role}`}
-                                      checked={user.user_roles.some(ur => ur.role === role)}
-                                      onCheckedChange={(checked) => {
-                                        const currentRoles = user.user_roles.filter(ur => ur.role !== 'admin').map(ur => ur.role);
-                                        const newRoles = checked 
-                                          ? [...currentRoles.filter(r => r !== role), role]
-                                          : currentRoles.filter(r => r !== role);
-                                        const isAdmin = user.user_roles.some(ur => ur.role === 'admin');
-                                        debouncedSaveRoles(user.id, newRoles, isAdmin);
-                                      }}
-                                      disabled={savingUserId === user.id}
-                                    />
-                                    <label
-                                      htmlFor={`${user.id}-${role}`}
-                                      className="text-sm font-medium leading-none cursor-pointer capitalize"
-                                    >
-                                      {role === 'general' ? 'General' : 
-                                       role === 'preferred' ? 'Preferente' :
-                                       role === 'director' ? 'Director' :
-                                       'Visitante'}
-                                    </label>
-                                  </div>
-                                ))}
-                              </div>
+                              
+                              {parkingGroups.filter(g => g.is_active).length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-4">
+                                  No hay grupos de parking configurados
+                                </p>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-2">
+                                  {parkingGroups
+                                    .filter(g => g.is_active)
+                                    .map((group) => {
+                                      const isAssigned = (userGroupAssignments[user.id] || []).includes(group.id);
+                                      
+                                      return (
+                                        <div 
+                                          key={group.id} 
+                                          className="flex items-center space-x-2 p-2 bg-background rounded-lg border"
+                                        >
+                                          <Checkbox
+                                            id={`${user.id}-group-${group.id}`}
+                                            checked={isAssigned}
+                                            onCheckedChange={async (checked) => {
+                                              const currentAssignments = userGroupAssignments[user.id] || [];
+                                              const newAssignments = checked
+                                                ? [...currentAssignments, group.id]
+                                                : currentAssignments.filter(gId => gId !== group.id);
+                                              
+                                              try {
+                                                setSavingUserId(user.id);
+                                                
+                                                await supabase
+                                                  .from("user_group_assignments")
+                                                  .delete()
+                                                  .eq("user_id", user.id);
+                                                
+                                                if (newAssignments.length > 0) {
+                                                  const assignments = newAssignments.map(groupId => ({
+                                                    user_id: user.id,
+                                                    group_id: groupId,
+                                                  }));
+                                                  
+                                                  await supabase
+                                                    .from("user_group_assignments")
+                                                    .insert(assignments);
+                                                }
+                                                
+                                                toast.success(
+                                                  checked 
+                                                    ? `Acceso al grupo "${group.name}" concedido` 
+                                                    : `Acceso al grupo "${group.name}" revocado`
+                                                );
+                                                
+                                                loadUserGroupAssignments();
+                                              } catch (error) {
+                                                console.error("Error updating group assignment:", error);
+                                                toast.error("Error al actualizar acceso a grupos");
+                                              } finally {
+                                                setSavingUserId(null);
+                                              }
+                                            }}
+                                            disabled={savingUserId === user.id}
+                                          />
+                                          <label
+                                            htmlFor={`${user.id}-group-${group.id}`}
+                                            className="text-sm font-medium leading-none cursor-pointer"
+                                          >
+                                            {group.name}
+                                          </label>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              )}
+                              
                               {savingUserId === user.id && (
                                 <p className="text-xs text-muted-foreground">Guardando cambios...</p>
                               )}
