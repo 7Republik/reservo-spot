@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocked_dates: {
+        Row: {
+          blocked_date: string
+          created_at: string | null
+          created_by: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          blocked_date: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          reason?: string
+        }
+        Update: {
+          blocked_date?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       incident_reports: {
         Row: {
           created_at: string | null
@@ -117,33 +141,45 @@ export type Database = {
           button_size: number | null
           capacity: number
           created_at: string | null
+          deactivated_at: string | null
+          deactivated_by: string | null
+          deactivation_reason: string | null
           description: string | null
           floor_plan_url: string | null
           id: string
           is_active: boolean | null
           name: string
+          scheduled_deactivation_date: string | null
           updated_at: string | null
         }
         Insert: {
           button_size?: number | null
           capacity?: number
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deactivation_reason?: string | null
           description?: string | null
           floor_plan_url?: string | null
           id?: string
           is_active?: boolean | null
           name: string
+          scheduled_deactivation_date?: string | null
           updated_at?: string | null
         }
         Update: {
           button_size?: number | null
           capacity?: number
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deactivation_reason?: string | null
           description?: string | null
           floor_plan_url?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
+          scheduled_deactivation_date?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -270,6 +306,30 @@ export type Database = {
           },
         ]
       }
+      reservation_settings: {
+        Row: {
+          advance_reservation_days: number
+          created_at: string | null
+          daily_refresh_hour: number
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          advance_reservation_days?: number
+          created_at?: string | null
+          daily_refresh_hour?: number
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          advance_reservation_days?: number
+          created_at?: string | null
+          daily_refresh_hour?: number
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
           cancelled_at: string | null
@@ -363,6 +423,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_reservations_for_blocked_date: {
+        Args: { _admin_id: string; _blocked_date: string }
+        Returns: number
+      }
+      deactivate_parking_group: {
+        Args: { _admin_id: string; _group_id: string; _reason: string }
+        Returns: undefined
+      }
       deactivate_user: {
         Args: { _admin_id: string; _user_id: string }
         Returns: undefined
@@ -377,6 +445,13 @@ export type Database = {
           position_y: number
           spot_id: string
           spot_number: string
+        }[]
+      }
+      get_reservable_date_range: {
+        Args: never
+        Returns: {
+          max_date: string
+          min_date: string
         }[]
       }
       get_user_role_priority: { Args: { _user_id: string }; Returns: number }

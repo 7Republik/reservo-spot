@@ -100,6 +100,11 @@ interface ParkingGroup {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  button_size: number;
+  deactivated_at?: string | null;
+  deactivated_by?: string | null;
+  deactivation_reason?: string | null;
+  scheduled_deactivation_date?: string | null;
 }
 
 const AdminPanel = () => {
@@ -173,12 +178,36 @@ const AdminPanel = () => {
   const [blockReason, setBlockReason] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
 
+  // Advanced parking management state
+  const [reservationSettings, setReservationSettings] = useState({
+    advance_reservation_days: 7,
+    daily_refresh_hour: 10
+  });
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [blockedDates, setBlockedDates] = useState<Array<{
+    id: string;
+    blocked_date: string;
+    reason: string;
+  }>>([]);
+  const [blockDateDialogOpen, setBlockDateDialogOpen] = useState(false);
+  const [dateToBlock, setDateToBlock] = useState<Date | undefined>(undefined);
+  const [blockDateReason, setBlockDateReason] = useState("Fuerza Mayor");
+  const [deactivateGroupDialogOpen, setDeactivateGroupDialogOpen] = useState(false);
+  const [groupToDeactivate, setGroupToDeactivate] = useState<ParkingGroup | null>(null);
+  const [deactivationReason, setDeactivationReason] = useState("");
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [groupToSchedule, setGroupToSchedule] = useState<ParkingGroup | null>(null);
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
+  const [showDeactivatedGroups, setShowDeactivatedGroups] = useState(false);
+
   useEffect(() => {
     loadPendingPlates();
     loadUsers();
     loadSpots();
     loadParkingGroups();
     loadUserGroupAssignments();
+    loadReservationSettings();
+    loadBlockedDates();
   }, []);
 
   // User Management Functions
@@ -905,6 +934,200 @@ const AdminPanel = () => {
     } catch (error: any) {
       console.error("Error saving user group assignments:", error);
       toast.error("Error al asignar grupos");
+    }
+  };
+
+  // Advanced parking management functions
+  const loadReservationSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("reservation_settings")
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setReservationSettings({
+          advance_reservation_days: data.advance_reservation_days,
+          daily_refresh_hour: data.daily_refresh_hour
+        });
+      }
+    } catch (error: any) {
+      console.error("Error loading settings:", error);
+    }
+  };
+
+  const loadBlockedDates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("blocked_dates")
+        .select("*")
+        .order("blocked_date", { ascending: true });
+
+      if (error) throw error;
+      setBlockedDates(data || []);
+    } catch (error: any) {
+      console.error("Error loading blocked dates:", error);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      const { error } = await supabase
+        .from("reservation_settings")
+        .update({
+          advance_reservation_days: reservationSettings.advance_reservation_days,
+          daily_refresh_hour: reservationSettings.daily_refresh_hour
+        })
+        .eq("id", "00000000-0000-0000-0000-000000000001");
+
+      if (error) throw error;
+      toast.success("Configuración actualizada correctamente");
+      setSettingsDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error saving settings:", error);
+      toast.error("Error al guardar configuración");
+    }
+  };
+
+  const handleBlockDate = async () => {
+    if (!dateToBlock) return;
+
+    try {
+      const { data: existingReservations } = await supabase
+        .from("reservations")
+        .select("id")
+        .eq("reservation_date", format(dateToBlock, 'yyyy-MM-dd'))
+        .eq("status", "active");
+
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error: blockError } = await supabase
+        .from("blocked_dates")
+        .insert({
+          blocked_date: format(dateToBlock, 'yyyy-MM-dd'),
+          reason: blockDateReason,
+          created_by: user?.id
+        });
+
+      if (blockError) throw blockError;
+
+      if (existingReservations && existingReservations.length > 0) {
+        const { error: cancelError } = await supabase.rpc(
+          'cancel_reservations_for_blocked_date',
+          {
+            _blocked_date: format(dateToBlock, 'yyyy-MM-dd'),
+            _admin_id: user?.id
+          }
+        );
+
+        if (cancelError) throw cancelError;
+        
+        toast.success(
+          `Día bloqueado y ${existingReservations.length} reservas canceladas`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success("Día bloqueado correctamente");
+      }
+
+      setBlockDateDialogOpen(false);
+      setDateToBlock(undefined);
+      setBlockDateReason("Fuerza Mayor");
+      loadBlockedDates();
+    } catch (error: any) {
+      console.error("Error blocking date:", error);
+      toast.error("Error al bloquear el día");
+    }
+  };
+
+  const handleUnblockDate = async (dateId: string) => {
+    try {
+      const { error } = await supabase
+        .from("blocked_dates")
+        .delete()
+        .eq("id", dateId);
+
+      if (error) throw error;
+      toast.success("Día desbloqueado correctamente");
+      loadBlockedDates();
+    } catch (error: any) {
+      console.error("Error unblocking date:", error);
+      toast.error("Error al desbloquear el día");
+    }
+  };
+
+  const handleDeactivateGroup = async () => {
+    if (!groupToDeactivate || !deactivationReason.trim()) {
+      toast.error("Debes proporcionar un motivo para dar de baja el grupo");
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase.rpc('deactivate_parking_group', {
+        _group_id: groupToDeactivate.id,
+        _admin_id: user?.id,
+        _reason: deactivationReason
+      });
+
+      if (error) throw error;
+
+      toast.success(
+        `Grupo "${groupToDeactivate.name}" dado de baja y reservas futuras canceladas`,
+        { duration: 5000 }
+      );
+      
+      setDeactivateGroupDialogOpen(false);
+      setGroupToDeactivate(null);
+      setDeactivationReason("");
+      loadParkingGroups();
+    } catch (error: any) {
+      console.error("Error deactivating group:", error);
+      toast.error("Error al dar de baja el grupo");
+    }
+  };
+
+  const handleScheduleDeactivation = async () => {
+    if (!groupToSchedule || !scheduledDate) return;
+
+    try {
+      const { error } = await supabase
+        .from("parking_groups")
+        .update({ scheduled_deactivation_date: format(scheduledDate, 'yyyy-MM-dd') })
+        .eq("id", groupToSchedule.id);
+
+      if (error) throw error;
+
+      toast.success(
+        `Grupo "${groupToSchedule.name}" se desactivará automáticamente el ${format(scheduledDate, 'dd/MM/yyyy', { locale: es })}`,
+        { duration: 5000 }
+      );
+      
+      setScheduleDialogOpen(false);
+      setGroupToSchedule(null);
+      setScheduledDate(undefined);
+      loadParkingGroups();
+    } catch (error: any) {
+      console.error("Error scheduling deactivation:", error);
+      toast.error("Error al programar desactivación");
+    }
+  };
+
+  const handleCancelScheduledDeactivation = async (groupId: string) => {
+    try {
+      const { error } = await supabase
+        .from("parking_groups")
+        .update({ scheduled_deactivation_date: null })
+        .eq("id", groupId);
+
+      if (error) throw error;
+      toast.success("Desactivación programada cancelada");
+      loadParkingGroups();
+    } catch (error: any) {
+      console.error("Error cancelling scheduled deactivation:", error);
+      toast.error("Error al cancelar desactivación programada");
     }
   };
 
@@ -1744,6 +1967,126 @@ const AdminPanel = () => {
 
             {/* Sub-tab: Lista de Grupos */}
             <TabsContent value="groups-list">
+              {/* Configuración Global de Reservas */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Configuración de Reservas
+                  </CardTitle>
+                  <CardDescription>
+                    Configura las reglas globales del sistema de reservas
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Días de antelación permitidos</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="1"
+                          max="90"
+                          value={reservationSettings.advance_reservation_days}
+                          onChange={(e) => setReservationSettings(prev => ({
+                            ...prev,
+                            advance_reservation_days: parseInt(e.target.value) || 7
+                          }))}
+                          className="w-24"
+                        />
+                        <span className="text-sm text-muted-foreground">días naturales</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Los usuarios podrán reservar hasta {reservationSettings.advance_reservation_days} días por adelantado
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Hora de actualización diaria</Label>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={reservationSettings.daily_refresh_hour.toString()}
+                          onValueChange={(value) => setReservationSettings(prev => ({
+                            ...prev,
+                            daily_refresh_hour: parseInt(value)
+                          }))}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => (
+                              <SelectItem key={i} value={i.toString()}>
+                                {i.toString().padStart(2, '0')}:00
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-sm text-muted-foreground">horas</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        La ventana de reserva se actualiza a las {reservationSettings.daily_refresh_hour}:00
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button onClick={handleSaveSettings}>
+                    Guardar Configuración
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Gestión de Días Bloqueados */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <CalendarIcon className="h-5 w-5" />
+                        Días Bloqueados
+                      </CardTitle>
+                      <CardDescription>
+                        Días donde no se permiten reservas en ningún grupo
+                      </CardDescription>
+                    </div>
+                    <Button onClick={() => setBlockDateDialogOpen(true)} size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Bloquear Día
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {blockedDates.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No hay días bloqueados
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {blockedDates.map(date => (
+                        <div 
+                          key={date.id}
+                          className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/20 rounded-lg"
+                        >
+                          <div>
+                            <p className="font-medium">
+                              {format(new Date(date.blocked_date), 'dd/MM/yyyy', { locale: es })}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{date.reason}</p>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleUnblockDate(date.id)}
+                          >
+                            Desbloquear
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                   <div>
@@ -1758,19 +2101,31 @@ const AdminPanel = () => {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  {parkingGroups.length === 0 ? (
+                  {parkingGroups.filter(g => !g.deactivated_at).length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Settings className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No hay grupos de parking creados</p>
+                      <p>No hay grupos de parking activos</p>
                       <p className="text-sm mt-2">Crea tu primer grupo para comenzar</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {parkingGroups.map(group => (
+                      {parkingGroups
+                        .filter(g => !g.deactivated_at)
+                        .map(group => (
                         <Card key={group.id} className={cn(
                           "relative overflow-hidden",
                           !group.is_active && "opacity-50"
                         )}>
+                          {/* Badge de desactivación programada */}
+                          {group.scheduled_deactivation_date && (
+                            <Badge 
+                              variant="outline" 
+                              className="absolute top-2 right-2 z-10 bg-yellow-50 text-yellow-700 border-yellow-300"
+                            >
+                              🕒 {format(new Date(group.scheduled_deactivation_date), 'dd/MM/yyyy')}
+                            </Badge>
+                          )}
+                          
                           {group.floor_plan_url && (
                             <div className="h-32 bg-muted overflow-hidden">
                               <img
@@ -1801,7 +2156,7 @@ const AdminPanel = () => {
                               <span className="font-semibold">{group.capacity} plazas</span>
                             </div>
 
-                            <div className="flex gap-2 pt-2">
+                            <div className="flex flex-wrap gap-2 pt-2">
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1810,18 +2165,128 @@ const AdminPanel = () => {
                               >
                                 Editar
                               </Button>
-                              <Button
-                                size="sm"
-                                variant={group.is_active ? "destructive" : "default"}
-                                onClick={() => handleToggleGroupActive(group.id, group.is_active)}
-                              >
-                                {group.is_active ? "Desactivar" : "Activar"}
-                              </Button>
+                              
+                              {group.is_active && (
+                                <>
+                                  {group.scheduled_deactivation_date ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleCancelScheduledDeactivation(group.id)}
+                                    >
+                                      ❌ Cancelar
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setGroupToSchedule(group);
+                                        setScheduleDialogOpen(true);
+                                      }}
+                                    >
+                                      🕒 Programar
+                                    </Button>
+                                  )}
+                                  
+                                  <Button
+                                    size="sm"
+                                    variant={group.is_active ? "secondary" : "default"}
+                                    onClick={() => handleToggleGroupActive(group.id, group.is_active)}
+                                  >
+                                    {group.is_active ? "Pausar" : "Reanudar"}
+                                  </Button>
+
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="w-full"
+                                    onClick={() => {
+                                      setGroupToDeactivate(group);
+                                      setDeactivateGroupDialogOpen(true);
+                                    }}
+                                  >
+                                    🗑️ Dar de Baja
+                                  </Button>
+                                </>
+                              )}
+                              
+                              {!group.is_active && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => handleToggleGroupActive(group.id, group.is_active)}
+                                >
+                                  Reactivar
+                                </Button>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
                       ))}
                     </div>
+                  )}
+
+                  {/* Sección colapsable de Grupos Dados de Baja */}
+                  {parkingGroups.filter(g => g.deactivated_at).length > 0 && (
+                    <Collapsible open={showDeactivatedGroups} onOpenChange={setShowDeactivatedGroups} className="mt-6">
+                      <Card>
+                        <CollapsibleTrigger className="w-full">
+                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                Grupos Dados de Baja
+                                <Badge variant="outline" className="ml-2">
+                                  {parkingGroups.filter(g => g.deactivated_at).length}
+                                </Badge>
+                              </CardTitle>
+                              <ChevronDown 
+                                className={cn(
+                                  "h-5 w-5 transition-transform duration-200 text-muted-foreground",
+                                  showDeactivatedGroups && "transform rotate-180"
+                                )} 
+                              />
+                            </div>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+
+                        <CollapsibleContent>
+                          <CardContent className="space-y-3 pt-4">
+                            {parkingGroups
+                              .filter(g => g.deactivated_at)
+                              .map(group => (
+                              <div 
+                                key={group.id}
+                                className="p-4 bg-muted/30 rounded-lg border border-muted"
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="space-y-1 flex-1">
+                                    <p className="font-medium">{group.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {group.description}
+                                    </p>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                      <Badge variant="secondary" className="text-xs">
+                                        {group.capacity} plazas
+                                      </Badge>
+                                      <Badge variant="outline" className="text-xs">
+                                        Dado de baja: {format(new Date(group.deactivated_at!), 'dd/MM/yyyy HH:mm')}
+                                      </Badge>
+                                    </div>
+                                    {group.deactivation_reason && (
+                                      <p className="text-xs text-muted-foreground mt-2">
+                                        <span className="font-medium">Motivo:</span> {group.deactivation_reason}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
                   )}
                 </CardContent>
               </Card>
@@ -2777,6 +3242,226 @@ const AdminPanel = () => {
               disabled={deletePassword !== "12345678"}
             >
               BORRAR PERMANENTEMENTE
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Bloquear día */}
+      <Dialog open={blockDateDialogOpen} onOpenChange={setBlockDateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bloquear Día para Reservas</DialogTitle>
+            <DialogDescription>
+              Selecciona un día en el que NO se permitirán reservas en ningún grupo
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Fecha a bloquear</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateToBlock && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateToBlock 
+                      ? format(dateToBlock, 'dd/MM/yyyy', { locale: es })
+                      : "Selecciona una fecha"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateToBlock}
+                    onSelect={setDateToBlock}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    locale={es}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="block-reason">Motivo del bloqueo</Label>
+              <Input
+                id="block-reason"
+                value={blockDateReason}
+                onChange={(e) => setBlockDateReason(e.target.value)}
+                placeholder="Ej: Fuerza Mayor, Mantenimiento..."
+              />
+            </div>
+
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-xs space-y-1">
+              <p className="font-medium text-destructive">⚠️ Atención:</p>
+              <p className="text-muted-foreground">
+                Si ya existen reservas para este día, serán <strong>canceladas automáticamente</strong> con el motivo especificado.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setBlockDateDialogOpen(false);
+                setDateToBlock(undefined);
+                setBlockDateReason("Fuerza Mayor");
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleBlockDate}
+              disabled={!dateToBlock}
+              className="w-full sm:w-auto"
+            >
+              Bloquear Día
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Dar de baja grupo */}
+      <Dialog open={deactivateGroupDialogOpen} onOpenChange={setDeactivateGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              ⚠️ Dar de Baja Grupo: {groupToDeactivate?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción es <strong>irreversible</strong> y tendrá los siguientes efectos:
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm">
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <li>El grupo se marcará como dado de baja permanentemente</li>
+              <li>Todas las plazas del grupo se desactivarán</li>
+              <li>Todas las reservas futuras se cancelarán automáticamente</li>
+              <li>El grupo quedará en el historial pero no será utilizable</li>
+            </ul>
+
+            <div className="space-y-2 pt-4">
+              <Label htmlFor="deactivation-reason">
+                Motivo de la baja <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="deactivation-reason"
+                placeholder="Explica por qué se da de baja este grupo..."
+                value={deactivationReason}
+                onChange={(e) => setDeactivationReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setDeactivateGroupDialogOpen(false);
+                setGroupToDeactivate(null);
+                setDeactivationReason("");
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeactivateGroup}
+              disabled={!deactivationReason.trim()}
+              className="w-full sm:w-auto"
+            >
+              Confirmar Baja Definitiva
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Programar desactivación */}
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Programar Desactivación: {groupToSchedule?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Selecciona la fecha desde la cual el grupo se desactivará automáticamente
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Fecha de desactivación</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !scheduledDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {scheduledDate 
+                      ? format(scheduledDate, 'dd/MM/yyyy', { locale: es })
+                      : "Selecciona una fecha"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={scheduledDate}
+                    onSelect={setScheduledDate}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    locale={es}
+                  />
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                A partir de esta fecha, no se aceptarán nuevas reservas para este grupo
+              </p>
+            </div>
+
+            <div className="p-3 bg-muted rounded-lg text-xs space-y-1">
+              <p className="font-medium">ℹ️ Efectos de la desactivación programada:</p>
+              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                <li>Las reservas anteriores a esta fecha seguirán siendo válidas</li>
+                <li>No se podrá reservar en este grupo desde esta fecha en adelante</li>
+                <li>Puedes cancelar la programación en cualquier momento antes de la fecha</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setScheduleDialogOpen(false);
+                setGroupToSchedule(null);
+                setScheduledDate(undefined);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleScheduleDeactivation}
+              disabled={!scheduledDate}
+              className="w-full sm:w-auto"
+            >
+              Programar Desactivación
             </Button>
           </DialogFooter>
         </DialogContent>

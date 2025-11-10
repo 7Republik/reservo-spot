@@ -160,6 +160,26 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         return;
       }
 
+      // Obtener rango de fechas permitido
+      const { data: dateRange, error: rangeError } = await supabase
+        .rpc('get_reservable_date_range')
+        .single();
+
+      if (rangeError) {
+        console.error("Error getting date range:", rangeError);
+      }
+
+      // Obtener días bloqueados
+      const { data: blockedDates, error: blockedError } = await supabase
+        .from("blocked_dates")
+        .select("blocked_date");
+
+      if (blockedError) {
+        console.error("Error getting blocked dates:", blockedError);
+      }
+
+      const blockedDatesSet = new Set(blockedDates?.map(d => d.blocked_date) || []);
+
       const start = startOfMonth(currentMonth);
       const end = endOfMonth(currentMonth);
       const days = eachDayOfInterval({ start, end });
@@ -169,6 +189,15 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       for (const day of days) {
         const dateStr = format(day, "yyyy-MM-dd");
         
+        // Validar si está en rango y no bloqueado
+        const isBlocked = blockedDatesSet.has(dateStr);
+        const isOutOfRange = dateRange && (dateStr < dateRange.min_date || dateStr > dateRange.max_date);
+
+        if (isBlocked || isOutOfRange) {
+          spotsData[dateStr] = 0;
+          continue;
+        }
+
         // Get total spots from user's accessible groups
         const { data: totalSpots, error: spotsError } = await supabase
           .from("parking_spots")
