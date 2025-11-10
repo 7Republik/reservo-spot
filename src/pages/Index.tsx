@@ -18,11 +18,11 @@ const Index = () => {
               <div className="text-center space-y-8">
                 {/* Icono */}
                 <div className="flex justify-center">
-                  <div className="bg-white/10 backdrop-blur-sm p-6 rounded-3xl shadow-lg">
+                  <div className="bg-white/10 backdrop-blur-sm p-4 rounded-3xl shadow-lg">
                     <img 
                       src={logoReserveo} 
                       alt="Logo RESERVEO" 
-                      className="h-20 w-20 object-contain"
+                      className="h-32 w-32 object-contain"
                     />
                   </div>
                 </div>
