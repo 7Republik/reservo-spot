@@ -133,8 +133,9 @@ const Index = () => {
       </section>
 
       {/* Benefits Section */}
-      <section className="container mx-auto px-4 py-20 bg-highlight">
-        <div className="max-w-6xl mx-auto">
+      <section className="w-full py-20 bg-gradient-to-b from-background via-highlight to-background">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
           <Card className="border-border/50 shadow-2xl bg-card overflow-hidden">
             <CardHeader className="text-center pb-8">
               <div className="flex items-center justify-center gap-4 mb-4">
@@ -210,6 +211,7 @@ const Index = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
         </div>
       </section>
 
