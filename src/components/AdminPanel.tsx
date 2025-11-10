@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Check, X, Users, ParkingSquare, Plus, Trash2, ChevronDown, ChevronUp, CreditCard, Shield, UserCircle, Settings, Calendar as CalendarIcon } from "lucide-react";
+import { Check, X, Users, ParkingSquare, Plus, Trash2, ChevronDown, ChevronUp, CreditCard, Shield, UserCircle, Settings, Calendar as CalendarIcon, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import {
@@ -150,6 +151,7 @@ const AdminPanel = () => {
   const [selectedSpotForEdit, setSelectedSpotForEdit] = useState<ParkingSpot | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [floorPlanDimensions, setFloorPlanDimensions] = useState({ width: 0, height: 0 });
+  const [spotButtonSize, setSpotButtonSize] = useState(32);
 
   // Spot attributes dialog state
   const [spotAttributesDialogOpen, setSpotAttributesDialogOpen] = useState(false);
@@ -811,7 +813,11 @@ const AdminPanel = () => {
       return;
     }
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    // Obtener coordenadas relativas a la imagen, no al contenedor con zoom
+    const imgElement = e.currentTarget.querySelector('img');
+    if (!imgElement) return;
+    
+    const rect = imgElement.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
@@ -1686,59 +1692,139 @@ const AdminPanel = () => {
                         <span>⚪ Inactiva</span>
                       </div>
 
-                      <div className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
-                        <div
-                          className="relative cursor-crosshair"
-                          onClick={handleFloorPlanClick}
-                          style={{ minHeight: '500px' }}
-                        >
-                          <img
-                            src={selectedGroupForEditor.floor_plan_url}
-                            alt={`Plano de ${selectedGroupForEditor.name}`}
-                            className="w-full h-auto"
-                            onLoad={(e) => {
-                              setFloorPlanDimensions({
-                                width: e.currentTarget.naturalWidth,
-                                height: e.currentTarget.naturalHeight,
-                              });
-                            }}
-                          />
+                      <div className="space-y-4">
+                        {/* Controles de zoom y tamaño */}
+                        <div className="flex flex-wrap items-center gap-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-700">Controles:</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="spot-size" className="text-sm text-gray-600 whitespace-nowrap">
+                              Tamaño botones:
+                            </Label>
+                            <input
+                              id="spot-size"
+                              type="range"
+                              min="16"
+                              max="64"
+                              value={spotButtonSize}
+                              onChange={(e) => setSpotButtonSize(Number(e.target.value))}
+                              className="w-32"
+                            />
+                            <span className="text-xs text-gray-500 min-w-[3rem]">{spotButtonSize}px</span>
+                          </div>
+                        </div>
 
-                          {editorSpots.map(spot => {
-                            if (spot.position_x === null || spot.position_y === null) return null;
+                        {/* Editor con zoom/pan */}
+                        <div className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+                          <TransformWrapper
+                            initialScale={1}
+                            minScale={0.5}
+                            maxScale={4}
+                            centerOnInit={true}
+                            wheel={{ step: 0.1 }}
+                            doubleClick={{ mode: "zoomIn" }}
+                            panning={{ velocityDisabled: true }}
+                          >
+                            {({ zoomIn, zoomOut, resetTransform }) => (
+                              <>
+                                {/* Controles de zoom flotantes */}
+                                <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-white rounded-lg shadow-lg border border-gray-200 p-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => zoomIn()}
+                                    className="h-8 w-8 p-0"
+                                    title="Zoom In"
+                                  >
+                                    <ZoomIn className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => zoomOut()}
+                                    className="h-8 w-8 p-0"
+                                    title="Zoom Out"
+                                  >
+                                    <ZoomOut className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => resetTransform()}
+                                    className="h-8 w-8 p-0"
+                                    title="Reset Zoom"
+                                  >
+                                    <Maximize2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
 
-                            let bgColor = "bg-blue-500";
-                            if (!spot.is_active) bgColor = "bg-gray-300";
-                            else if (spot.is_accessible && spot.has_charger) bgColor = "bg-green-500";
-                            else if (spot.has_charger) bgColor = "bg-yellow-500";
-                            else if (spot.is_accessible) bgColor = "bg-blue-600";
+                                <TransformComponent
+                                  wrapperStyle={{ width: '100%', height: '100%', minHeight: '500px' }}
+                                  contentStyle={{ width: '100%', height: '100%' }}
+                                >
+                                  <div
+                                    className="relative cursor-crosshair"
+                                    onClick={handleFloorPlanClick}
+                                    style={{ minHeight: '500px', width: '100%' }}
+                                  >
+                                    <img
+                                      src={selectedGroupForEditor.floor_plan_url}
+                                      alt={`Plano de ${selectedGroupForEditor.name}`}
+                                      className="w-full h-auto"
+                                      onLoad={(e) => {
+                                        setFloorPlanDimensions({
+                                          width: e.currentTarget.naturalWidth,
+                                          height: e.currentTarget.naturalHeight,
+                                        });
+                                      }}
+                                    />
 
-                            return (
-                              <div
-                                key={spot.id}
-                                className={cn(
-                                  "absolute transform -translate-x-1/2 -translate-y-1/2",
-                                  "w-12 h-12 rounded-lg flex items-center justify-center",
-                                  "text-white font-bold text-xs shadow-lg border-2 border-white",
-                                  "cursor-pointer hover:scale-110 transition-transform",
-                                  bgColor
-                                )}
-                                style={{
-                                  left: `${spot.position_x}%`,
-                                  top: `${spot.position_y}%`,
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSpotClick(spot);
-                                }}
-                                title={`${spot.spot_number}${spot.is_accessible ? ' ♿' : ''}${spot.has_charger ? ' ⚡' : ''}${spot.is_compact ? ' 🚗' : ''}`}
-                              >
-                                <span className="drop-shadow-md">
-                                  {spot.spot_number.split('-')[1] || spot.spot_number}
-                                </span>
-                              </div>
-                            );
-                          })}
+                                    {editorSpots.map(spot => {
+                                      if (spot.position_x === null || spot.position_y === null) return null;
+
+                                      let bgColor = "bg-blue-500";
+                                      if (!spot.is_active) bgColor = "bg-gray-300";
+                                      else if (spot.is_accessible && spot.has_charger) bgColor = "bg-green-500";
+                                      else if (spot.has_charger) bgColor = "bg-yellow-500";
+                                      else if (spot.is_accessible) bgColor = "bg-blue-600";
+
+                                      const fontSize = Math.max(spotButtonSize * 0.35, 10);
+
+                                      return (
+                                        <div
+                                          key={spot.id}
+                                          className={cn(
+                                            "absolute transform -translate-x-1/2 -translate-y-1/2",
+                                            "rounded-lg flex items-center justify-center",
+                                            "text-white font-bold shadow-lg border-2 border-white",
+                                            "cursor-pointer hover:scale-110 transition-transform",
+                                            bgColor
+                                          )}
+                                          style={{
+                                            left: `${spot.position_x}%`,
+                                            top: `${spot.position_y}%`,
+                                            width: `${spotButtonSize}px`,
+                                            height: `${spotButtonSize}px`,
+                                            fontSize: `${fontSize}px`,
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSpotClick(spot);
+                                          }}
+                                          title={`${spot.spot_number}${spot.is_accessible ? ' ♿' : ''}${spot.has_charger ? ' ⚡' : ''}${spot.is_compact ? ' 🚗' : ''}`}
+                                        >
+                                          <span className="drop-shadow-md">
+                                            {spot.spot_number.split('-')[1] || spot.spot_number}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </TransformComponent>
+                              </>
+                            )}
+                          </TransformWrapper>
                         </div>
                       </div>
 
