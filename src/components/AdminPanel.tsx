@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Check, X, Users, ParkingSquare, Plus, Trash2, ChevronDown, ChevronUp, CreditCard, Shield, UserCircle, Settings, Calendar as CalendarIcon, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { Users, ParkingSquare, Plus, Trash2, ChevronDown, ChevronUp, CreditCard, Shield, UserCircle, Settings, Calendar as CalendarIcon, ZoomIn, ZoomOut, Maximize2, X, Check } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import {
@@ -33,15 +33,14 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type {
-  LicensePlate,
   UserWithRole,
   ParkingSpot,
   ParkingGroup,
-  ExpirationType,
 } from "@/types/admin";
+import { LicensePlatesTab } from "@/components/admin/license-plates/LicensePlatesTab";
 
 const AdminPanel = () => {
-  const [pendingPlates, setPendingPlates] = useState<LicensePlate[]>([]);
+  // State for Users tab
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [newSpotNumber, setNewSpotNumber] = useState("");
@@ -49,28 +48,13 @@ const AdminPanel = () => {
   const [newSpotIsAccessible, setNewSpotIsAccessible] = useState(false);
   const [newSpotHasCharger, setNewSpotHasCharger] = useState(false);
   const [newSpotIsCompact, setNewSpotIsCompact] = useState(false);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [selectedPlateId, setSelectedPlateId] = useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = useState("");
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, string>>({});
-  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
-  const [selectedPlate, setSelectedPlate] = useState<LicensePlate | null>(null);
-  const [approveElectric, setApproveElectric] = useState(false);
-  const [approveDisability, setApproveDisability] = useState(false);
   
-  // Edit permissions dialog state
-  const [editPermissionsOpen, setEditPermissionsOpen] = useState(false);
-  const [editingPlate, setEditingPlate] = useState<LicensePlate | null>(null);
-  const [editElectric, setEditElectric] = useState(false);
-  const [editDisability, setEditDisability] = useState(false);
-  const [electricExpirationType, setElectricExpirationType] = useState<ExpirationType>('none');
-  const [electricExpirationDays, setElectricExpirationDays] = useState<string>('30');
-  const [electricExpirationDate, setElectricExpirationDate] = useState<Date | undefined>();
-  const [disabilityExpirationType, setDisabilityExpirationType] = useState<ExpirationType>('none');
-  const [disabilityExpirationDays, setDisabilityExpirationDays] = useState<string>('30');
-  const [disabilityExpirationDate, setDisabilityExpirationDate] = useState<Date | undefined>();
+  // Permissions dialog state for editing plates in users tab
+  const [selectedPlateForAction, setSelectedPlateForAction] = useState<string | null>(null);
+  const [rejectReasonForPlate, setRejectReasonForPlate] = useState("");
 
   // Parking groups state
   const [parkingGroups, setParkingGroups] = useState<ParkingGroup[]>([]);
@@ -136,7 +120,6 @@ const AdminPanel = () => {
   const [showDeactivatedGroups, setShowDeactivatedGroups] = useState(false);
 
   useEffect(() => {
-    loadPendingPlates();
     loadUsers();
     loadSpots();
     loadParkingGroups();
@@ -250,39 +233,6 @@ const AdminPanel = () => {
     }
   };
 
-  const loadPendingPlates = async () => {
-    try {
-      const { data: plates, error } = await supabase
-        .from("license_plates")
-        .select("*")
-        .eq("is_approved", false)
-        .is("rejected_at", null)
-        .order("requested_at", { ascending: false });
-
-      if (error) throw error;
-      
-      // Get profiles separately
-      const platesWithProfiles = await Promise.all(
-        (plates || []).map(async (plate) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("email, full_name")
-            .eq("id", plate.user_id)
-            .single();
-          
-          return {
-            ...plate,
-            profiles: profile || { email: "", full_name: "" }
-          };
-        })
-      );
-      
-      setPendingPlates(platesWithProfiles as any);
-    } catch (error: any) {
-      console.error("Error loading pending plates:", error);
-    }
-  };
-
   const loadUsers = async () => {
     try {
       const { data: profiles, error } = await supabase
@@ -338,73 +288,6 @@ const AdminPanel = () => {
     }
   };
 
-  const handleApprovePlateWithPermissions = (plate: LicensePlate) => {
-    setSelectedPlate(plate);
-    setApproveElectric(plate.requested_electric);
-    setApproveDisability(plate.requested_disability);
-    setApproveDialogOpen(true);
-  };
-
-  const confirmApproval = async () => {
-    if (!selectedPlate) return;
-    
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      
-      const { error } = await supabase
-        .from("license_plates")
-        .update({
-          is_approved: true,
-          approved_at: new Date().toISOString(),
-          approved_by: sessionData.session?.user.id,
-          approved_electric: approveElectric,
-          approved_disability: approveDisability,
-        })
-        .eq("id", selectedPlate.id);
-
-      if (error) throw error;
-
-      toast.success("Matrícula aprobada correctamente");
-      setApproveDialogOpen(false);
-      setSelectedPlate(null);
-      loadPendingPlates();
-    } catch (error: any) {
-      console.error("Error approving plate:", error);
-      toast.error("Error al aprobar la matrícula");
-    }
-  };
-
-  const handleRejectPlate = async () => {
-    if (!selectedPlateId) return;
-    
-    try {
-      const { error } = await supabase
-        .from("license_plates")
-        .update({
-          rejected_at: new Date().toISOString(),
-          is_approved: false,
-          rejection_reason: rejectionReason.trim() || "No se especificó motivo",
-        })
-        .eq("id", selectedPlateId);
-
-      if (error) throw error;
-
-      toast.success("Matrícula rechazada. El usuario será notificado");
-      setRejectDialogOpen(false);
-      setSelectedPlateId(null);
-      setRejectionReason("");
-      loadPendingPlates();
-    } catch (error: any) {
-      console.error("Error rejecting plate:", error);
-      toast.error("Error al rechazar la matrícula");
-    }
-  };
-
-  const openRejectDialog = (plateId: string) => {
-    setSelectedPlateId(plateId);
-    setRejectionReason("");
-    setRejectDialogOpen(true);
-  };
 
   const handleUpdateUserRoles = async (userId: string, roles: string[], isAdmin: boolean) => {
     try {
@@ -521,89 +404,12 @@ const AdminPanel = () => {
       if (error) throw error;
 
       toast.success("Matrícula rechazada");
+      setSelectedPlateForAction(null);
+      setRejectReasonForPlate("");
       loadUsers();
     } catch (error: any) {
       console.error("Error rejecting plate:", error);
       toast.error("Error al rechazar la matrícula");
-    }
-  };
-
-  const openEditPermissionsDialog = (plate: any) => {
-    setEditingPlate(plate);
-    setEditElectric(plate.approved_electric);
-    setEditDisability(plate.approved_disability);
-    
-    // Determinar tipo de expiración eléctrica
-    if (plate.electric_expires_at) {
-      setElectricExpirationType('date');
-      setElectricExpirationDate(new Date(plate.electric_expires_at));
-    } else {
-      setElectricExpirationType('none');
-      setElectricExpirationDate(undefined);
-    }
-    
-    // Determinar tipo de expiración discapacidad
-    if (plate.disability_expires_at) {
-      setDisabilityExpirationType('date');
-      setDisabilityExpirationDate(new Date(plate.disability_expires_at));
-    } else {
-      setDisabilityExpirationType('none');
-      setDisabilityExpirationDate(undefined);
-    }
-    
-    setEditPermissionsOpen(true);
-  };
-
-  const handleSavePermissions = async () => {
-    if (!editingPlate) return;
-    
-    try {
-      let electricExpiresAt: string | null = null;
-      let disabilityExpiresAt: string | null = null;
-      
-      // Calcular fecha de expiración eléctrica
-      if (editElectric) {
-        if (electricExpirationType === 'days' && electricExpirationDays) {
-          const days = parseInt(electricExpirationDays);
-          const expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + days);
-          electricExpiresAt = expiryDate.toISOString();
-        } else if (electricExpirationType === 'date' && electricExpirationDate) {
-          electricExpiresAt = electricExpirationDate.toISOString();
-        }
-      }
-      
-      // Calcular fecha de expiración discapacidad
-      if (editDisability) {
-        if (disabilityExpirationType === 'days' && disabilityExpirationDays) {
-          const days = parseInt(disabilityExpirationDays);
-          const expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + days);
-          disabilityExpiresAt = expiryDate.toISOString();
-        } else if (disabilityExpirationType === 'date' && disabilityExpirationDate) {
-          disabilityExpiresAt = disabilityExpirationDate.toISOString();
-        }
-      }
-      
-      const { error } = await supabase
-        .from("license_plates")
-        .update({
-          approved_electric: editElectric,
-          electric_expires_at: electricExpiresAt,
-          approved_disability: editDisability,
-          disability_expires_at: disabilityExpiresAt,
-        })
-        .eq("id", editingPlate.id);
-
-      if (error) throw error;
-
-      toast.success("Permisos actualizados correctamente");
-      setEditPermissionsOpen(false);
-      loadUsers();
-      loadPendingPlates();
-    } catch (error: any) {
-      console.error("Error updating permissions:", error);
-      toast.error("Error al actualizar los permisos");
     }
   };
 
@@ -1249,92 +1055,7 @@ const AdminPanel = () => {
         </TabsList>
 
         <TabsContent value="plates" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Check className="h-5 w-5" />
-                Matrículas Pendientes de Aprobación
-              </CardTitle>
-              <CardDescription>
-                Revisa y aprueba las solicitudes de registro de matrículas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {pendingPlates.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No hay matrículas pendientes de aprobación
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {pendingPlates.map((plate) => (
-                    <Card key={plate.id} className="p-4">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg">
-                              {plate.plate_number}
-                            </div>
-                            <div>
-                              <p className="font-medium">{plate.profiles.full_name || "Sin nombre"}</p>
-                              <p className="text-sm text-muted-foreground">{plate.profiles.email}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {(plate.requested_electric || plate.requested_disability) && (
-                          <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                            <p className="text-sm font-medium mb-2">Permisos solicitados:</p>
-                            <div className="space-y-2">
-                              {plate.requested_electric && (
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="gap-1">
-                                    ⚡ Vehículo eléctrico
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground">
-                                    (Solicita acceso a plazas con cargador)
-                                  </span>
-                                </div>
-                              )}
-                              {plate.requested_disability && (
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="gap-1">
-                                    ♿ Movilidad reducida
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground">
-                                    (Solicita acceso a plazas PMR)
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleApprovePlateWithPermissions(plate)}
-                            className="bg-success hover:bg-success/90"
-                          >
-                            <Check className="h-4 w-4 mr-2" />
-                            Aprobar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => openRejectDialog(plate.id)}
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Rechazar
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <LicensePlatesTab />
         </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
@@ -1625,11 +1346,14 @@ const AdminPanel = () => {
                                             Aprobar
                                           </Button>
                                         )}
-                                        {plate.is_approved && (
+                                         {plate.is_approved && (
                                           <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={() => openEditPermissionsDialog(plate)}
+                                            onClick={() => {
+                                              // Edit permissions functionality would be here
+                                              toast.info("Funcionalidad de edición de permisos en desarrollo");
+                                            }}
                                           >
                                             <Settings className="h-3 w-3 mr-1" />
                                             Editar Permisos
@@ -1639,10 +1363,11 @@ const AdminPanel = () => {
                                           <Button
                                             size="sm"
                                             variant="destructive"
-                                            onClick={() => {
-                                              setSelectedPlateId(plate.id);
-                                              setRejectionReason("");
-                                              setRejectDialogOpen(true);
+                                            onClick={async () => {
+                                              const reason = prompt("Motivo del rechazo:");
+                                              if (reason !== null) {
+                                                await handleRejectPlateFromUser(plate.id, reason);
+                                              }
                                             }}
                                           >
                                             <X className="h-3 w-3 mr-1" />
@@ -2540,309 +2265,6 @@ const AdminPanel = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Rejection Dialog */}
-      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rechazar Matrícula</DialogTitle>
-            <DialogDescription>
-              Especifica el motivo del rechazo. El usuario podrá ver esta información.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="reason">Motivo del rechazo</Label>
-              <Textarea
-                id="reason"
-                placeholder="Ej: Matrícula no coincide con los registros de la empresa"
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setRejectDialogOpen(false);
-              setSelectedPlateId(null);
-              setRejectionReason("");
-            }}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={() => {
-              if (selectedPlateId) {
-                handleRejectPlate();
-              }
-            }}>
-              Rechazar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Approve with Permissions Dialog */}
-      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Aprobar Matrícula</DialogTitle>
-            <DialogDescription>
-              Selecciona qué permisos especiales deseas conceder para la matrícula{" "}
-              <strong>{selectedPlate?.plate_number}</strong>
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {selectedPlate?.requested_electric && (
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="approve-electric"
-                    checked={approveElectric}
-                    onCheckedChange={(checked) => setApproveElectric(checked as boolean)}
-                  />
-                  <Label htmlFor="approve-electric" className="cursor-pointer">
-                    ⚡ Conceder permiso de vehículo eléctrico
-                  </Label>
-                </div>
-                <p className="text-xs text-muted-foreground ml-6">
-                  Permitirá al usuario reservar plazas con cargador eléctrico
-                </p>
-              </div>
-            )}
-            
-            {selectedPlate?.requested_disability && (
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="approve-disability"
-                    checked={approveDisability}
-                    onCheckedChange={(checked) => setApproveDisability(checked as boolean)}
-                  />
-                  <Label htmlFor="approve-disability" className="cursor-pointer">
-                    ♿ Conceder permiso de movilidad reducida
-                  </Label>
-                </div>
-                <p className="text-xs text-muted-foreground ml-6">
-                  Permitirá al usuario reservar plazas PMR
-                </p>
-              </div>
-            )}
-            
-            {!selectedPlate?.requested_electric && !selectedPlate?.requested_disability && (
-              <p className="text-sm text-muted-foreground">
-                El usuario no ha solicitado permisos especiales
-              </p>
-            )}
-            
-            <div className="bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <p className="text-sm">
-                💡 <strong>Nota:</strong> Puedes aprobar la matrícula sin conceder todos los permisos solicitados.
-                Por ejemplo, si la empresa no permite cargar vehículos eléctricos en el parking.
-              </p>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setApproveDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={confirmApproval} className="bg-success hover:bg-success/90">
-              Aprobar Matrícula
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Permissions Dialog */}
-      <Dialog open={editPermissionsOpen} onOpenChange={setEditPermissionsOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Editar Permisos Especiales</DialogTitle>
-            <DialogDescription>
-              Modifica los permisos y fechas de expiración para la matrícula{" "}
-              <strong>{editingPlate?.plate_number}</strong>
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            {/* Permiso Eléctrico */}
-            <div className="space-y-4 p-4 border rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="edit-electric"
-                    checked={editElectric}
-                    onCheckedChange={(checked) => setEditElectric(checked as boolean)}
-                  />
-                  <Label htmlFor="edit-electric" className="cursor-pointer font-semibold">
-                    ⚡ Permiso de vehículo eléctrico
-                  </Label>
-                </div>
-                {editingPlate?.electric_expires_at && (
-                  <Badge variant={new Date(editingPlate.electric_expires_at) > new Date() ? "outline" : "destructive"}>
-                    {new Date(editingPlate.electric_expires_at) > new Date() 
-                      ? `Expira: ${new Date(editingPlate.electric_expires_at).toLocaleDateString()}`
-                      : 'EXPIRADO'}
-                  </Badge>
-                )}
-              </div>
-              
-              {editElectric && (
-                <div className="ml-6 space-y-3">
-                  <Label className="text-sm text-muted-foreground">Vigencia del permiso:</Label>
-                  <RadioGroup value={electricExpirationType} onValueChange={(value) => setElectricExpirationType(value as any)}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="none" id="electric-none" />
-                      <Label htmlFor="electric-none" className="cursor-pointer">Sin fecha de expiración (permanente)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="days" id="electric-days" />
-                      <Label htmlFor="electric-days" className="cursor-pointer">Vigencia relativa (días)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="date" id="electric-date" />
-                      <Label htmlFor="electric-date" className="cursor-pointer">Fecha específica</Label>
-                    </div>
-                  </RadioGroup>
-                  
-                  {electricExpirationType === 'days' && (
-                    <div className="flex items-center gap-2 ml-6">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={electricExpirationDays}
-                        onChange={(e) => setElectricExpirationDays(e.target.value)}
-                        className="w-24"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        días desde hoy (hasta el {new Date(Date.now() + parseInt(electricExpirationDays || '0') * 24 * 60 * 60 * 1000).toLocaleDateString()})
-                      </span>
-                    </div>
-                  )}
-                  
-                  {electricExpirationType === 'date' && (
-                    <div className="ml-6">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full justify-start text-left">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {electricExpirationDate ? format(electricExpirationDate, "PPP", { locale: es }) : "Seleccionar fecha"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={electricExpirationDate}
-                            onSelect={setElectricExpirationDate}
-                            disabled={(date) => date < new Date()}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Permiso Discapacidad */}
-            <div className="space-y-4 p-4 border rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="edit-disability"
-                    checked={editDisability}
-                    onCheckedChange={(checked) => setEditDisability(checked as boolean)}
-                  />
-                  <Label htmlFor="edit-disability" className="cursor-pointer font-semibold">
-                    ♿ Permiso de movilidad reducida
-                  </Label>
-                </div>
-                {editingPlate?.disability_expires_at && (
-                  <Badge variant={new Date(editingPlate.disability_expires_at) > new Date() ? "outline" : "destructive"}>
-                    {new Date(editingPlate.disability_expires_at) > new Date() 
-                      ? `Expira: ${new Date(editingPlate.disability_expires_at).toLocaleDateString()}`
-                      : 'EXPIRADO'}
-                  </Badge>
-                )}
-              </div>
-              
-              {editDisability && (
-                <div className="ml-6 space-y-3">
-                  <Label className="text-sm text-muted-foreground">Vigencia del permiso:</Label>
-                  <RadioGroup value={disabilityExpirationType} onValueChange={(value) => setDisabilityExpirationType(value as any)}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="none" id="disability-none" />
-                      <Label htmlFor="disability-none" className="cursor-pointer">Sin fecha de expiración (permanente)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="days" id="disability-days" />
-                      <Label htmlFor="disability-days" className="cursor-pointer">Vigencia relativa (días)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="date" id="disability-date" />
-                      <Label htmlFor="disability-date" className="cursor-pointer">Fecha específica</Label>
-                    </div>
-                  </RadioGroup>
-                  
-                  {disabilityExpirationType === 'days' && (
-                    <div className="flex items-center gap-2 ml-6">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={disabilityExpirationDays}
-                        onChange={(e) => setDisabilityExpirationDays(e.target.value)}
-                        className="w-24"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        días desde hoy (hasta el {new Date(Date.now() + parseInt(disabilityExpirationDays || '0') * 24 * 60 * 60 * 1000).toLocaleDateString()})
-                      </span>
-                    </div>
-                  )}
-                  
-                  {disabilityExpirationType === 'date' && (
-                    <div className="ml-6">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full justify-start text-left">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {disabilityExpirationDate ? format(disabilityExpirationDate, "PPP", { locale: es }) : "Seleccionar fecha"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={disabilityExpirationDate}
-                            onSelect={setDisabilityExpirationDate}
-                            disabled={(date) => date < new Date()}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Nota informativa */}
-            <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-sm">
-                💡 <strong>Nota:</strong> Los permisos expirados se desactivarán automáticamente y el usuario no podrá reservar plazas especiales hasta que se renueven.
-              </p>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditPermissionsOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSavePermissions}>
-              Guardar Cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Create/Edit Group Dialog */}
       <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
