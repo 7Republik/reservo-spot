@@ -133,53 +133,76 @@ const Index = () => {
       </section>
 
       {/* Benefits Section */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto">
-          <Card className="border-border/50 shadow-xl">
-            <CardHeader className="text-center">
-              <CardTitle className="text-3xl">Optimiza la Gestión de tu Aparcamiento</CardTitle>
-              <CardDescription className="text-lg">
-                Diseñado específicamente para empresas modernas
-              </CardDescription>
+      <section className="container mx-auto px-4 py-20 bg-highlight">
+        <div className="max-w-6xl mx-auto">
+          <Card className="border-border/50 shadow-2xl bg-card overflow-hidden">
+            <CardHeader className="text-center pb-8">
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <div className="hidden md:block bg-gradient-to-br from-primary to-primary/60 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Calendar className="h-9 w-9 text-primary-foreground" />
+                </div>
+                <div>
+                  <CardTitle className="text-4xl mb-2">Optimiza la Gestión de tu Aparcamiento</CardTitle>
+                  <CardDescription className="text-lg">
+                    Diseñado específicamente para empresas modernas
+                  </CardDescription>
+                </div>
+                <div className="hidden md:block bg-gradient-to-br from-success to-success/60 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Shield className="h-9 w-9 text-white" />
+                </div>
+              </div>
+              
+              {/* Microclaim */}
+              <div className="mt-6 inline-block">
+                <div className="bg-primary/10 border border-primary/20 rounded-full px-6 py-3">
+                  <p className="text-primary font-semibold text-base">
+                    ✨ Reduce hasta un 40% el tiempo de gestión de plazas y reservas corporativas
+                  </p>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-success" />
+            <CardContent className="pb-10">
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="space-y-4 bg-gradient-to-br from-primary/5 to-transparent p-6 rounded-2xl border border-primary/10">
+                  <h3 className="font-semibold text-xl flex items-center gap-3">
+                    <div className="bg-gradient-to-br from-primary to-primary/60 w-10 h-10 rounded-lg flex items-center justify-center shadow-md">
+                      <Users className="h-5 w-5 text-primary-foreground" />
+                    </div>
                     Para Empleados
                   </h3>
-                  <ul className="space-y-2 text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
+                  <ul className="space-y-3 text-muted-foreground">
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                       <span>Reserva y cancela plazas de forma sencilla</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                       <span>Visualiza disponibilidad en calendario mensual</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                       <span>Gestiona múltiples matrículas de vehículos</span>
                     </li>
                   </ul>
                 </div>
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-success" />
+                <div className="space-y-4 bg-gradient-to-br from-success/5 to-transparent p-6 rounded-2xl border border-success/10">
+                  <h3 className="font-semibold text-xl flex items-center gap-3">
+                    <div className="bg-gradient-to-br from-success to-success/60 w-10 h-10 rounded-lg flex items-center justify-center shadow-md">
+                      <Shield className="h-5 w-5 text-white" />
+                    </div>
                     Para Administradores
                   </h3>
-                  <ul className="space-y-2 text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
+                  <ul className="space-y-3 text-muted-foreground">
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
                       <span>Control total sobre usuarios y permisos</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
                       <span>Aprobación de matrículas y gestión de plazas</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
                       <span>Reportes y estadísticas de ocupación</span>
                     </li>
                   </ul>

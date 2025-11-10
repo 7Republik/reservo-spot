@@ -30,6 +30,9 @@ All colors MUST be HSL.
     --accent: 152 28% 60%;
     --accent-foreground: 234 17% 24%;
 
+    --highlight: 45 44% 91%;
+    --highlight-foreground: 234 17% 24%;
+
     --success: 152 28% 60%;
     --success-foreground: 0 0% 100%;
 
@@ -99,6 +102,9 @@ All colors MUST be HSL.
 
     --accent: 152 28% 60%;
     --accent-foreground: 234 17% 24%;
+
+    --highlight: 234 17% 22%;
+    --highlight-foreground: 42 20% 95.6%;
 
     --success: 152 28% 60%;
     --success-foreground: 234 17% 24%;
