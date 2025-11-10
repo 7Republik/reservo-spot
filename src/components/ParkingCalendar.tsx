@@ -20,16 +20,83 @@ interface Reservation {
   spot_id: string;
 }
 
+interface ParkingGroup {
+  id: string;
+  name: string;
+}
+
 const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [availableSpots, setAvailableSpots] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [userGroups, setUserGroups] = useState<string[]>([]);
+  const [userGroupNames, setUserGroupNames] = useState<string[]>([]);
 
   useEffect(() => {
-    loadReservations();
-    loadAvailableSpots();
-  }, [currentMonth, userId]);
+    loadUserGroups();
+  }, [userId]);
+
+  useEffect(() => {
+    if (userGroups.length > 0) {
+      loadReservations();
+      loadAvailableSpots();
+    }
+  }, [currentMonth, userId, userGroups]);
+
+  const loadUserGroups = async () => {
+    try {
+      // Obtener grupos asignados al usuario
+      const { data: assignments, error: assignError } = await supabase
+        .from("user_group_assignments")
+        .select(`
+          group_id,
+          parking_groups (
+            id,
+            name
+          )
+        `)
+        .eq("user_id", userId);
+
+      if (assignError) throw assignError;
+
+      // Obtener el grupo "General" que es accesible por todos
+      const { data: generalGroup, error: generalError } = await supabase
+        .from("parking_groups")
+        .select("id, name")
+        .eq("name", "General")
+        .eq("is_active", true)
+        .single();
+
+      if (generalError && generalError.code !== "PGRST116") {
+        console.error("Error loading general group:", generalError);
+      }
+
+      // Combinar grupos asignados + grupo General
+      const assignedGroupIds = assignments?.map(a => a.group_id) || [];
+      const assignedGroupNames = assignments?.map(a => (a.parking_groups as any)?.name).filter(Boolean) || [];
+      
+      const allGroupIds = generalGroup 
+        ? [...new Set([...assignedGroupIds, generalGroup.id])]
+        : assignedGroupIds;
+      
+      const allGroupNames = generalGroup 
+        ? [...new Set([...assignedGroupNames, generalGroup.name])]
+        : assignedGroupNames;
+
+      setUserGroups(allGroupIds);
+      setUserGroupNames(allGroupNames);
+
+      if (allGroupIds.length === 0) {
+        toast.error("No tienes acceso a ningún grupo de parking", {
+          description: "Contacta con el administrador para obtener acceso",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error loading user groups:", error);
+      toast.error("Error al cargar tus permisos de acceso");
+    }
+  };
 
   const loadReservations = async () => {
     try {
@@ -55,6 +122,11 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
 
   const loadAvailableSpots = async () => {
     try {
+      if (userGroups.length === 0) {
+        setAvailableSpots({});
+        return;
+      }
+
       const start = startOfMonth(currentMonth);
       const end = endOfMonth(currentMonth);
       const days = eachDayOfInterval({ start, end });
@@ -64,11 +136,12 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       for (const day of days) {
         const dateStr = format(day, "yyyy-MM-dd");
         
-        // Get total spots based on user role
+        // Get total spots from user's accessible groups
         const { data: totalSpots, error: spotsError } = await supabase
           .from("parking_spots")
-          .select("id")
-          .eq("is_active", true);
+          .select("id, group_id")
+          .eq("is_active", true)
+          .in("group_id", userGroups);
 
         if (spotsError) throw spotsError;
 
@@ -81,8 +154,10 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
 
         if (occupiedError) throw occupiedError;
 
-        const available = (totalSpots?.length || 0) - (occupied?.length || 0);
-        spotsData[dateStr] = available;
+        const occupiedIds = occupied?.map(r => r.spot_id) || [];
+        const availableInUserGroups = totalSpots?.filter(spot => !occupiedIds.includes(spot.id)) || [];
+        
+        spotsData[dateStr] = availableInUserGroups.length;
       }
 
       setAvailableSpots(spotsData);
@@ -95,20 +170,29 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
     const dateStr = format(date, "yyyy-MM-dd");
     const dayElement = document.querySelector(`[data-date="${dateStr}"]`);
     
+    // Validar que el usuario tiene grupos asignados
+    if (userGroups.length === 0) {
+      toast.error("No tienes acceso a ningún grupo de parking", {
+        description: "Contacta con el administrador",
+      });
+      return;
+    }
+
     // Añadir animación de pulso
     dayElement?.classList.add('animate-pulse');
 
     try {
-      // Get all active spots
+      // Get active spots from user's accessible groups only
       const { data: allSpots, error: spotsError } = await supabase
         .from("parking_spots")
-        .select("id")
-        .eq("is_active", true);
+        .select("id, group_id, spot_number")
+        .eq("is_active", true)
+        .in("group_id", userGroups);
 
       if (spotsError) throw spotsError;
 
       if (!allSpots || allSpots.length === 0) {
-        toast.error("No hay plazas disponibles");
+        toast.error("No hay plazas disponibles en tus grupos asignados");
         dayElement?.classList.remove('animate-pulse');
         return;
       }
@@ -130,6 +214,35 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         loadAvailableSpots();
         dayElement?.classList.remove('animate-pulse');
         return;
+      }
+
+      // Validate reservation using database function
+      const { data: validation, error: validationError } = await supabase
+        .rpc("validate_parking_spot_reservation", {
+          _user_id: userId,
+          _spot_id: availableSpot.id,
+          _reservation_date: dateStr,
+        });
+
+      if (validationError) {
+        console.error("Validation error:", validationError);
+        toast.error("Error al validar la reserva");
+        dayElement?.classList.remove('animate-pulse');
+        return;
+      }
+
+      // Check validation result
+      if (validation && validation.length > 0) {
+        const validationResult = validation[0];
+        if (!validationResult.is_valid) {
+          toast.error(validationResult.error_message || "No se puede reservar esta plaza");
+          dayElement?.classList.remove('animate-pulse');
+          return;
+        }
+        // Show warning if compact spot
+        if (validationResult.error_code === "COMPACT_SPOT_WARNING") {
+          toast.warning(validationResult.error_message);
+        }
       }
 
       // Create reservation
@@ -206,6 +319,43 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Info de grupos asignados */}
+      {userGroupNames.length > 0 && (
+        <Card className="p-4 bg-blue-50 border-blue-200">
+          <div className="flex items-center gap-3">
+            <CalendarIcon className="w-5 h-5 text-blue-600" />
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                Tienes acceso a {userGroupNames.length} {userGroupNames.length === 1 ? "grupo" : "grupos"} de parking
+              </p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {userGroupNames.map((name, index) => (
+                  <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
+                    {name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {userGroups.length === 0 && !loading && (
+        <Card className="p-6 bg-yellow-50 border-yellow-200">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-6 h-6 text-yellow-600" />
+            <div>
+              <p className="text-sm font-semibold text-yellow-900">
+                No tienes acceso a ningún grupo de parking
+              </p>
+              <p className="text-xs text-yellow-700 mt-1">
+                Contacta con el administrador para que te asigne acceso a los grupos correspondientes
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Month Navigation - Mejorado con diseño moderno */}
       <div className="flex items-center justify-center gap-4">
         <Button
