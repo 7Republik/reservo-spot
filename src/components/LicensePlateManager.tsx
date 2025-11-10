@@ -26,6 +26,8 @@ interface LicensePlate {
   approved_electric: boolean;
   requested_disability: boolean;
   approved_disability: boolean;
+  electric_expires_at?: string | null;
+  disability_expires_at?: string | null;
 }
 
 const plateSchema = z.object({
@@ -236,14 +238,48 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
                               Aprobada
                             </Badge>
                             {plate.approved_electric && (
-                              <Badge variant="outline" className="gap-1 bg-yellow-500/10 text-yellow-700 border-yellow-200 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-800">
-                                ⚡
-                              </Badge>
+                              <div className="flex flex-col gap-0.5">
+                                <Badge 
+                                  variant="outline" 
+                                  className={`gap-1 ${
+                                    plate.electric_expires_at && new Date(plate.electric_expires_at) < new Date()
+                                      ? 'bg-red-500/10 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-800'
+                                      : 'bg-yellow-500/10 text-yellow-700 border-yellow-200 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-800'
+                                  }`}
+                                >
+                                  ⚡
+                                  {plate.electric_expires_at && new Date(plate.electric_expires_at) < new Date() && ' EXPIRADO'}
+                                </Badge>
+                                {plate.electric_expires_at && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(plate.electric_expires_at) > new Date() 
+                                      ? `Válido hasta: ${new Date(plate.electric_expires_at).toLocaleDateString()}`
+                                      : '⚠️ Expirado'}
+                                  </span>
+                                )}
+                              </div>
                             )}
                             {plate.approved_disability && (
-                              <Badge variant="outline" className="gap-1 bg-blue-500/10 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-800">
-                                ♿
-                              </Badge>
+                              <div className="flex flex-col gap-0.5">
+                                <Badge 
+                                  variant="outline" 
+                                  className={`gap-1 ${
+                                    plate.disability_expires_at && new Date(plate.disability_expires_at) < new Date()
+                                      ? 'bg-red-500/10 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-800'
+                                      : 'bg-blue-500/10 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-800'
+                                  }`}
+                                >
+                                  ♿
+                                  {plate.disability_expires_at && new Date(plate.disability_expires_at) < new Date() && ' EXPIRADO'}
+                                </Badge>
+                                {plate.disability_expires_at && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(plate.disability_expires_at) > new Date() 
+                                      ? `Válido hasta: ${new Date(plate.disability_expires_at).toLocaleDateString()}`
+                                      : '⚠️ Expirado'}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                           {plate.approved_at && (

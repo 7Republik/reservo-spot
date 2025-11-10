@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Check, X, Users, ParkingSquare, Plus, Trash2, ChevronDown, ChevronUp, CreditCard, Shield, UserCircle } from "lucide-react";
+import { Check, X, Users, ParkingSquare, Plus, Trash2, ChevronDown, ChevronUp, CreditCard, Shield, UserCircle, Settings, Calendar as CalendarIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import {
@@ -25,6 +25,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface LicensePlate {
   id: string;
@@ -35,6 +41,8 @@ interface LicensePlate {
   approved_electric: boolean;
   requested_disability: boolean;
   approved_disability: boolean;
+  electric_expires_at?: string | null;
+  disability_expires_at?: string | null;
   profiles: {
     email: string;
     full_name: string;
@@ -54,6 +62,8 @@ interface UserWithRole {
     rejection_reason: string | null;
     approved_electric: boolean;
     approved_disability: boolean;
+    electric_expires_at?: string | null;
+    disability_expires_at?: string | null;
   }>;
 }
 
@@ -80,6 +90,18 @@ const AdminPanel = () => {
   const [selectedPlate, setSelectedPlate] = useState<LicensePlate | null>(null);
   const [approveElectric, setApproveElectric] = useState(false);
   const [approveDisability, setApproveDisability] = useState(false);
+  
+  // Edit permissions dialog state
+  const [editPermissionsOpen, setEditPermissionsOpen] = useState(false);
+  const [editingPlate, setEditingPlate] = useState<LicensePlate | null>(null);
+  const [editElectric, setEditElectric] = useState(false);
+  const [editDisability, setEditDisability] = useState(false);
+  const [electricExpirationType, setElectricExpirationType] = useState<'none' | 'days' | 'date'>('none');
+  const [electricExpirationDays, setElectricExpirationDays] = useState<string>('30');
+  const [electricExpirationDate, setElectricExpirationDate] = useState<Date | undefined>();
+  const [disabilityExpirationType, setDisabilityExpirationType] = useState<'none' | 'days' | 'date'>('none');
+  const [disabilityExpirationDays, setDisabilityExpirationDays] = useState<string>('30');
+  const [disabilityExpirationDate, setDisabilityExpirationDate] = useState<Date | undefined>();
 
   useEffect(() => {
     loadPendingPlates();
@@ -139,7 +161,7 @@ const AdminPanel = () => {
           
           const { data: plates } = await supabase
             .from("license_plates")
-            .select("id, plate_number, is_approved, rejected_at, rejection_reason")
+            .select("id, plate_number, is_approved, rejected_at, rejection_reason, approved_electric, approved_disability, electric_expires_at, disability_expires_at")
             .eq("user_id", profile.id)
             .order("requested_at", { ascending: false });
           
@@ -358,6 +380,85 @@ const AdminPanel = () => {
     } catch (error: any) {
       console.error("Error rejecting plate:", error);
       toast.error("Error al rechazar la matrícula");
+    }
+  };
+
+  const openEditPermissionsDialog = (plate: any) => {
+    setEditingPlate(plate);
+    setEditElectric(plate.approved_electric);
+    setEditDisability(plate.approved_disability);
+    
+    // Determinar tipo de expiración eléctrica
+    if (plate.electric_expires_at) {
+      setElectricExpirationType('date');
+      setElectricExpirationDate(new Date(plate.electric_expires_at));
+    } else {
+      setElectricExpirationType('none');
+      setElectricExpirationDate(undefined);
+    }
+    
+    // Determinar tipo de expiración discapacidad
+    if (plate.disability_expires_at) {
+      setDisabilityExpirationType('date');
+      setDisabilityExpirationDate(new Date(plate.disability_expires_at));
+    } else {
+      setDisabilityExpirationType('none');
+      setDisabilityExpirationDate(undefined);
+    }
+    
+    setEditPermissionsOpen(true);
+  };
+
+  const handleSavePermissions = async () => {
+    if (!editingPlate) return;
+    
+    try {
+      let electricExpiresAt: string | null = null;
+      let disabilityExpiresAt: string | null = null;
+      
+      // Calcular fecha de expiración eléctrica
+      if (editElectric) {
+        if (electricExpirationType === 'days' && electricExpirationDays) {
+          const days = parseInt(electricExpirationDays);
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + days);
+          electricExpiresAt = expiryDate.toISOString();
+        } else if (electricExpirationType === 'date' && electricExpirationDate) {
+          electricExpiresAt = electricExpirationDate.toISOString();
+        }
+      }
+      
+      // Calcular fecha de expiración discapacidad
+      if (editDisability) {
+        if (disabilityExpirationType === 'days' && disabilityExpirationDays) {
+          const days = parseInt(disabilityExpirationDays);
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + days);
+          disabilityExpiresAt = expiryDate.toISOString();
+        } else if (disabilityExpirationType === 'date' && disabilityExpirationDate) {
+          disabilityExpiresAt = disabilityExpirationDate.toISOString();
+        }
+      }
+      
+      const { error } = await supabase
+        .from("license_plates")
+        .update({
+          approved_electric: editElectric,
+          electric_expires_at: electricExpiresAt,
+          approved_disability: editDisability,
+          disability_expires_at: disabilityExpiresAt,
+        })
+        .eq("id", editingPlate.id);
+
+      if (error) throw error;
+
+      toast.success("Permisos actualizados correctamente");
+      setEditPermissionsOpen(false);
+      loadUsers();
+      loadPendingPlates();
+    } catch (error: any) {
+      console.error("Error updating permissions:", error);
+      toast.error("Error al actualizar los permisos");
     }
   };
 
@@ -708,17 +809,57 @@ const AdminPanel = () => {
                                               Rechazada
                                             </Badge>
                                            ) : plate.is_approved ? (
-                                            <div className="flex items-center gap-2">
-                                              <Badge variant="default" className="bg-success gap-1">
-                                                <Check className="h-3 w-3" />
-                                                Aprobada
-                                              </Badge>
-                                              {plate.approved_electric && (
-                                                <Badge variant="outline" className="gap-1 text-xs">⚡</Badge>
-                                              )}
-                                              {plate.approved_disability && (
-                                                <Badge variant="outline" className="gap-1 text-xs">♿</Badge>
-                                              )}
+                                            <div className="flex flex-col gap-1">
+                                              <div className="flex items-center gap-2">
+                                                <Badge variant="default" className="bg-success gap-1">
+                                                  <Check className="h-3 w-3" />
+                                                  Aprobada
+                                                </Badge>
+                                                {plate.approved_electric && (
+                                                  <Badge 
+                                                    variant="outline" 
+                                                    className={cn(
+                                                      "gap-1 text-xs",
+                                                      plate.electric_expires_at && new Date(plate.electric_expires_at) < new Date()
+                                                        ? "bg-red-500/10 text-red-700 border-red-200"
+                                                        : "bg-yellow-500/10 text-yellow-700 border-yellow-200"
+                                                    )}
+                                                  >
+                                                    ⚡
+                                                    {plate.electric_expires_at && new Date(plate.electric_expires_at) < new Date() && " EXPIRADO"}
+                                                  </Badge>
+                                                )}
+                                                {plate.approved_disability && (
+                                                  <Badge 
+                                                    variant="outline" 
+                                                    className={cn(
+                                                      "gap-1 text-xs",
+                                                      plate.disability_expires_at && new Date(plate.disability_expires_at) < new Date()
+                                                        ? "bg-red-500/10 text-red-700 border-red-200"
+                                                        : "bg-blue-500/10 text-blue-700 border-blue-200"
+                                                    )}
+                                                  >
+                                                    ♿
+                                                    {plate.disability_expires_at && new Date(plate.disability_expires_at) < new Date() && " EXPIRADO"}
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                                                {plate.approved_electric && plate.electric_expires_at && (
+                                                  <span>
+                                                    ⚡ {new Date(plate.electric_expires_at) > new Date() 
+                                                      ? `Válido hasta: ${new Date(plate.electric_expires_at).toLocaleDateString()}`
+                                                      : 'Expirado'}
+                                                  </span>
+                                                )}
+                                                {plate.approved_disability && plate.disability_expires_at && (
+                                                  <span>
+                                                    ♿ {new Date(plate.disability_expires_at) > new Date() 
+                                                      ? `Válido hasta: ${new Date(plate.disability_expires_at).toLocaleDateString()}`
+                                                      : 'Expirado'}
+                                                  </span>
+                                                )}
+                                              </div>
                                             </div>
                                           ) : (
                                             <Badge variant="outline" className="border-warning text-warning">
@@ -742,6 +883,16 @@ const AdminPanel = () => {
                                           >
                                             <Check className="h-3 w-3 mr-1" />
                                             Aprobar
+                                          </Button>
+                                        )}
+                                        {plate.is_approved && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => openEditPermissionsDialog(plate)}
+                                          >
+                                            <Settings className="h-3 w-3 mr-1" />
+                                            Editar Permisos
                                           </Button>
                                         )}
                                         {!plate.rejected_at && (
@@ -973,6 +1124,197 @@ const AdminPanel = () => {
             </Button>
             <Button onClick={confirmApproval} className="bg-success hover:bg-success/90">
               Aprobar Matrícula
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Permissions Dialog */}
+      <Dialog open={editPermissionsOpen} onOpenChange={setEditPermissionsOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Permisos Especiales</DialogTitle>
+            <DialogDescription>
+              Modifica los permisos y fechas de expiración para la matrícula{" "}
+              <strong>{editingPlate?.plate_number}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Permiso Eléctrico */}
+            <div className="space-y-4 p-4 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-electric"
+                    checked={editElectric}
+                    onCheckedChange={(checked) => setEditElectric(checked as boolean)}
+                  />
+                  <Label htmlFor="edit-electric" className="cursor-pointer font-semibold">
+                    ⚡ Permiso de vehículo eléctrico
+                  </Label>
+                </div>
+                {editingPlate?.electric_expires_at && (
+                  <Badge variant={new Date(editingPlate.electric_expires_at) > new Date() ? "outline" : "destructive"}>
+                    {new Date(editingPlate.electric_expires_at) > new Date() 
+                      ? `Expira: ${new Date(editingPlate.electric_expires_at).toLocaleDateString()}`
+                      : 'EXPIRADO'}
+                  </Badge>
+                )}
+              </div>
+              
+              {editElectric && (
+                <div className="ml-6 space-y-3">
+                  <Label className="text-sm text-muted-foreground">Vigencia del permiso:</Label>
+                  <RadioGroup value={electricExpirationType} onValueChange={(value) => setElectricExpirationType(value as any)}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="none" id="electric-none" />
+                      <Label htmlFor="electric-none" className="cursor-pointer">Sin fecha de expiración (permanente)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="days" id="electric-days" />
+                      <Label htmlFor="electric-days" className="cursor-pointer">Vigencia relativa (días)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="date" id="electric-date" />
+                      <Label htmlFor="electric-date" className="cursor-pointer">Fecha específica</Label>
+                    </div>
+                  </RadioGroup>
+                  
+                  {electricExpirationType === 'days' && (
+                    <div className="flex items-center gap-2 ml-6">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={electricExpirationDays}
+                        onChange={(e) => setElectricExpirationDays(e.target.value)}
+                        className="w-24"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        días desde hoy (hasta el {new Date(Date.now() + parseInt(electricExpirationDays || '0') * 24 * 60 * 60 * 1000).toLocaleDateString()})
+                      </span>
+                    </div>
+                  )}
+                  
+                  {electricExpirationType === 'date' && (
+                    <div className="ml-6">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {electricExpirationDate ? format(electricExpirationDate, "PPP", { locale: es }) : "Seleccionar fecha"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={electricExpirationDate}
+                            onSelect={setElectricExpirationDate}
+                            disabled={(date) => date < new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Permiso Discapacidad */}
+            <div className="space-y-4 p-4 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-disability"
+                    checked={editDisability}
+                    onCheckedChange={(checked) => setEditDisability(checked as boolean)}
+                  />
+                  <Label htmlFor="edit-disability" className="cursor-pointer font-semibold">
+                    ♿ Permiso de movilidad reducida
+                  </Label>
+                </div>
+                {editingPlate?.disability_expires_at && (
+                  <Badge variant={new Date(editingPlate.disability_expires_at) > new Date() ? "outline" : "destructive"}>
+                    {new Date(editingPlate.disability_expires_at) > new Date() 
+                      ? `Expira: ${new Date(editingPlate.disability_expires_at).toLocaleDateString()}`
+                      : 'EXPIRADO'}
+                  </Badge>
+                )}
+              </div>
+              
+              {editDisability && (
+                <div className="ml-6 space-y-3">
+                  <Label className="text-sm text-muted-foreground">Vigencia del permiso:</Label>
+                  <RadioGroup value={disabilityExpirationType} onValueChange={(value) => setDisabilityExpirationType(value as any)}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="none" id="disability-none" />
+                      <Label htmlFor="disability-none" className="cursor-pointer">Sin fecha de expiración (permanente)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="days" id="disability-days" />
+                      <Label htmlFor="disability-days" className="cursor-pointer">Vigencia relativa (días)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="date" id="disability-date" />
+                      <Label htmlFor="disability-date" className="cursor-pointer">Fecha específica</Label>
+                    </div>
+                  </RadioGroup>
+                  
+                  {disabilityExpirationType === 'days' && (
+                    <div className="flex items-center gap-2 ml-6">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={disabilityExpirationDays}
+                        onChange={(e) => setDisabilityExpirationDays(e.target.value)}
+                        className="w-24"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        días desde hoy (hasta el {new Date(Date.now() + parseInt(disabilityExpirationDays || '0') * 24 * 60 * 60 * 1000).toLocaleDateString()})
+                      </span>
+                    </div>
+                  )}
+                  
+                  {disabilityExpirationType === 'date' && (
+                    <div className="ml-6">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {disabilityExpirationDate ? format(disabilityExpirationDate, "PPP", { locale: es }) : "Seleccionar fecha"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={disabilityExpirationDate}
+                            onSelect={setDisabilityExpirationDate}
+                            disabled={(date) => date < new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Nota informativa */}
+            <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm">
+                💡 <strong>Nota:</strong> Los permisos expirados se desactivarán automáticamente y el usuario no podrá reservar plazas especiales hasta que se renueven.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditPermissionsOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSavePermissions}>
+              Guardar Cambios
             </Button>
           </DialogFooter>
         </DialogContent>

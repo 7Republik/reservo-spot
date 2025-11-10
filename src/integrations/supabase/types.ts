@@ -58,6 +58,8 @@ export type Database = {
           approved_by: string | null
           approved_disability: boolean | null
           approved_electric: boolean | null
+          disability_expires_at: string | null
+          electric_expires_at: string | null
           id: string
           is_approved: boolean | null
           plate_number: string
@@ -73,6 +75,8 @@ export type Database = {
           approved_by?: string | null
           approved_disability?: boolean | null
           approved_electric?: boolean | null
+          disability_expires_at?: string | null
+          electric_expires_at?: string | null
           id?: string
           is_approved?: boolean | null
           plate_number: string
@@ -88,6 +92,8 @@ export type Database = {
           approved_by?: string | null
           approved_disability?: boolean | null
           approved_electric?: boolean | null
+          disability_expires_at?: string | null
+          electric_expires_at?: string | null
           id?: string
           is_approved?: boolean | null
           plate_number?: string
@@ -227,6 +233,14 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      has_valid_disability_permit: {
+        Args: { plate_id: string }
+        Returns: boolean
+      }
+      has_valid_electric_permit: {
+        Args: { plate_id: string }
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
