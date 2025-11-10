@@ -203,26 +203,30 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       for (const day of days) {
         const dateStr = format(day, "yyyy-MM-dd");
         
-        // Validar si está en rango y no bloqueado
-        const blockedForDate = blockedDatesMap[dateStr];
-        const isBlocked = blockedForDate && (
-          blockedForDate.has('__GLOBAL__') || 
-          userGroups.some(gId => blockedForDate.has(gId))
-        );
+        // Validar rango de fechas
         const isOutOfRange = dateRange && (dateStr < dateRange.min_date || dateStr > dateRange.max_date);
 
-        if (isBlocked || isOutOfRange) {
+        if (isOutOfRange) {
           spotsData[dateStr] = 0;
           continue;
         }
 
-        // Get total spots from user's accessible groups (excluding blocked groups for this date)
+        // Verificar si hay bloqueo GLOBAL
+        const blockedForDate = blockedDatesMap[dateStr];
+        const hasGlobalBlock = blockedForDate && blockedForDate.has('__GLOBAL__');
+
+        if (hasGlobalBlock) {
+          spotsData[dateStr] = 0;  // Solo bloquear si es global
+          continue;
+        }
+
+        // Filtrar grupos bloqueados específicamente para este día
         const availableGroups = userGroups.filter(gId => 
           !blockedForDate || !blockedForDate.has(gId)
         );
 
         if (availableGroups.length === 0) {
-          spotsData[dateStr] = 0;
+          spotsData[dateStr] = 0;  // Solo 0 si TODOS los grupos están bloqueados
           continue;
         }
 
