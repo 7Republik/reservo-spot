@@ -31,6 +31,10 @@ interface LicensePlate {
   plate_number: string;
   user_id: string;
   is_approved: boolean;
+  requested_electric: boolean;
+  approved_electric: boolean;
+  requested_disability: boolean;
+  approved_disability: boolean;
   profiles: {
     email: string;
     full_name: string;
@@ -48,6 +52,8 @@ interface UserWithRole {
     is_approved: boolean;
     rejected_at: string | null;
     rejection_reason: string | null;
+    approved_electric: boolean;
+    approved_disability: boolean;
   }>;
 }
 
@@ -70,6 +76,10 @@ const AdminPanel = () => {
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, string>>({});
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [selectedPlate, setSelectedPlate] = useState<LicensePlate | null>(null);
+  const [approveElectric, setApproveElectric] = useState(false);
+  const [approveDisability, setApproveDisability] = useState(false);
 
   useEffect(() => {
     loadPendingPlates();
@@ -161,7 +171,16 @@ const AdminPanel = () => {
     }
   };
 
-  const handleApprovePlate = async (plateId: string) => {
+  const handleApprovePlateWithPermissions = (plate: LicensePlate) => {
+    setSelectedPlate(plate);
+    setApproveElectric(plate.requested_electric);
+    setApproveDisability(plate.requested_disability);
+    setApproveDialogOpen(true);
+  };
+
+  const confirmApproval = async () => {
+    if (!selectedPlate) return;
+    
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       
@@ -171,12 +190,16 @@ const AdminPanel = () => {
           is_approved: true,
           approved_at: new Date().toISOString(),
           approved_by: sessionData.session?.user.id,
+          approved_electric: approveElectric,
+          approved_disability: approveDisability,
         })
-        .eq("id", plateId);
+        .eq("id", selectedPlate.id);
 
       if (error) throw error;
 
       toast.success("Matrícula aprobada correctamente");
+      setApproveDialogOpen(false);
+      setSelectedPlate(null);
       loadPendingPlates();
     } catch (error: any) {
       console.error("Error approving plate:", error);
@@ -459,34 +482,65 @@ const AdminPanel = () => {
                 <div className="space-y-3">
                   {pendingPlates.map((plate) => (
                     <Card key={plate.id} className="p-4">
-                      <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg">
-                            {plate.plate_number}
-                          </div>
-                          <div>
-                            <p className="font-medium">{plate.profiles.full_name || "Sin nombre"}</p>
-                            <p className="text-sm text-muted-foreground">{plate.profiles.email}</p>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg">
+                              {plate.plate_number}
+                            </div>
+                            <div>
+                              <p className="font-medium">{plate.profiles.full_name || "Sin nombre"}</p>
+                              <p className="text-sm text-muted-foreground">{plate.profiles.email}</p>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+
+                        {(plate.requested_electric || plate.requested_disability) && (
+                          <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <p className="text-sm font-medium mb-2">Permisos solicitados:</p>
+                            <div className="space-y-2">
+                              {plate.requested_electric && (
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="gap-1">
+                                    ⚡ Vehículo eléctrico
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    (Solicita acceso a plazas con cargador)
+                                  </span>
+                                </div>
+                              )}
+                              {plate.requested_disability && (
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="gap-1">
+                                    ♿ Movilidad reducida
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    (Solicita acceso a plazas PMR)
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 justify-end">
                           <Button
                             size="sm"
                             variant="default"
-                            onClick={() => handleApprovePlate(plate.id)}
+                            onClick={() => handleApprovePlateWithPermissions(plate)}
                             className="bg-success hover:bg-success/90"
                           >
                             <Check className="h-4 w-4 mr-2" />
                             Aprobar
                           </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => openRejectDialog(plate.id)}
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Rechazar
-                    </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => openRejectDialog(plate.id)}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Rechazar
+                          </Button>
                         </div>
                       </div>
                     </Card>
@@ -653,11 +707,19 @@ const AdminPanel = () => {
                                               <X className="h-3 w-3" />
                                               Rechazada
                                             </Badge>
-                                          ) : plate.is_approved ? (
-                                            <Badge variant="default" className="bg-success gap-1">
-                                              <Check className="h-3 w-3" />
-                                              Aprobada
-                                            </Badge>
+                                           ) : plate.is_approved ? (
+                                            <div className="flex items-center gap-2">
+                                              <Badge variant="default" className="bg-success gap-1">
+                                                <Check className="h-3 w-3" />
+                                                Aprobada
+                                              </Badge>
+                                              {plate.approved_electric && (
+                                                <Badge variant="outline" className="gap-1 text-xs">⚡</Badge>
+                                              )}
+                                              {plate.approved_disability && (
+                                                <Badge variant="outline" className="gap-1 text-xs">♿</Badge>
+                                              )}
+                                            </div>
                                           ) : (
                                             <Badge variant="outline" className="border-warning text-warning">
                                               Pendiente
@@ -838,6 +900,79 @@ const AdminPanel = () => {
               }
             }}>
               Rechazar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve with Permissions Dialog */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Aprobar Matrícula</DialogTitle>
+            <DialogDescription>
+              Selecciona qué permisos especiales deseas conceder para la matrícula{" "}
+              <strong>{selectedPlate?.plate_number}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {selectedPlate?.requested_electric && (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="approve-electric"
+                    checked={approveElectric}
+                    onCheckedChange={(checked) => setApproveElectric(checked as boolean)}
+                  />
+                  <Label htmlFor="approve-electric" className="cursor-pointer">
+                    ⚡ Conceder permiso de vehículo eléctrico
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground ml-6">
+                  Permitirá al usuario reservar plazas con cargador eléctrico
+                </p>
+              </div>
+            )}
+            
+            {selectedPlate?.requested_disability && (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="approve-disability"
+                    checked={approveDisability}
+                    onCheckedChange={(checked) => setApproveDisability(checked as boolean)}
+                  />
+                  <Label htmlFor="approve-disability" className="cursor-pointer">
+                    ♿ Conceder permiso de movilidad reducida
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground ml-6">
+                  Permitirá al usuario reservar plazas PMR
+                </p>
+              </div>
+            )}
+            
+            {!selectedPlate?.requested_electric && !selectedPlate?.requested_disability && (
+              <p className="text-sm text-muted-foreground">
+                El usuario no ha solicitado permisos especiales
+              </p>
+            )}
+            
+            <div className="bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
+              <p className="text-sm">
+                💡 <strong>Nota:</strong> Puedes aprobar la matrícula sin conceder todos los permisos solicitados.
+                Por ejemplo, si la empresa no permite cargar vehículos eléctricos en el parking.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmApproval} className="bg-success hover:bg-success/90">
+              Aprobar Matrícula
             </Button>
           </DialogFooter>
         </DialogContent>

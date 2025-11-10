@@ -56,34 +56,46 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          approved_disability: boolean | null
+          approved_electric: boolean | null
           id: string
           is_approved: boolean | null
           plate_number: string
           rejected_at: string | null
           rejection_reason: string | null
           requested_at: string | null
+          requested_disability: boolean | null
+          requested_electric: boolean | null
           user_id: string
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          approved_disability?: boolean | null
+          approved_electric?: boolean | null
           id?: string
           is_approved?: boolean | null
           plate_number: string
           rejected_at?: string | null
           rejection_reason?: string | null
           requested_at?: string | null
+          requested_disability?: boolean | null
+          requested_electric?: boolean | null
           user_id: string
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          approved_disability?: boolean | null
+          approved_electric?: boolean | null
           id?: string
           is_approved?: boolean | null
           plate_number?: string
           rejected_at?: string | null
           rejection_reason?: string | null
           requested_at?: string | null
+          requested_disability?: boolean | null
+          requested_electric?: boolean | null
           user_id?: string
         }
         Relationships: []
