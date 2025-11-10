@@ -219,7 +219,7 @@ const ParkingMapSelector = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden w-[95vw] sm:w-auto p-4 sm:p-6">
+      <DialogContent className="max-w-6xl max-h-[90vh] sm:max-h-[90vh] h-auto overflow-hidden w-[95vw] sm:w-auto">
         <DialogHeader>
           <DialogTitle>Selecciona tu plaza de parking</DialogTitle>
           <DialogDescription>
@@ -330,7 +330,7 @@ const ParkingMapSelector = ({
             </div>
 
             {/* Main content */}
-            <ScrollArea className="h-[400px] sm:h-[500px]">
+            <ScrollArea className="h-[500px]">
               {viewMode === 'map' ? (
                 // Map view CON ZOOM/PAN
                 <div className="relative">
@@ -383,13 +383,14 @@ const ParkingMapSelector = ({
                             backgroundColor: "#f9fafb"
                           }}
                           contentStyle={{
-                            width: "100%",
+                            minWidth: "100%",
                             minHeight: "100%"
                           }}
                         >
                           <div style={{ 
                             position: "relative", 
                             width: "100%", 
+                            minWidth: "600px",
                             minHeight: "400px"
                           }}>
                             {selectedGroup?.floor_plan_url ? (
