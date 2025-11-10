@@ -317,6 +317,36 @@ export type Database = {
           },
         ]
       }
+      reservation_cancellation_log: {
+        Row: {
+          cancellation_reason: string
+          cancelled_at: string | null
+          id: string
+          metadata: Json | null
+          reservation_id: string
+          triggered_by: string
+          user_id: string
+        }
+        Insert: {
+          cancellation_reason: string
+          cancelled_at?: string | null
+          id?: string
+          metadata?: Json | null
+          reservation_id: string
+          triggered_by: string
+          user_id: string
+        }
+        Update: {
+          cancellation_reason?: string
+          cancelled_at?: string | null
+          id?: string
+          metadata?: Json | null
+          reservation_id?: string
+          triggered_by?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       reservation_settings: {
         Row: {
           advance_reservation_days: number
@@ -434,8 +464,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_all_user_future_reservations: {
+        Args: { _user_id: string }
+        Returns: number
+      }
       cancel_reservations_for_blocked_date: {
         Args: { _admin_id: string; _blocked_date: string }
+        Returns: number
+      }
+      cancel_user_reservations_in_group: {
+        Args: { _group_id: string; _user_id: string }
         Returns: number
       }
       deactivate_parking_group: {
