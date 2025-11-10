@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Calendar as CalendarIcon, Check, X, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isBefore, startOfDay, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
+import ParkingMapSelector from "./ParkingMapSelector";
 
 interface ParkingCalendarProps {
   userId: string;
@@ -32,6 +33,8 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
   const [loading, setLoading] = useState(true);
   const [userGroups, setUserGroups] = useState<string[]>([]);
   const [userGroupNames, setUserGroupNames] = useState<string[]>([]);
+  const [showMapSelector, setShowMapSelector] = useState(false);
+  const [selectedDateForMap, setSelectedDateForMap] = useState<Date | null>(null);
 
   useEffect(() => {
     loadUserGroups();
@@ -168,7 +171,6 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
 
   const handleReserve = async (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    const dayElement = document.querySelector(`[data-date="${dateStr}"]`);
     
     // Validar que el usuario tiene grupos asignados
     if (userGroups.length === 0) {
@@ -178,49 +180,31 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       return;
     }
 
-    // Añadir animación de pulso
+    // Verificar que hay plazas disponibles
+    const available = availableSpots[dateStr] || 0;
+    
+    if (available === 0) {
+      toast.error("No hay plazas disponibles para este día");
+      return;
+    }
+
+    // Abrir selector visual
+    setSelectedDateForMap(date);
+    setShowMapSelector(true);
+  };
+
+  const createReservationWithSpot = async (spotId: string, spotNumber: string, date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const dayElement = document.querySelector(`[data-date="${dateStr}"]`);
+    
     dayElement?.classList.add('animate-pulse');
-
+    
     try {
-      // Get active spots from user's accessible groups only
-      const { data: allSpots, error: spotsError } = await supabase
-        .from("parking_spots")
-        .select("id, group_id, spot_number")
-        .eq("is_active", true)
-        .in("group_id", userGroups);
-
-      if (spotsError) throw spotsError;
-
-      if (!allSpots || allSpots.length === 0) {
-        toast.error("No hay plazas disponibles en tus grupos asignados");
-        dayElement?.classList.remove('animate-pulse');
-        return;
-      }
-
-      // Get occupied spots for this date
-      const { data: occupied, error: occupiedError } = await supabase
-        .from("reservations")
-        .select("spot_id")
-        .eq("reservation_date", dateStr)
-        .eq("status", "active");
-
-      if (occupiedError) throw occupiedError;
-
-      const occupiedIds = occupied?.map(r => r.spot_id) || [];
-      const availableSpot = allSpots.find(spot => !occupiedIds.includes(spot.id));
-
-      if (!availableSpot) {
-        toast.error("No hay plazas disponibles para este día");
-        loadAvailableSpots();
-        dayElement?.classList.remove('animate-pulse');
-        return;
-      }
-
       // Validate reservation using database function
       const { data: validation, error: validationError } = await supabase
         .rpc("validate_parking_spot_reservation", {
           _user_id: userId,
-          _spot_id: availableSpot.id,
+          _spot_id: spotId,
           _reservation_date: dateStr,
         });
 
@@ -228,7 +212,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         console.error("Validation error:", validationError);
         toast.error("Error al validar la reserva");
         dayElement?.classList.remove('animate-pulse');
-        return;
+        return false;
       }
 
       // Check validation result
@@ -237,7 +221,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         if (!validationResult.is_valid) {
           toast.error(validationResult.error_message || "No se puede reservar esta plaza");
           dayElement?.classList.remove('animate-pulse');
-          return;
+          return false;
         }
         // Show warning if compact spot
         if (validationResult.error_code === "COMPACT_SPOT_WARNING") {
@@ -250,33 +234,31 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         .from("reservations")
         .insert({
           user_id: userId,
-          spot_id: availableSpot.id,
+          spot_id: spotId,
           reservation_date: dateStr,
           status: "active",
         });
 
       if (insertError) throw insertError;
 
-      // Animación de éxito
+      // Success animation
       dayElement?.classList.remove('animate-pulse');
       dayElement?.classList.add('animate-bounce');
       setTimeout(() => {
         dayElement?.classList.remove('animate-bounce');
       }, 500);
 
-      toast.success("¡Plaza reservada con éxito!");
+      toast.success(`¡Plaza ${spotNumber} reservada con éxito!`);
       loadReservations();
       loadAvailableSpots();
+      setShowMapSelector(false);
+      return true;
     } catch (error: any) {
       console.error("Error creating reservation:", error);
       toast.error("Error al reservar la plaza");
       
-      // Animación de error
       dayElement?.classList.remove('animate-pulse');
-      dayElement?.classList.add('animate-shake');
-      setTimeout(() => {
-        dayElement?.classList.remove('animate-shake');
-      }, 500);
+      return false;
     }
   };
 
@@ -512,6 +494,20 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
           <span className="text-sm font-medium text-gray-700">Completo</span>
         </div>
       </div>
+
+      {/* Parking Map Selector */}
+      <ParkingMapSelector
+        isOpen={showMapSelector}
+        userId={userId}
+        selectedDate={selectedDateForMap}
+        userGroups={userGroups}
+        onSpotSelected={(spotId, spotNumber) => {
+          if (selectedDateForMap) {
+            createReservationWithSpot(spotId, spotNumber, selectedDateForMap);
+          }
+        }}
+        onCancel={() => setShowMapSelector(false)}
+      />
     </div>
   );
 };
