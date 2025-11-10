@@ -74,6 +74,17 @@ interface ParkingSpot {
   is_active: boolean;
 }
 
+interface ParkingGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  capacity: number;
+  floor_plan_url: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 const AdminPanel = () => {
   const [pendingPlates, setPendingPlates] = useState<LicensePlate[]>([]);
   const [users, setUsers] = useState<UserWithRole[]>([]);
@@ -103,10 +114,28 @@ const AdminPanel = () => {
   const [disabilityExpirationDays, setDisabilityExpirationDays] = useState<string>('30');
   const [disabilityExpirationDate, setDisabilityExpirationDate] = useState<Date | undefined>();
 
+  // Parking groups state
+  const [parkingGroups, setParkingGroups] = useState<ParkingGroup[]>([]);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<ParkingGroup | null>(null);
+  const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
+  const [groupCapacity, setGroupCapacity] = useState("0");
+  const [floorPlanFile, setFloorPlanFile] = useState<File | null>(null);
+  const [uploadingFloorPlan, setUploadingFloorPlan] = useState(false);
+
+  // User group assignments state
+  const [userGroupAssignments, setUserGroupAssignments] = useState<Record<string, string[]>>({});
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserGroups, setSelectedUserGroups] = useState<string[]>([]);
+
   useEffect(() => {
     loadPendingPlates();
     loadUsers();
     loadSpots();
+    loadParkingGroups();
+    loadUserGroupAssignments();
   }, []);
 
   const loadPendingPlates = async () => {
@@ -554,13 +583,204 @@ const AdminPanel = () => {
     }
   };
 
+  // Parking groups functions
+  const loadParkingGroups = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("parking_groups")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+      setParkingGroups(data || []);
+    } catch (error: any) {
+      console.error("Error loading parking groups:", error);
+      toast.error("Error al cargar grupos de parking");
+    }
+  };
+
+  const loadUserGroupAssignments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("user_group_assignments")
+        .select("user_id, group_id");
+
+      if (error) throw error;
+
+      const assignments: Record<string, string[]> = {};
+      data?.forEach(assignment => {
+        if (!assignments[assignment.user_id]) {
+          assignments[assignment.user_id] = [];
+        }
+        assignments[assignment.user_id].push(assignment.group_id);
+      });
+
+      setUserGroupAssignments(assignments);
+    } catch (error: any) {
+      console.error("Error loading user group assignments:", error);
+    }
+  };
+
+  const resetGroupForm = () => {
+    setGroupName("");
+    setGroupDescription("");
+    setGroupCapacity("0");
+    setFloorPlanFile(null);
+    setEditingGroup(null);
+  };
+
+  const openCreateGroupDialog = () => {
+    resetGroupForm();
+    setGroupDialogOpen(true);
+  };
+
+  const openEditGroupDialog = (group: ParkingGroup) => {
+    setEditingGroup(group);
+    setGroupName(group.name);
+    setGroupDescription(group.description || "");
+    setGroupCapacity(group.capacity.toString());
+    setGroupDialogOpen(true);
+  };
+
+  const handleCreateOrUpdateGroup = async () => {
+    try {
+      let floorPlanUrl = editingGroup?.floor_plan_url || null;
+
+      if (floorPlanFile) {
+        setUploadingFloorPlan(true);
+        const fileName = `${Date.now()}_${floorPlanFile.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("floor-plans")
+          .upload(fileName, floorPlanFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("floor-plans")
+          .getPublicUrl(fileName);
+        
+        floorPlanUrl = urlData.publicUrl;
+        setUploadingFloorPlan(false);
+      }
+
+      const groupData = {
+        name: groupName.trim(),
+        description: groupDescription.trim() || null,
+        capacity: parseInt(groupCapacity) || 0,
+        floor_plan_url: floorPlanUrl,
+        is_active: true,
+      };
+
+      if (editingGroup) {
+        const { error } = await supabase
+          .from("parking_groups")
+          .update(groupData)
+          .eq("id", editingGroup.id);
+
+        if (error) throw error;
+        toast.success("Grupo actualizado correctamente");
+      } else {
+        const { error } = await supabase
+          .from("parking_groups")
+          .insert(groupData);
+
+        if (error) throw error;
+        toast.success("Grupo creado correctamente");
+      }
+
+      setGroupDialogOpen(false);
+      resetGroupForm();
+      loadParkingGroups();
+    } catch (error: any) {
+      console.error("Error saving group:", error);
+      toast.error("Error al guardar el grupo");
+      setUploadingFloorPlan(false);
+    }
+  };
+
+  const handleToggleGroupActive = async (groupId: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("parking_groups")
+        .update({ is_active: !isActive })
+        .eq("id", groupId);
+
+      if (error) throw error;
+      toast.success(isActive ? "Grupo desactivado" : "Grupo activado");
+      loadParkingGroups();
+    } catch (error: any) {
+      console.error("Error toggling group status:", error);
+      toast.error("Error al cambiar el estado del grupo");
+    }
+  };
+
+  const openAssignGroupsDialog = (userId: string) => {
+    setSelectedUserId(userId);
+    setSelectedUserGroups(userGroupAssignments[userId] || []);
+    setAssignDialogOpen(true);
+  };
+
+  const toggleGroupForUser = (groupId: string) => {
+    setSelectedUserGroups(prev => {
+      if (prev.includes(groupId)) {
+        return prev.filter(id => id !== groupId);
+      } else {
+        return [...prev, groupId];
+      }
+    });
+  };
+
+  const handleSaveUserGroupAssignments = async () => {
+    if (!selectedUserId) return;
+
+    try {
+      await supabase
+        .from("user_group_assignments")
+        .delete()
+        .eq("user_id", selectedUserId);
+
+      if (selectedUserGroups.length > 0) {
+        const assignments = selectedUserGroups.map(groupId => ({
+          user_id: selectedUserId,
+          group_id: groupId,
+        }));
+
+        const { error } = await supabase
+          .from("user_group_assignments")
+          .insert(assignments);
+
+        if (error) throw error;
+      }
+
+      toast.success("Grupos asignados correctamente");
+      setAssignDialogOpen(false);
+      loadUserGroupAssignments();
+    } catch (error: any) {
+      console.error("Error saving user group assignments:", error);
+      toast.error("Error al asignar grupos");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Tabs defaultValue="plates" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="plates">Matrículas Pendientes</TabsTrigger>
-          <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>
-          <TabsTrigger value="spots">Gestión de Plazas</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="plates">
+            <CreditCard className="w-4 h-4 mr-2" />
+            Matrículas
+          </TabsTrigger>
+          <TabsTrigger value="users">
+            <Users className="w-4 h-4 mr-2" />
+            Usuarios
+          </TabsTrigger>
+          <TabsTrigger value="spots">
+            <ParkingSquare className="w-4 h-4 mr-2" />
+            Plazas
+          </TabsTrigger>
+          <TabsTrigger value="groups">
+            <Settings className="w-4 h-4 mr-2" />
+            Configuración
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="plates" className="space-y-4">
@@ -1014,6 +1234,177 @@ const AdminPanel = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="groups" className="space-y-4">
+          <Tabs defaultValue="groups-list" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="groups-list">Grupos de Parking</TabsTrigger>
+              <TabsTrigger value="assign-users">Asignar Usuarios</TabsTrigger>
+              <TabsTrigger value="visual-editor" disabled>
+                Editor Visual (Próximamente)
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Sub-tab: Lista de Grupos */}
+            <TabsContent value="groups-list">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <div>
+                    <CardTitle>Grupos de Parking</CardTitle>
+                    <CardDescription>
+                      Gestiona las zonas y grupos de plazas
+                    </CardDescription>
+                  </div>
+                  <Button onClick={openCreateGroupDialog}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Crear Grupo
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {parkingGroups.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Settings className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No hay grupos de parking creados</p>
+                      <p className="text-sm mt-2">Crea tu primer grupo para comenzar</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {parkingGroups.map(group => (
+                        <Card key={group.id} className={cn(
+                          "relative overflow-hidden",
+                          !group.is_active && "opacity-50"
+                        )}>
+                          {group.floor_plan_url && (
+                            <div className="h-32 bg-muted overflow-hidden">
+                              <img
+                                src={group.floor_plan_url}
+                                alt={`Plano de ${group.name}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          
+                          <CardHeader>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <CardTitle className="text-lg truncate">{group.name}</CardTitle>
+                                <CardDescription className="line-clamp-2">
+                                  {group.description || "Sin descripción"}
+                                </CardDescription>
+                              </div>
+                              <Badge variant={group.is_active ? "default" : "secondary"}>
+                                {group.is_active ? "Activo" : "Inactivo"}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+
+                          <CardContent className="space-y-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Capacidad:</span>
+                              <span className="font-semibold">{group.capacity} plazas</span>
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => openEditGroupDialog(group)}
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={group.is_active ? "destructive" : "default"}
+                                onClick={() => handleToggleGroupActive(group.id, group.is_active)}
+                              >
+                                {group.is_active ? "Desactivar" : "Activar"}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Sub-tab: Asignar Usuarios */}
+            <TabsContent value="assign-users">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Asignar Usuarios a Grupos</CardTitle>
+                  <CardDescription>
+                    Controla qué usuarios pueden acceder a qué grupos de plazas
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {users.map(user => {
+                      const assignedGroups = userGroupAssignments[user.id] || [];
+                      const groupNames = assignedGroups
+                        .map(gId => parkingGroups.find(g => g.id === gId)?.name)
+                        .filter(Boolean);
+
+                      return (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-medium">{user.full_name || user.email}</p>
+                              {user.user_roles.some(ur => ur.role === 'admin') && (
+                                <Badge variant="destructive" className="gap-1">
+                                  <Shield className="h-3 w-3" />
+                                  ADMIN
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                            <div className="flex gap-2 mt-2 flex-wrap">
+                              {groupNames.length > 0 ? (
+                                groupNames.map((name, idx) => (
+                                  <Badge key={idx} variant="secondary">
+                                    {name}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <Badge variant="outline">Sin grupos asignados</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openAssignGroupsDialog(user.id)}
+                            className="ml-4 flex-shrink-0"
+                          >
+                            Editar Grupos
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Sub-tab: Editor Visual (Placeholder) */}
+            <TabsContent value="visual-editor">
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Settings className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <h3 className="text-lg font-semibold mb-2">Editor Visual</h3>
+                  <p className="text-muted-foreground">
+                    Esta funcionalidad estará disponible próximamente
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
       </Tabs>
 
       {/* Rejection Dialog */}
@@ -1315,6 +1706,139 @@ const AdminPanel = () => {
             </Button>
             <Button onClick={handleSavePermissions}>
               Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create/Edit Group Dialog */}
+      <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingGroup ? "Editar Grupo" : "Crear Nuevo Grupo"}
+            </DialogTitle>
+            <DialogDescription>
+              Configura el grupo de plazas de parking
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="group-name">Nombre del grupo *</Label>
+              <Input
+                id="group-name"
+                placeholder="Ej: Planta Baja, Zona VIP, etc."
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="group-desc">Descripción</Label>
+              <Textarea
+                id="group-desc"
+                placeholder="Descripción opcional del grupo"
+                value={groupDescription}
+                onChange={(e) => setGroupDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="group-capacity">Capacidad (número de plazas)</Label>
+              <Input
+                id="group-capacity"
+                type="number"
+                min="0"
+                value={groupCapacity}
+                onChange={(e) => setGroupCapacity(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="floor-plan">Plano del parking (imagen)</Label>
+              <Input
+                id="floor-plan"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFloorPlanFile(e.target.files?.[0] || null)}
+              />
+              {editingGroup?.floor_plan_url && !floorPlanFile && (
+                <div className="mt-2">
+                  <p className="text-sm text-muted-foreground mb-2">Plano actual:</p>
+                  <img
+                    src={editingGroup.floor_plan_url}
+                    alt="Plano actual"
+                    className="w-full max-h-48 object-contain border rounded"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGroupDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateOrUpdateGroup}
+              disabled={!groupName.trim() || uploadingFloorPlan}
+            >
+              {uploadingFloorPlan ? "Subiendo..." : editingGroup ? "Actualizar" : "Crear"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Groups Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Asignar Grupos</DialogTitle>
+            <DialogDescription>
+              Selecciona los grupos a los que tendrá acceso el usuario
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto">
+            {parkingGroups.filter(g => g.is_active).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No hay grupos activos disponibles
+              </p>
+            ) : (
+              parkingGroups.filter(g => g.is_active).map(group => (
+                <div key={group.id} className="flex items-start space-x-2 p-3 border rounded-lg hover:bg-muted/50">
+                  <Checkbox
+                    id={`group-${group.id}`}
+                    checked={selectedUserGroups.includes(group.id)}
+                    onCheckedChange={() => toggleGroupForUser(group.id)}
+                    className="mt-1"
+                  />
+                  <Label htmlFor={`group-${group.id}`} className="flex-1 cursor-pointer">
+                    <div>
+                      <p className="font-medium">{group.name}</p>
+                      {group.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {group.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Capacidad: {group.capacity} plazas
+                      </p>
+                    </div>
+                  </Label>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveUserGroupAssignments}>
+              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>
