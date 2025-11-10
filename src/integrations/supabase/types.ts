@@ -106,35 +106,97 @@ export type Database = {
         }
         Relationships: []
       }
-      parking_spots: {
+      parking_groups: {
         Row: {
+          capacity: number
           created_at: string | null
+          description: string | null
+          floor_plan_url: string | null
           id: string
           is_active: boolean | null
-          notes: string | null
-          spot_number: string
-          spot_type: Database["public"]["Enums"]["app_role"]
+          name: string
           updated_at: string | null
         }
         Insert: {
+          capacity?: number
           created_at?: string | null
+          description?: string | null
+          floor_plan_url?: string | null
           id?: string
           is_active?: boolean | null
-          notes?: string | null
-          spot_number: string
-          spot_type?: Database["public"]["Enums"]["app_role"]
+          name: string
           updated_at?: string | null
         }
         Update: {
+          capacity?: number
           created_at?: string | null
+          description?: string | null
+          floor_plan_url?: string | null
           id?: string
           is_active?: boolean | null
-          notes?: string | null
-          spot_number?: string
-          spot_type?: Database["public"]["Enums"]["app_role"]
+          name?: string
           updated_at?: string | null
         }
         Relationships: []
+      }
+      parking_spots: {
+        Row: {
+          created_at: string | null
+          group_id: string | null
+          has_charger: boolean | null
+          id: string
+          is_accessible: boolean | null
+          is_active: boolean | null
+          is_compact: boolean | null
+          notes: string | null
+          position_x: number | null
+          position_y: number | null
+          spot_number: string
+          spot_type: Database["public"]["Enums"]["app_role"]
+          updated_at: string | null
+          visual_size: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          group_id?: string | null
+          has_charger?: boolean | null
+          id?: string
+          is_accessible?: boolean | null
+          is_active?: boolean | null
+          is_compact?: boolean | null
+          notes?: string | null
+          position_x?: number | null
+          position_y?: number | null
+          spot_number: string
+          spot_type?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          visual_size?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          group_id?: string | null
+          has_charger?: boolean | null
+          id?: string
+          is_accessible?: boolean | null
+          is_active?: boolean | null
+          is_compact?: boolean | null
+          notes?: string | null
+          position_x?: number | null
+          position_y?: number | null
+          spot_number?: string
+          spot_type?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          visual_size?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parking_spots_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "parking_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -201,6 +263,35 @@ export type Database = {
           },
         ]
       }
+      user_group_assignments: {
+        Row: {
+          created_at: string | null
+          group_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          group_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          group_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_group_assignments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "parking_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -227,6 +318,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_available_spots_by_group: {
+        Args: { _date: string; _group_id: string }
+        Returns: {
+          has_charger: boolean
+          is_accessible: boolean
+          is_compact: boolean
+          position_x: number
+          position_y: number
+          spot_id: string
+          spot_number: string
+        }[]
+      }
       get_user_role_priority: { Args: { _user_id: string }; Returns: number }
       has_role: {
         Args: {
@@ -244,6 +347,14 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      validate_parking_spot_reservation: {
+        Args: { _reservation_date: string; _spot_id: string; _user_id: string }
+        Returns: {
+          error_code: string
+          error_message: string
+          is_valid: boolean
+        }[]
+      }
     }
     Enums: {
       app_role: "general" | "preferred" | "director" | "visitor" | "admin"
