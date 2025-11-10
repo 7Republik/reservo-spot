@@ -33,6 +33,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [availableSpots, setAvailableSpots] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingSpots, setLoadingSpots] = useState(true);
   const [userGroups, setUserGroups] = useState<string[]>([]);
   const [userGroupNames, setUserGroupNames] = useState<string[]>([]);
   const [showMapSelector, setShowMapSelector] = useState(false);
@@ -132,8 +133,11 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
 
   const loadAvailableSpots = async () => {
     try {
+      setLoadingSpots(true);
+      
       if (userGroups.length === 0) {
         setAvailableSpots({});
+        setLoadingSpots(false);
         return;
       }
 
@@ -173,6 +177,8 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       setAvailableSpots(spotsData);
     } catch (error: any) {
       console.error("Error loading available spots:", error);
+    } finally {
+      setLoadingSpots(false);
     }
   };
 
@@ -560,7 +566,16 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
                 
                 {/* Indicador de disponibilidad */}
                 <div className="mt-auto">
-                  {!isPast && !reserved && available > 0 && (
+                  {/* Mostrar skeleton mientras carga */}
+                  {loadingSpots && !reserved && !isPast && (
+                    <div className="flex items-center gap-0.5 sm:gap-1 animate-pulse">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gray-300" />
+                      <div className="h-3 w-6 bg-gray-200 rounded" />
+                    </div>
+                  )}
+                  
+                  {/* Mostrar disponibilidad real solo cuando terminó de cargar */}
+                  {!loadingSpots && !isPast && !reserved && available > 0 && (
                     <div className="flex items-center gap-0.5 sm:gap-1">
                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500" aria-hidden="true" />
                       <span className="text-[0.6rem] sm:text-xs font-medium text-emerald-700">
@@ -568,7 +583,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
                       </span>
                     </div>
                   )}
-                  {available === 0 && !isPast && !reserved && (
+                  {!loadingSpots && available === 0 && !isPast && !reserved && (
                     <div className="flex items-center gap-0.5 sm:gap-1">
                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" aria-hidden="true" />
                       <span className="text-[0.6rem] sm:text-xs font-medium text-red-700">
@@ -583,19 +598,19 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         })}
       </div>
 
-      {/* Legend - Rediseñada con estilo moderno */}
-      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-2 sm:px-4 py-3 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 shadow-sm">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-medium text-gray-700">Disponible</span>
+      {/* Legend - Ultra compacta para móvil */}
+      <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-3 px-1 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200">
+        <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white border border-gray-200 shadow-sm">
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[0.65rem] sm:text-xs font-medium text-gray-700 whitespace-nowrap">Disponible</span>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 shadow-sm">
-          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-          <span className="text-xs font-medium text-emerald-700">Tu reserva</span>
+        <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-emerald-50 border border-emerald-200 shadow-sm">
+          <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-600" />
+          <span className="text-[0.65rem] sm:text-xs font-medium text-emerald-700 whitespace-nowrap">Tu reserva</span>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 shadow-sm">
-          <div className="w-2 h-2 rounded-full bg-red-500" />
-          <span className="text-xs font-medium text-gray-700">Completo</span>
+        <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white border border-gray-200 shadow-sm">
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" />
+          <span className="text-[0.65rem] sm:text-xs font-medium text-gray-700 whitespace-nowrap">Completo</span>
         </div>
       </div>
 
