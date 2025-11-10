@@ -203,30 +203,66 @@ export type Database = {
       }
       profiles: {
         Row: {
+          blocked_at: string | null
+          blocked_by: string | null
+          blocked_reason: string | null
           created_at: string | null
+          deactivated_at: string | null
+          deactivated_by: string | null
           email: string
           full_name: string | null
           id: string
+          is_blocked: boolean | null
+          is_deactivated: boolean | null
           phone: string | null
           updated_at: string | null
         }
         Insert: {
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           email: string
           full_name?: string | null
           id: string
+          is_blocked?: boolean | null
+          is_deactivated?: boolean | null
           phone?: string | null
           updated_at?: string | null
         }
         Update: {
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           email?: string
           full_name?: string | null
           id?: string
+          is_blocked?: boolean | null
+          is_deactivated?: boolean | null
           phone?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_blocked_by_fkey"
+            columns: ["blocked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_deactivated_by_fkey"
+            columns: ["deactivated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reservations: {
         Row: {
@@ -321,6 +357,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      deactivate_user: {
+        Args: { _admin_id: string; _user_id: string }
+        Returns: undefined
+      }
       get_available_spots_by_group: {
         Args: { _date: string; _group_id: string }
         Returns: {
@@ -350,6 +390,19 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      permanently_delete_user: {
+        Args: {
+          _admin_id: string
+          _password_confirmation: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      reactivate_user: {
+        Args: { _admin_id: string; _user_id: string }
+        Returns: undefined
+      }
       validate_parking_spot_reservation: {
         Args: { _reservation_date: string; _spot_id: string; _user_id: string }
         Returns: {

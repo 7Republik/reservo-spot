@@ -21,6 +21,9 @@ const Dashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string>("general");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState("");
+  const [isDeactivated, setIsDeactivated] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener
@@ -38,6 +41,7 @@ const Dashboard = () => {
           // Defer role checking
           setTimeout(() => {
             checkUserRole(session.user.id);
+            checkUserStatus(session.user.id);
           }, 0);
         }
       }
@@ -52,6 +56,7 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         checkUserRole(session.user.id);
+        checkUserStatus(session.user.id);
       }
       setLoading(false);
     });
@@ -84,6 +89,30 @@ const Dashboard = () => {
       }
     } catch (error: any) {
       console.error("Error checking user role:", error);
+    }
+  };
+
+  /**
+   * Verifica el estado del usuario (bloqueado/desactivado)
+   * @param userId ID del usuario autenticado
+   */
+  const checkUserStatus = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("is_blocked, blocked_reason, is_deactivated")
+        .eq("id", userId)
+        .single();
+
+      if (error) throw error;
+
+      if (profile) {
+        setIsBlocked(profile.is_blocked || false);
+        setBlockReason(profile.blocked_reason || "");
+        setIsDeactivated(profile.is_deactivated || false);
+      }
+    } catch (error: any) {
+      console.error("Error checking user status:", error);
     }
   };
 
@@ -167,6 +196,68 @@ const Dashboard = () => {
 
   if (!user) {
     return null;
+  }
+
+  if (isBlocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="text-destructive flex items-center gap-2">
+              🚫 Cuenta Bloqueada
+            </CardTitle>
+            <CardDescription>
+              Tu cuenta ha sido bloqueada por un administrador
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-destructive/10 p-4 rounded-md border border-destructive">
+              <p className="text-sm font-semibold mb-2">Motivo del bloqueo:</p>
+              <p className="text-sm text-muted-foreground">{blockReason}</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Por favor, contacta con el administrador de la empresa para resolver esta situación.
+            </p>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={handleLogout}
+            >
+              Cerrar Sesión
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isDeactivated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="text-orange-500 flex items-center gap-2">
+              ⚠️ Cuenta Desactivada
+            </CardTitle>
+            <CardDescription>
+              Tu cuenta ha sido dada de baja
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Tu cuenta ha sido desactivada. Por favor, contacta con el administrador de la empresa si crees que esto es un error.
+            </p>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={handleLogout}
+            >
+              Cerrar Sesión
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

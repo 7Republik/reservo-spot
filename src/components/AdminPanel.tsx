@@ -54,6 +54,11 @@ interface UserWithRole {
   id: string;
   email: string;
   full_name: string;
+  is_blocked: boolean;
+  is_deactivated: boolean;
+  blocked_reason: string | null;
+  blocked_at: string | null;
+  deactivated_at: string | null;
   user_roles: Array<{ id: string; role: string }>;
   license_plates?: Array<{
     id: string;
@@ -160,6 +165,14 @@ const AdminPanel = () => {
   const [editSpotCharger, setEditSpotCharger] = useState(false);
   const [editSpotCompact, setEditSpotCompact] = useState(false);
 
+  // User management state
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedUserForAction, setSelectedUserForAction] = useState<UserWithRole | null>(null);
+  const [blockReason, setBlockReason] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+
   useEffect(() => {
     loadPendingPlates();
     loadUsers();
@@ -167,6 +180,111 @@ const AdminPanel = () => {
     loadParkingGroups();
     loadUserGroupAssignments();
   }, []);
+
+  // User Management Functions
+  const handleBlockUser = async (userId: string, reason: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          is_blocked: true,
+          blocked_reason: reason,
+          blocked_at: new Date().toISOString(),
+          blocked_by: user?.id
+        })
+        .eq("id", userId);
+      
+      if (error) throw error;
+      toast.success("Usuario bloqueado correctamente");
+      loadUsers();
+      setBlockDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error al bloquear usuario:", error);
+      toast.error("Error al bloquear usuario");
+    }
+  };
+
+  const handleUnblockUser = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          is_blocked: false,
+          blocked_reason: null,
+          blocked_at: null,
+          blocked_by: null
+        })
+        .eq("id", userId);
+      
+      if (error) throw error;
+      toast.success("Usuario desbloqueado correctamente");
+      loadUsers();
+    } catch (error: any) {
+      console.error("Error al desbloquear usuario:", error);
+      toast.error("Error al desbloquear usuario");
+    }
+  };
+
+  const handleDeactivateUser = async (userId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.rpc("deactivate_user", {
+        _user_id: userId,
+        _admin_id: user?.id
+      });
+      
+      if (error) throw error;
+      toast.success("Usuario dado de baja. Matrículas liberadas.");
+      loadUsers();
+      setDeactivateDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error al dar de baja usuario:", error);
+      toast.error("Error al dar de baja usuario");
+    }
+  };
+
+  const handleReactivateUser = async (userId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.rpc("reactivate_user", {
+        _user_id: userId,
+        _admin_id: user?.id
+      });
+      
+      if (error) throw error;
+      toast.success("Usuario reactivado. Debe solicitar matrículas de nuevo.");
+      loadUsers();
+    } catch (error: any) {
+      console.error("Error al reactivar usuario:", error);
+      toast.error("Error al reactivar usuario");
+    }
+  };
+
+  const handlePermanentlyDeleteUser = async (userId: string, password: string) => {
+    if (password !== "12345678") {
+      toast.error("Contraseña incorrecta");
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.rpc("permanently_delete_user", {
+        _user_id: userId,
+        _admin_id: user?.id,
+        _password_confirmation: password
+      });
+      
+      if (error) throw error;
+      toast.success("Usuario eliminado permanentemente");
+      loadUsers();
+      setDeleteDialogOpen(false);
+      setDeletePassword("");
+    } catch (error: any) {
+      console.error("Error al borrar usuario:", error);
+      toast.error("Error al borrar usuario: " + error.message);
+    }
+  };
 
   const loadPendingPlates = async () => {
     try {
@@ -205,7 +323,7 @@ const AdminPanel = () => {
     try {
       const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("id, email, full_name")
+        .select("id, email, full_name, is_blocked, is_deactivated, blocked_reason, blocked_at, deactivated_at")
         .order("email");
 
       if (error) throw error;
@@ -1090,6 +1208,16 @@ const AdminPanel = () => {
                                       ADMIN
                                     </Badge>
                                   )}
+                                  {user.is_blocked && (
+                                    <Badge variant="destructive" className="gap-1">
+                                      🚫 BLOQUEADO
+                                    </Badge>
+                                  )}
+                                  {user.is_deactivated && (
+                                    <Badge variant="outline" className="gap-1 border-orange-500 text-orange-500">
+                                      ⚠️ DADO DE BAJA
+                                    </Badge>
+                                  )}
                                 </div>
                                 <p className="text-sm text-muted-foreground truncate">{user.email}</p>
                                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
@@ -1334,6 +1462,67 @@ const AdminPanel = () => {
                               )}
                             </TabsContent>
                           </Tabs>
+
+                          {/* User Management Actions */}
+                          <div className="mt-4 pt-4 border-t space-y-3">
+                            <p className="text-sm font-medium">Acciones de Gestión</p>
+                            <div className="flex flex-wrap gap-2">
+                              {!user.is_blocked ? (
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedUserForAction(user);
+                                    setBlockReason("");
+                                    setBlockDialogOpen(true);
+                                  }}
+                                >
+                                  🚫 Bloquear Usuario
+                                </Button>
+                              ) : (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleUnblockUser(user.id)}
+                                >
+                                  ✅ Desbloquear Usuario
+                                </Button>
+                              )}
+
+                              {!user.is_deactivated ? (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedUserForAction(user);
+                                    setDeactivateDialogOpen(true);
+                                  }}
+                                >
+                                  ⚠️ Dar de Baja
+                                </Button>
+                              ) : (
+                                <Button 
+                                  variant="default" 
+                                  size="sm"
+                                  onClick={() => handleReactivateUser(user.id)}
+                                >
+                                  ♻️ Reactivar Usuario
+                                </Button>
+                              )}
+
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedUserForAction(user);
+                                  setDeletePassword("");
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                🗑️ Borrar Permanente
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </CollapsibleContent>
                     </Card>
@@ -2411,6 +2600,139 @@ const AdminPanel = () => {
                 Guardar Cambios
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Bloqueo de Usuario */}
+      <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bloquear Usuario</DialogTitle>
+            <DialogDescription>
+              El usuario no podrá acceder al sistema hasta que lo desbloquees.
+              Se le mostrará el motivo del bloqueo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Motivo del bloqueo (visible para el usuario)</Label>
+              <Textarea
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Ej: Incumplimiento de normas de aparcamiento..."
+                rows={4}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBlockDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => {
+                if (selectedUserForAction) {
+                  handleBlockUser(selectedUserForAction.id, blockReason);
+                }
+              }}
+              disabled={!blockReason.trim()}
+            >
+              Bloquear Usuario
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Baja de Usuario */}
+      <Dialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dar de Baja Usuario</DialogTitle>
+            <DialogDescription>
+              El usuario será dado de baja manteniendo todo su historial.
+              Sus matrículas serán liberadas para otros usuarios.
+              Si lo reactivas, deberá solicitar sus matrículas de nuevo.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeactivateDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => {
+                if (selectedUserForAction) {
+                  handleDeactivateUser(selectedUserForAction.id);
+                }
+              }}
+            >
+              Dar de Baja
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Borrado Permanente */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              ⚠️ BORRADO PERMANENTE ⚠️
+            </DialogTitle>
+            <DialogDescription className="text-destructive font-semibold">
+              ESTA ACCIÓN ES IRREVERSIBLE
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">
+              Se eliminará permanentemente:
+            </p>
+            <ul className="text-sm list-disc list-inside space-y-1 text-muted-foreground">
+              <li>Cuenta de usuario</li>
+              <li>Todas las matrículas</li>
+              <li>Historial de reservas</li>
+              <li>Reportes de incidentes</li>
+              <li>Asignaciones de grupos</li>
+              <li>Roles y permisos</li>
+            </ul>
+            <div className="bg-destructive/10 p-4 rounded-md border border-destructive">
+              <p className="text-sm font-semibold text-destructive mb-2">
+                Ingresa la contraseña de confirmación:
+              </p>
+              <Input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Contraseña de confirmación"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Contraseña: 12345678
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setDeletePassword("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => {
+                if (selectedUserForAction) {
+                  handlePermanentlyDeleteUser(selectedUserForAction.id, deletePassword);
+                }
+              }}
+              disabled={deletePassword !== "12345678"}
+            >
+              BORRAR PERMANENTEMENTE
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

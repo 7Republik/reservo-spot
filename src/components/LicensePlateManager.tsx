@@ -75,6 +75,23 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
       const upperPlate = newPlate.toUpperCase();
       const validated = plateSchema.parse({ plateNumber: upperPlate });
 
+      // Verificar si la matrícula ya está aprobada para otro usuario
+      const { data: existingPlate, error: checkError } = await supabase
+        .from("license_plates")
+        .select("id, user_id")
+        .eq("plate_number", validated.plateNumber)
+        .eq("is_approved", true)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Error checking plate:", checkError);
+      }
+
+      if (existingPlate && existingPlate.user_id !== userId) {
+        toast.error("Esta matrícula ya está registrada y aprobada para otro usuario");
+        return;
+      }
+
       const { error } = await supabase
         .from("license_plates")
         .insert({
