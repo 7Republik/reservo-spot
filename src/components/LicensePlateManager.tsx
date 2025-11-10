@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Check, Clock, Trash2, X, AlertCircle, ChevronDown } from "lucide-react";
 import { z } from "zod";
@@ -30,6 +31,8 @@ interface LicensePlate {
   approved_disability: boolean;
   electric_expires_at?: string | null;
   disability_expires_at?: string | null;
+  deleted_at?: string | null;
+  deleted_by_user?: boolean;
 }
 
 const plateSchema = z.object({
@@ -41,12 +44,16 @@ const plateSchema = z.object({
 });
 
 const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
-  const [plates, setPlates] = useState<LicensePlate[]>([]);
+  const [activePlates, setActivePlates] = useState<LicensePlate[]>([]);
+  const [deletedPlates, setDeletedPlates] = useState<LicensePlate[]>([]);
   const [newPlate, setNewPlate] = useState("");
   const [loading, setLoading] = useState(true);
   const [requestedElectric, setRequestedElectric] = useState(false);
   const [requestedDisability, setRequestedDisability] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [plateToDelete, setPlateToDelete] = useState<LicensePlate | null>(null);
 
   useEffect(() => {
     loadPlates();
@@ -61,7 +68,13 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
         .order("requested_at", { ascending: false });
 
       if (error) throw error;
-      setPlates(data || []);
+      
+      // Separar activas y eliminadas
+      const active = (data || []).filter(p => !p.deleted_at);
+      const deleted = (data || []).filter(p => p.deleted_at);
+      
+      setActivePlates(active);
+      setDeletedPlates(deleted);
     } catch (error: any) {
       console.error("Error loading plates:", error);
       toast.error("Error al cargar las matrículas");
@@ -126,17 +139,28 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
     }
   };
 
-  const handleDeletePlate = async (plateId: string) => {
+  const handleDeletePlate = async (plate: LicensePlate) => {
     try {
       const { error } = await supabase
         .from("license_plates")
-        .delete()
-        .eq("id", plateId);
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by_user: true
+        })
+        .eq("id", plate.id)
+        .eq("user_id", userId);
 
       if (error) throw error;
 
-      toast.success("Matrícula eliminada. Puedes volver a solicitarla");
+      if (plate.is_approved) {
+        toast.success("Matrícula eliminada. Ahora está disponible para otros usuarios");
+      } else {
+        toast.success("Matrícula eliminada");
+      }
+      
       loadPlates();
+      setDeleteDialogOpen(false);
+      setPlateToDelete(null);
     } catch (error: any) {
       console.error("Error deleting plate:", error);
       toast.error("Error al eliminar la matrícula");
@@ -153,18 +177,18 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
       <Collapsible open={isFormOpen} onOpenChange={setIsFormOpen}>
         <Card className="p-4">
           <CollapsibleTrigger className="w-full">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-base">Añadir Matrícula</h3>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {plates.length} registradas
-                </Badge>
-                <ChevronDown className={cn(
-                  "h-5 w-5 transition-transform duration-200",
-                  isFormOpen && "transform rotate-180"
-                )} />
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-base">Añadir Matrícula</h3>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {activePlates.length} activas
+                  </Badge>
+                  <ChevronDown className={cn(
+                    "h-5 w-5 transition-transform duration-200",
+                    isFormOpen && "transform rotate-180"
+                  )} />
+                </div>
               </div>
-            </div>
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-4">
@@ -243,7 +267,7 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
       <div className="space-y-3">
         <h3 className="font-semibold text-lg">Mis Matrículas</h3>
         
-        {plates.length === 0 ? (
+        {activePlates.length === 0 ? (
           <Card className="p-8">
             <div className="text-center text-muted-foreground">
               <p>No tienes matrículas registradas</p>
@@ -252,7 +276,7 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
           </Card>
         ) : (
           <div className="grid gap-3">
-            {plates.map((plate) => (
+            {activePlates.map((plate) => (
               <Card key={plate.id} className="p-3 sm:p-4">
                 {/* Container principal - vertical en móvil, horizontal en desktop */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -359,18 +383,25 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
                     </div>
                   </div>
                   
-                  {/* Botón eliminar (solo para rechazadas) */}
-                  {plate.rejected_at && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDeletePlate(plate.id)}
-                      className="w-full sm:w-auto"
-                    >
-                      <Trash2 className="h-4 w-4 sm:mr-2" />
-                      <span className="sm:inline">Eliminar</span>
-                    </Button>
-                  )}
+                  {/* Botón eliminar - visible para TODAS las matrículas */}
+                  <Button
+                    size="sm"
+                    variant={plate.is_approved ? "destructive" : "outline"}
+                    onClick={() => {
+                      if (plate.is_approved) {
+                        // Confirmación para matrículas aprobadas
+                        setPlateToDelete(plate);
+                        setDeleteDialogOpen(true);
+                      } else {
+                        // Eliminación directa para pendientes/rechazadas
+                        handleDeletePlate(plate);
+                      }
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                    <span className="sm:inline">Eliminar</span>
+                  </Button>
                 </div>
                 
                 {/* Mensaje de rechazo (debajo de todo) */}
@@ -397,6 +428,116 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
           </div>
         )}
       </div>
+
+      {/* Historial de Matrículas Eliminadas - Compacto y Responsive */}
+      {deletedPlates.length > 0 && (
+        <Collapsible open={isHistoryOpen} onOpenChange={setIsHistoryOpen} className="mt-4">
+          <Card className="p-3">
+            <CollapsibleTrigger className="w-full">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  Historial de matrículas eliminadas
+                </h4>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs bg-muted">
+                    {deletedPlates.length}
+                  </Badge>
+                  <ChevronDown className={cn(
+                    "h-4 w-4 transition-transform duration-200 text-muted-foreground",
+                    isHistoryOpen && "transform rotate-180"
+                  )} />
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent className="mt-3">
+              <div className="space-y-2">
+                {deletedPlates.map((plate) => (
+                  <div 
+                    key={plate.id} 
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-muted/30 rounded border border-muted text-xs"
+                  >
+                    {/* Matrícula + Estado (si estaba aprobada) */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono font-semibold text-sm">
+                        {plate.plate_number}
+                      </span>
+                      {plate.is_approved && (
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5">
+                          Era aprobada
+                        </Badge>
+                      )}
+                      {plate.approved_electric && (
+                        <span className="text-[10px]">⚡</span>
+                      )}
+                      {plate.approved_disability && (
+                        <span className="text-[10px]">♿</span>
+                      )}
+                    </div>
+                    
+                    {/* Fecha de eliminación */}
+                    <span className="text-muted-foreground whitespace-nowrap">
+                      Eliminada: {new Date(plate.deleted_at!).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                Estas matrículas ya no están activas y están disponibles para otros usuarios
+              </p>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
+      {/* Dialog de confirmación para eliminar matrícula aprobada */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              ⚠️ ¿Eliminar matrícula aprobada?
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción eliminará la matrícula <span className="font-bold">{plateToDelete?.plate_number}</span> de tu cuenta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="font-medium">Al eliminar esta matrícula:</p>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground text-xs sm:text-sm">
+              <li>La matrícula quedará disponible para otros usuarios</li>
+              <li>No podrás hacer nuevas reservas hasta que tengas otra matrícula aprobada</li>
+              <li>Tu historial de reservas anteriores se mantendrá</li>
+              <li>La matrícula aparecerá en tu historial de eliminadas</li>
+            </ul>
+            <p className="text-muted-foreground text-xs">
+              Podrás volver a solicitar esta u otra matrícula en cualquier momento.
+            </p>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setPlateToDelete(null);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => {
+                if (plateToDelete) {
+                  handleDeletePlate(plateToDelete);
+                }
+              }}
+              className="w-full sm:w-auto"
+            >
+              Eliminar Matrícula
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

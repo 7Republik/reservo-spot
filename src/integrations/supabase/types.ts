@@ -58,6 +58,8 @@ export type Database = {
           approved_by: string | null
           approved_disability: boolean | null
           approved_electric: boolean | null
+          deleted_at: string | null
+          deleted_by_user: boolean | null
           disability_expires_at: string | null
           electric_expires_at: string | null
           id: string
@@ -75,6 +77,8 @@ export type Database = {
           approved_by?: string | null
           approved_disability?: boolean | null
           approved_electric?: boolean | null
+          deleted_at?: string | null
+          deleted_by_user?: boolean | null
           disability_expires_at?: string | null
           electric_expires_at?: string | null
           id?: string
@@ -92,6 +96,8 @@ export type Database = {
           approved_by?: string | null
           approved_disability?: boolean | null
           approved_electric?: boolean | null
+          deleted_at?: string | null
+          deleted_by_user?: boolean | null
           disability_expires_at?: string | null
           electric_expires_at?: string | null
           id?: string
