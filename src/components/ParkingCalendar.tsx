@@ -169,16 +169,30 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         console.error("Error getting date range:", rangeError);
       }
 
-      // Obtener días bloqueados
+      // Obtener días bloqueados (globales o específicos de los grupos del usuario)
       const { data: blockedDates, error: blockedError } = await supabase
         .from("blocked_dates")
-        .select("blocked_date");
+        .select("blocked_date, group_id")
+        .or(`group_id.is.null,group_id.in.(${userGroups.join(',')})`);
 
       if (blockedError) {
         console.error("Error getting blocked dates:", blockedError);
       }
 
-      const blockedDatesSet = new Set(blockedDates?.map(d => d.blocked_date) || []);
+      // Crear set de días bloqueados por grupo
+      const blockedDatesMap: Record<string, Set<string>> = {};
+      blockedDates?.forEach(bd => {
+        const dateStr = bd.blocked_date;
+        if (!blockedDatesMap[dateStr]) {
+          blockedDatesMap[dateStr] = new Set();
+        }
+        if (bd.group_id === null) {
+          // Bloqueo global - marcar para todos los grupos
+          blockedDatesMap[dateStr].add('__GLOBAL__');
+        } else {
+          blockedDatesMap[dateStr].add(bd.group_id);
+        }
+      });
 
       const start = startOfMonth(currentMonth);
       const end = endOfMonth(currentMonth);
@@ -190,7 +204,11 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         const dateStr = format(day, "yyyy-MM-dd");
         
         // Validar si está en rango y no bloqueado
-        const isBlocked = blockedDatesSet.has(dateStr);
+        const blockedForDate = blockedDatesMap[dateStr];
+        const isBlocked = blockedForDate && (
+          blockedForDate.has('__GLOBAL__') || 
+          userGroups.some(gId => blockedForDate.has(gId))
+        );
         const isOutOfRange = dateRange && (dateStr < dateRange.min_date || dateStr > dateRange.max_date);
 
         if (isBlocked || isOutOfRange) {
@@ -198,12 +216,21 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
           continue;
         }
 
-        // Get total spots from user's accessible groups
+        // Get total spots from user's accessible groups (excluding blocked groups for this date)
+        const availableGroups = userGroups.filter(gId => 
+          !blockedForDate || !blockedForDate.has(gId)
+        );
+
+        if (availableGroups.length === 0) {
+          spotsData[dateStr] = 0;
+          continue;
+        }
+
         const { data: totalSpots, error: spotsError } = await supabase
           .from("parking_spots")
           .select("id, group_id")
           .eq("is_active", true)
-          .in("group_id", userGroups);
+          .in("group_id", availableGroups);
 
         if (spotsError) throw spotsError;
 

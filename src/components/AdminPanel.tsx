@@ -188,10 +188,12 @@ const AdminPanel = () => {
     id: string;
     blocked_date: string;
     reason: string;
+    group_id: string | null;
   }>>([]);
   const [blockDateDialogOpen, setBlockDateDialogOpen] = useState(false);
   const [dateToBlock, setDateToBlock] = useState<Date | undefined>(undefined);
   const [blockDateReason, setBlockDateReason] = useState("Fuerza Mayor");
+  const [blockDateGroupId, setBlockDateGroupId] = useState<string | null>(null);
   const [deactivateGroupDialogOpen, setDeactivateGroupDialogOpen] = useState(false);
   const [groupToDeactivate, setGroupToDeactivate] = useState<ParkingGroup | null>(null);
   const [deactivationReason, setDeactivationReason] = useState("");
@@ -961,7 +963,10 @@ const AdminPanel = () => {
     try {
       const { data, error } = await supabase
         .from("blocked_dates")
-        .select("*")
+        .select(`
+          *,
+          parking_groups(name)
+        `)
         .order("blocked_date", { ascending: true });
 
       if (error) throw error;
@@ -1007,7 +1012,8 @@ const AdminPanel = () => {
         .insert({
           blocked_date: format(dateToBlock, 'yyyy-MM-dd'),
           reason: blockDateReason,
-          created_by: user?.id
+          created_by: user?.id,
+          group_id: blockDateGroupId
         });
 
       if (blockError) throw blockError;
@@ -1034,6 +1040,7 @@ const AdminPanel = () => {
       setBlockDateDialogOpen(false);
       setDateToBlock(undefined);
       setBlockDateReason("Fuerza Mayor");
+      setBlockDateGroupId(null);
       loadBlockedDates();
     } catch (error: any) {
       console.error("Error blocking date:", error);
@@ -2062,26 +2069,40 @@ const AdminPanel = () => {
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {blockedDates.map(date => (
-                        <div 
-                          key={date.id}
-                          className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/20 rounded-lg"
-                        >
-                          <div>
-                            <p className="font-medium">
-                              {format(new Date(date.blocked_date), 'dd/MM/yyyy', { locale: es })}
-                            </p>
-                            <p className="text-xs text-muted-foreground">{date.reason}</p>
-                          </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleUnblockDate(date.id)}
+                      {blockedDates.map(date => {
+                        const groupName = date.group_id ? (date as any).parking_groups?.name : null;
+                        return (
+                          <div 
+                            key={date.id}
+                            className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/20 rounded-lg"
                           >
-                            Desbloquear
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {format(new Date(date.blocked_date), 'dd/MM/yyyy', { locale: es })}
+                                </p>
+                                {groupName ? (
+                                  <Badge variant="outline" className="text-xs">
+                                    📍 {groupName}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs">
+                                    🌍 Global
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{date.reason}</p>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleUnblockDate(date.id)}
+                            >
+                              Desbloquear
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
@@ -3298,6 +3319,31 @@ const AdminPanel = () => {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>Aplicar bloqueo a</Label>
+              <Select
+                value={blockDateGroupId || "global"}
+                onValueChange={(value) => setBlockDateGroupId(value === "global" ? null : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="global">🌍 Todos los grupos (Global)</SelectItem>
+                  {parkingGroups.filter(g => g.is_active && !g.deactivated_at).map(group => (
+                    <SelectItem key={group.id} value={group.id}>
+                      📍 {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {blockDateGroupId 
+                  ? "Este bloqueo solo afectará al grupo seleccionado"
+                  : "Este bloqueo afectará a todos los grupos de parking"}
+              </p>
+            </div>
+
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-xs space-y-1">
               <p className="font-medium text-destructive">⚠️ Atención:</p>
               <p className="text-muted-foreground">
@@ -3313,6 +3359,7 @@ const AdminPanel = () => {
                 setBlockDateDialogOpen(false);
                 setDateToBlock(undefined);
                 setBlockDateReason("Fuerza Mayor");
+                setBlockDateGroupId(null);
               }}
               className="w-full sm:w-auto"
             >

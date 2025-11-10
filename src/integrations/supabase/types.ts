@@ -19,6 +19,7 @@ export type Database = {
           blocked_date: string
           created_at: string | null
           created_by: string
+          group_id: string | null
           id: string
           reason: string
         }
@@ -26,6 +27,7 @@ export type Database = {
           blocked_date: string
           created_at?: string | null
           created_by: string
+          group_id?: string | null
           id?: string
           reason?: string
         }
@@ -33,10 +35,19 @@ export type Database = {
           blocked_date?: string
           created_at?: string | null
           created_by?: string
+          group_id?: string | null
           id?: string
           reason?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "blocked_dates_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "parking_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incident_reports: {
         Row: {
