@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Calendar as CalendarIcon, Check, X, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Check, X, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isBefore, startOfDay, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import ParkingMapSelector from "./ParkingMapSelector";
@@ -212,6 +212,28 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
     setSelectedGroupForReservation({ id: groupId, name: groupName });
     setShowGroupSelector(false);
     setShowMapSelector(true);
+  };
+
+  const handleQuickReserve = async (
+    groupId: string, 
+    groupName: string, 
+    spotId: string, 
+    spotNumber: string,
+    type: 'last' | 'random'
+  ) => {
+    setShowGroupSelector(false);
+    
+    if (selectedDateForMap) {
+      const message = type === 'last' 
+        ? `Reservando tu plaza habitual (${spotNumber})...`
+        : `Asignando plaza aleatoria (${spotNumber})...`;
+      
+      toast.loading(message, { id: 'quick-reserve' });
+      
+      await createReservationWithSpot(spotId, spotNumber, selectedDateForMap);
+      
+      toast.dismiss('quick-reserve');
+    }
   };
 
   const loadReservationDetails = async (reservationId: string) => {
@@ -562,18 +584,18 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       </div>
 
       {/* Legend - Rediseñada con estilo moderno */}
-      <div className="flex items-center justify-center gap-6 p-4 rounded-2xl bg-gray-50">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-emerald-500 shadow-sm" />
-          <span className="text-sm font-medium text-gray-700">Disponible</span>
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-2 sm:px-4 py-3 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 shadow-sm">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-xs font-medium text-gray-700">Disponible</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-blue-500 shadow-sm" />
-          <span className="text-sm font-medium text-gray-700">Tu reserva</span>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 shadow-sm">
+          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+          <span className="text-xs font-medium text-emerald-700">Tu reserva</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-red-500 shadow-sm" />
-          <span className="text-sm font-medium text-gray-700">Completo</span>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 shadow-sm">
+          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="text-xs font-medium text-gray-700">Completo</span>
         </div>
       </div>
 
@@ -582,7 +604,9 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         isOpen={showGroupSelector}
         selectedDate={selectedDateForMap}
         userGroups={userGroups}
+        userId={userId}
         onGroupSelected={handleGroupSelected}
+        onQuickReserve={handleQuickReserve}
         onCancel={() => setShowGroupSelector(false)}
       />
 

@@ -7,13 +7,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Building2, Users, CheckCircle2 } from "lucide-react";
+import { Building2, Users, CheckCircle2, History, Zap, MapPin } from "lucide-react";
 
 interface GroupSelectorModalProps {
   isOpen: boolean;
   selectedDate: Date | null;
   userGroups: string[];
+  userId: string;
   onGroupSelected: (groupId: string, groupName: string) => void;
+  onQuickReserve: (groupId: string, groupName: string, spotId: string, spotNumber: string, type: 'last' | 'random') => void;
   onCancel: () => void;
 }
 
@@ -25,13 +27,24 @@ interface GroupWithAvailability {
   occupiedSpots: number;
   availableSpots: number;
   occupancyRate: number;
+  lastUsedSpot?: {
+    id: string;
+    spotNumber: string;
+    isAvailableNow: boolean;
+  };
+  randomAvailableSpot?: {
+    id: string;
+    spotNumber: string;
+  };
 }
 
 const GroupSelectorModal = ({
   isOpen,
   selectedDate,
   userGroups,
+  userId,
   onGroupSelected,
+  onQuickReserve,
   onCancel,
 }: GroupSelectorModalProps) => {
   const [groups, setGroups] = useState<GroupWithAvailability[]>([]);
@@ -86,6 +99,64 @@ const GroupSelectorModal = ({
         const availableSpots = totalSpots - occupiedSpots;
         const occupancyRate = totalSpots > 0 ? (occupiedSpots / totalSpots) * 100 : 0;
 
+        // Buscar última plaza usada por el usuario en este grupo
+        const { data: lastReservation } = await supabase
+          .from("reservations")
+          .select(`
+            spot_id,
+            parking_spots!inner (
+              id,
+              spot_number,
+              group_id
+            )
+          `)
+          .eq("user_id", userId)
+          .eq("parking_spots.group_id", groupId)
+          .eq("status", "active")
+          .order("reservation_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let lastUsedSpot = undefined;
+        if (lastReservation && lastReservation.parking_spots) {
+          const spotData = lastReservation.parking_spots as any;
+          const spotId = spotData.id;
+          const spotNumber = spotData.spot_number;
+          
+          // Verificar si está disponible para la fecha seleccionada
+          const isOccupied = reservations?.some(r => r.spot_id === spotId);
+          
+          if (!isOccupied) {
+            lastUsedSpot = {
+              id: spotId,
+              spotNumber: spotNumber,
+              isAvailableNow: true
+            };
+          }
+        }
+
+        // Obtener una plaza aleatoria disponible
+        let randomAvailableSpot = undefined;
+        if (availableSpots > 0) {
+          const availableSpotsData = spots?.filter(s => !reservations?.some(r => r.spot_id === s.id)) || [];
+          
+          if (availableSpotsData.length > 0) {
+            const randomSpot = availableSpotsData[Math.floor(Math.random() * availableSpotsData.length)];
+            const { data: randomSpotDetail } = await supabase
+              .from("parking_spots")
+              .select("id, spot_number")
+              .eq("id", randomSpot.id)
+              .single();
+            
+            if (randomSpotDetail) {
+              randomAvailableSpot = {
+                id: randomSpotDetail.id,
+                spotNumber: randomSpotDetail.spot_number
+              };
+            }
+          }
+        }
+
         groupsData.push({
           id: group.id,
           name: group.name,
@@ -94,6 +165,8 @@ const GroupSelectorModal = ({
           occupiedSpots,
           availableSpots,
           occupancyRate,
+          lastUsedSpot,
+          randomAvailableSpot,
         });
       }
 
@@ -150,10 +223,9 @@ const GroupSelectorModal = ({
                   key={group.id}
                   className={`p-4 transition-all duration-200 ${
                     isAvailable
-                      ? "cursor-pointer hover:shadow-lg hover:border-primary hover:scale-[1.02]"
-                      : "opacity-60 cursor-not-allowed"
+                      ? "hover:shadow-lg hover:border-primary"
+                      : "opacity-60"
                   }`}
-                  onClick={() => isAvailable && onGroupSelected(group.id, group.name)}
                 >
                   <div className="space-y-3">
                     {/* Header */}
@@ -201,6 +273,96 @@ const GroupSelectorModal = ({
                         {group.occupiedSpots}/{group.totalSpots} ocupadas
                       </p>
                     </div>
+
+                    {/* Botones de reserva rápida */}
+                    {isAvailable && (
+                      <div className="space-y-2 pt-2 border-t border-gray-200">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Reserva rápida:
+                        </p>
+                        
+                        <div className="flex flex-col gap-2">
+                          {/* Botón: Reservar última plaza */}
+                          {group.lastUsedSpot?.isAvailableNow && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onQuickReserve(
+                                  group.id, 
+                                  group.name, 
+                                  group.lastUsedSpot!.id, 
+                                  group.lastUsedSpot!.spotNumber,
+                                  'last'
+                                );
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-left"
+                            >
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                                <History className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-blue-900">
+                                  Reservar mi última plaza
+                                </p>
+                                <p className="text-xs text-blue-700">
+                                  Plaza {group.lastUsedSpot.spotNumber}
+                                </p>
+                              </div>
+                            </button>
+                          )}
+                          
+                          {/* Botón: Reservar plaza aleatoria */}
+                          {group.randomAvailableSpot && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onQuickReserve(
+                                  group.id, 
+                                  group.name, 
+                                  group.randomAvailableSpot!.id, 
+                                  group.randomAvailableSpot!.spotNumber,
+                                  'random'
+                                );
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 hover:bg-green-100 border border-green-200 transition-colors text-left"
+                            >
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                                <Zap className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-green-900">
+                                  Reservar plaza aleatoria
+                                </p>
+                                <p className="text-xs text-green-700">
+                                  Asignación automática
+                                </p>
+                              </div>
+                            </button>
+                          )}
+                          
+                          {/* Botón: Elegir en el mapa */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onGroupSelected(group.id, group.name);
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors text-left"
+                          >
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center">
+                              <MapPin className="w-4 h-4 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-gray-900">
+                                Elegir en el mapa
+                              </p>
+                              <p className="text-xs text-gray-700">
+                                Ver plano y seleccionar
+                              </p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Card>
               );
