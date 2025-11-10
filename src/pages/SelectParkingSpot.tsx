@@ -349,15 +349,15 @@ const SelectParkingSpot = () => {
 
             {viewMode === 'map' ? (
               <Card className="overflow-hidden">
-                <TransformWrapper
-                  initialScale={window.innerWidth < 640 ? 0.6 : 1}
-                  minScale={window.innerWidth < 640 ? 0.5 : 1.0}
-                  maxScale={3}
-                  centerOnInit={false}
-                  wheel={{ step: 0.1 }}
-                  doubleClick={{ disabled: true }}
-                  panning={{ disabled: false }}
-                >
+              <TransformWrapper
+                initialScale={1}
+                minScale={0.5}
+                maxScale={4}
+                centerOnInit={true}
+                wheel={{ step: 0.1 }}
+                doubleClick={{ mode: "zoomIn" }}
+                panning={{ velocityDisabled: true }}
+              >
                   {({ zoomIn, zoomOut, resetTransform }) => (
                     <>
                       <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
