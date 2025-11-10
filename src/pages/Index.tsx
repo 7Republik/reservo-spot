@@ -18,7 +18,7 @@ const Index = () => {
           </div>
           
           <div className="space-y-4">
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-foreground" style={{ textShadow: '0 2px 10px rgba(0, 0, 0, 0.15)' }}>
+            <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
               RESERVEO
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
