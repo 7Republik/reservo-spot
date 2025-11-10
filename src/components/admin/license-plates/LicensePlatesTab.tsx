@@ -5,6 +5,7 @@ import { useLicensePlates } from "@/hooks/admin/useLicensePlates";
 import { PendingPlateCard } from "./PendingPlateCard";
 import { ApprovalDialog } from "./ApprovalDialog";
 import { RejectionDialog } from "./RejectionDialog";
+import { LicensePlatesSkeleton } from "../skeletons/AdminSkeletons";
 import type { LicensePlate } from "@/types/admin";
 
 export const LicensePlatesTab = () => {
@@ -47,6 +48,10 @@ export const LicensePlatesTab = () => {
     await rejectPlate(plateId, reason);
   };
 
+  if (loading) {
+    return <LicensePlatesSkeleton />;
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -60,11 +65,7 @@ export const LicensePlatesTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Cargando matrículas...
-            </div>
-          ) : pendingPlates.length === 0 ? (
+          {pendingPlates.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No hay matrículas pendientes de aprobación
             </div>

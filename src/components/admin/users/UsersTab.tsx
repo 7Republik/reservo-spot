@@ -6,6 +6,7 @@ import { UserCard } from "./UserCard";
 import { BlockUserDialog } from "./BlockUserDialog";
 import { DeactivateUserDialog } from "./DeactivateUserDialog";
 import { DeleteUserDialog } from "./DeleteUserDialog";
+import { UsersSkeleton } from "../skeletons/AdminSkeletons";
 import type { UserWithRole, ParkingGroup } from "@/types/admin";
 
 interface UsersTabProps {
@@ -47,13 +48,7 @@ export const UsersTab = ({ parkingGroups, userGroupAssignments, onReloadAssignme
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="py-8">
-          <p className="text-center text-muted-foreground">Cargando usuarios...</p>
-        </CardContent>
-      </Card>
-    );
+    return <UsersSkeleton />;
   }
 
   return (

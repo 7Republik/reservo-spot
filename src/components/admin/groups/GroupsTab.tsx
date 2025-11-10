@@ -12,6 +12,7 @@ import { DeactivateGroupDialog } from "./DeactivateGroupDialog";
 import { ScheduleDeactivationDialog } from "./ScheduleDeactivationDialog";
 import { ReservationSettingsCard } from "./ReservationSettingsCard";
 import { BlockedDatesCard } from "./BlockedDatesCard";
+import { GroupsTabSkeleton } from "../skeletons/AdminSkeletons";
 import type { ParkingGroup } from "@/types/admin";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
@@ -47,6 +48,12 @@ export const GroupsTab = () => {
 
   const activeGroups = parkingGroupsHook.parkingGroups.filter(g => !g.deactivated_at);
   const deactivatedGroups = parkingGroupsHook.parkingGroups.filter(g => g.deactivated_at);
+
+  const isLoading = parkingGroupsHook.loading || settingsHook.loading || blockedDatesHook.loading;
+
+  if (isLoading) {
+    return <GroupsTabSkeleton />;
+  }
 
   return (
     <>

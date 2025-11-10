@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useParkingSpots } from "@/hooks/admin/useParkingSpots";
+import { ParkingSpotsSkeleton } from "../skeletons/AdminSkeletons";
 import type { ParkingGroup } from "@/types/admin";
 
 interface ParkingSpotsTabProps {
@@ -136,7 +137,7 @@ export const ParkingSpotsTab = ({ parkingGroups }: ParkingSpotsTabProps) => {
 
         {/* Spots List */}
         {loading ? (
-          <p className="text-center text-muted-foreground">Cargando plazas...</p>
+          <ParkingSpotsSkeleton />
         ) : (
           <div className="grid gap-3">
             {spots.map((spot) => (
