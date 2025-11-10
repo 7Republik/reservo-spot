@@ -219,7 +219,7 @@ const ParkingMapSelector = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-6xl max-h-[90vh] sm:max-h-[90vh] h-auto overflow-hidden w-[95vw] sm:w-auto">
         <DialogHeader>
           <DialogTitle>Selecciona tu plaza de parking</DialogTitle>
           <DialogDescription>
@@ -278,35 +278,56 @@ const ParkingMapSelector = ({
               </Badge>
             </div>
 
-            {/* Legend */}
-            <Card className="p-3 bg-blue-50 border-blue-200">
-              <div className="flex flex-wrap gap-3 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-emerald-500" />
-                  <span>Disponible</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-blue-500" />
-                  <span>♿ PMR</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-yellow-500" />
-                  <span>⚡ Cargador</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-red-500" />
-                  <span>Ocupada</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-blue-600" />
-                  <span>Tu reserva</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-gray-300" />
-                  <span>No disponible</span>
-                </div>
+            {/* Legend - Ultra compacta para móvil */}
+            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-3 px-1 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200">
+              {/* Disponible */}
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white border border-gray-200 shadow-sm">
+                <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded bg-emerald-500 animate-pulse" />
+                <span className="text-[0.65rem] sm:text-xs font-medium text-gray-700 whitespace-nowrap">
+                  Disponible
+                </span>
               </div>
-            </Card>
+              
+              {/* PMR */}
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white border border-gray-200 shadow-sm">
+                <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded bg-blue-500" />
+                <span className="text-[0.65rem] sm:text-xs font-medium text-gray-700 whitespace-nowrap">
+                  ♿ PMR
+                </span>
+              </div>
+              
+              {/* Cargador */}
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white border border-gray-200 shadow-sm">
+                <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded bg-yellow-500" />
+                <span className="text-[0.65rem] sm:text-xs font-medium text-gray-700 whitespace-nowrap">
+                  ⚡ Cargador
+                </span>
+              </div>
+              
+              {/* Ocupada */}
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white border border-gray-200 shadow-sm">
+                <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded bg-red-500" />
+                <span className="text-[0.65rem] sm:text-xs font-medium text-gray-700 whitespace-nowrap">
+                  Ocupada
+                </span>
+              </div>
+              
+              {/* Tu reserva */}
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-blue-50 border border-blue-200 shadow-sm">
+                <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded bg-blue-600" />
+                <span className="text-[0.65rem] sm:text-xs font-medium text-blue-700 whitespace-nowrap">
+                  Tu reserva
+                </span>
+              </div>
+              
+              {/* No disponible */}
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white border border-gray-200 shadow-sm">
+                <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded bg-gray-300" />
+                <span className="text-[0.65rem] sm:text-xs font-medium text-gray-700 whitespace-nowrap">
+                  No disponible
+                </span>
+              </div>
+            </div>
 
             {/* Main content */}
             <ScrollArea className="h-[500px]">
@@ -315,11 +336,12 @@ const ParkingMapSelector = ({
                 <div className="relative">
                   <TransformWrapper
                     initialScale={1}
-                    minScale={0.5}
+                    minScale={1.0}
                     maxScale={3}
-                    centerOnInit={true}
+                    centerOnInit={false}
                     wheel={{ step: 0.1 }}
                     doubleClick={{ disabled: true }}
+                    panning={{ disabled: false }}
                   >
                     {({ zoomIn, zoomOut, resetTransform }) => (
                       <>
@@ -354,14 +376,23 @@ const ParkingMapSelector = ({
                         <TransformComponent
                           wrapperStyle={{
                             width: "100%",
-                            height: "500px",
+                            height: window.innerWidth < 640 ? "400px" : "500px",
                             border: "2px solid #e5e7eb",
                             borderRadius: "0.5rem",
                             overflow: "hidden",
                             backgroundColor: "#f9fafb"
                           }}
+                          contentStyle={{
+                            minWidth: "100%",
+                            minHeight: "100%"
+                          }}
                         >
-                          <div style={{ position: "relative", width: "100%", minHeight: "500px" }}>
+                          <div style={{ 
+                            position: "relative", 
+                            width: "100%", 
+                            minWidth: "600px",
+                            minHeight: "400px"
+                          }}>
                             {selectedGroup?.floor_plan_url ? (
                               <>
                                 <img
