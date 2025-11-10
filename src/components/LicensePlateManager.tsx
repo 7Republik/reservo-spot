@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { Plus, Check, Clock, Trash2, X, AlertCircle } from "lucide-react";
+import { Plus, Check, Clock, Trash2, X, AlertCircle, ChevronDown } from "lucide-react";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 
 interface LicensePlateManagerProps {
   userId: string;
@@ -44,6 +46,7 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
   const [loading, setLoading] = useState(true);
   const [requestedElectric, setRequestedElectric] = useState(false);
   const [requestedDisability, setRequestedDisability] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   useEffect(() => {
     loadPlates();
@@ -129,64 +132,95 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Add New Plate */}
-      <Card className="p-4">
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="plate">Nueva Matrícula</Label>
-            <div className="flex gap-2 mt-2">
-              <Input
-                id="plate"
-                placeholder="1234ABC"
-                value={newPlate}
-                onChange={(e) => setNewPlate(e.target.value.toUpperCase())}
-                maxLength={10}
-                className="flex-1"
-              />
-              <Button onClick={handleAddPlate} disabled={!newPlate.trim()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Añadir
-              </Button>
+      {/* Add New Plate - Collapsible */}
+      <Collapsible open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Card className="p-4">
+          <CollapsibleTrigger className="w-full">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-base">Añadir Matrícula</h3>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {plates.length} registradas
+                </Badge>
+                <ChevronDown className={cn(
+                  "h-5 w-5 transition-transform duration-200",
+                  isFormOpen && "transform rotate-180"
+                )} />
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              La matrícula debe ser aprobada por un administrador antes de poder usarse
-            </p>
-          </div>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-4">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="plate" className="text-sm">Nueva Matrícula</Label>
+                <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                  <Input
+                    id="plate"
+                    placeholder="1234ABC"
+                    value={newPlate}
+                    onChange={(e) => setNewPlate(e.target.value.toUpperCase())}
+                    maxLength={10}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={handleAddPlate} 
+                    disabled={!newPlate.trim()}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Añadir
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  La matrícula debe ser aprobada por un administrador antes de poder usarse
+                </p>
+              </div>
 
-          <div className="space-y-3 mt-4 p-4 bg-muted/50 rounded-lg">
-            <p className="text-sm font-medium">Permisos especiales (opcional)</p>
-            <p className="text-xs text-muted-foreground">
-              Marca las opciones que apliquen a este vehículo. El administrador revisará tu solicitud.
-            </p>
-            
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="electric" 
-                  checked={requestedElectric}
-                  onCheckedChange={(checked) => setRequestedElectric(checked as boolean)}
-                />
-                <Label htmlFor="electric" className="text-sm font-normal cursor-pointer flex items-center gap-2">
-                  ⚡ Mi vehículo es eléctrico
-                  <span className="text-xs text-muted-foreground">(para acceso a plazas con cargador)</span>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="disability" 
-                  checked={requestedDisability}
-                  onCheckedChange={(checked) => setRequestedDisability(checked as boolean)}
-                />
-                <Label htmlFor="disability" className="text-sm font-normal cursor-pointer flex items-center gap-2">
-                  ♿ Tengo permiso de movilidad reducida
-                  <span className="text-xs text-muted-foreground">(para acceso a plazas PMR)</span>
-                </Label>
+              <div className="space-y-3 p-3 sm:p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium">Permisos especiales (opcional)</p>
+                <p className="text-xs text-muted-foreground">
+                  Marca las opciones que apliquen a este vehículo. El administrador revisará tu solicitud.
+                </p>
+                
+                <div className="space-y-2">
+                  <div className="flex items-start sm:items-center space-x-2">
+                    <Checkbox 
+                      id="electric" 
+                      checked={requestedElectric}
+                      onCheckedChange={(checked) => setRequestedElectric(checked as boolean)}
+                      className="mt-1 sm:mt-0"
+                    />
+                    <Label 
+                      htmlFor="electric" 
+                      className="text-sm font-normal cursor-pointer flex flex-col sm:flex-row sm:items-center gap-1"
+                    >
+                      <span>⚡ Mi vehículo es eléctrico</span>
+                      <span className="text-xs text-muted-foreground">(para acceso a plazas con cargador)</span>
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-start sm:items-center space-x-2">
+                    <Checkbox 
+                      id="disability" 
+                      checked={requestedDisability}
+                      onCheckedChange={(checked) => setRequestedDisability(checked as boolean)}
+                      className="mt-1 sm:mt-0"
+                    />
+                    <Label 
+                      htmlFor="disability" 
+                      className="text-sm font-normal cursor-pointer flex flex-col sm:flex-row sm:items-center gap-1"
+                    >
+                      <span>♿ Tengo permiso de movilidad reducida</span>
+                      <span className="text-xs text-muted-foreground">(para acceso a plazas PMR)</span>
+                    </Label>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </Card>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Plates List */}
       <div className="space-y-3">
@@ -202,111 +236,127 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
         ) : (
           <div className="grid gap-3">
             {plates.map((plate) => (
-              <Card key={plate.id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* European License Plate Design */}
-                    <div className="flex items-center border-2 border-black rounded overflow-hidden shadow-md">
+              <Card key={plate.id} className="p-3 sm:p-4">
+                {/* Container principal - vertical en móvil, horizontal en desktop */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  
+                  {/* Sección izquierda: Matrícula + Estado */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    {/* Matrícula europea (optimizada para móvil) */}
+                    <div className="flex items-center border-2 border-black rounded overflow-hidden shadow-md flex-shrink-0">
                       {/* Blue EU Section */}
-                      <div className="bg-[#003399] flex flex-col items-center justify-center px-2 py-2 text-white">
-                        <div className="text-sm leading-none mb-1" style={{ color: '#FFD700' }}>★</div>
-                        <div className="text-xs font-bold leading-none">E</div>
+                      <div className="bg-[#003399] flex flex-col items-center justify-center px-1 py-1 sm:px-1.5 sm:py-1.5 md:px-2 md:py-2 text-white">
+                        <div className="text-xs sm:text-sm leading-none mb-0.5" style={{ color: '#FFD700' }}>★</div>
+                        <div className="text-[0.6rem] sm:text-xs font-bold leading-none">E</div>
                       </div>
                       {/* White Plate Section */}
-                      <div className="bg-white px-4 py-2">
-                        <div className="font-mono font-bold text-2xl text-black tracking-wider">
+                      <div className="bg-white px-2 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2">
+                        <div className="font-mono font-bold text-lg sm:text-xl md:text-2xl text-black tracking-wider whitespace-nowrap">
                           {plate.plate_number}
                         </div>
                       </div>
                     </div>
-                    <div>
-                      {plate.rejected_at ? (
-                        <>
-                          <Badge variant="destructive" className="gap-1">
+                    
+                    {/* Estado y badges */}
+                    <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+                      {/* Badges en una línea con wrap */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Badge principal (Aprobada/Pendiente/Rechazada) */}
+                        {plate.rejected_at ? (
+                          <Badge variant="destructive" className="gap-1 text-xs">
                             <X className="h-3 w-3" />
                             Rechazada
                           </Badge>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Rechazada el {new Date(plate.rejected_at).toLocaleDateString()}
-                          </p>
-                        </>
-                      ) : plate.is_approved ? (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="default" className="bg-success text-success-foreground gap-1">
-                              <Check className="h-3 w-3" />
-                              Aprobada
-                            </Badge>
-                            {plate.approved_electric && (
-                              <div className="flex flex-col gap-0.5">
-                                <Badge 
-                                  variant="outline" 
-                                  className={`gap-1 ${
-                                    plate.electric_expires_at && new Date(plate.electric_expires_at) < new Date()
-                                      ? 'bg-red-500/10 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-800'
-                                      : 'bg-yellow-500/10 text-yellow-700 border-yellow-200 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-800'
-                                  }`}
-                                >
-                                  ⚡
-                                  {plate.electric_expires_at && new Date(plate.electric_expires_at) < new Date() && ' EXPIRADO'}
-                                </Badge>
-                                {plate.electric_expires_at && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {new Date(plate.electric_expires_at) > new Date() 
-                                      ? `Válido hasta: ${new Date(plate.electric_expires_at).toLocaleDateString()}`
-                                      : '⚠️ Expirado'}
-                                  </span>
-                                )}
-                              </div>
+                        ) : plate.is_approved ? (
+                          <Badge variant="default" className="bg-success text-success-foreground gap-1 text-xs">
+                            <Check className="h-3 w-3" />
+                            Aprobada
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-warning text-warning gap-1 text-xs">
+                            <Clock className="h-3 w-3" />
+                            Pendiente
+                          </Badge>
+                        )}
+                        
+                        {/* Badges de permisos especiales */}
+                        {plate.approved_electric && (
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "gap-1 text-xs",
+                              plate.electric_expires_at && new Date(plate.electric_expires_at) < new Date()
+                                ? 'bg-red-500/10 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-800'
+                                : 'bg-yellow-500/10 text-yellow-700 border-yellow-200 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-800'
                             )}
-                            {plate.approved_disability && (
-                              <div className="flex flex-col gap-0.5">
-                                <Badge 
-                                  variant="outline" 
-                                  className={`gap-1 ${
-                                    plate.disability_expires_at && new Date(plate.disability_expires_at) < new Date()
-                                      ? 'bg-red-500/10 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-800'
-                                      : 'bg-blue-500/10 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-800'
-                                  }`}
-                                >
-                                  ♿
-                                  {plate.disability_expires_at && new Date(plate.disability_expires_at) < new Date() && ' EXPIRADO'}
-                                </Badge>
-                                {plate.disability_expires_at && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {new Date(plate.disability_expires_at) > new Date() 
-                                      ? `Válido hasta: ${new Date(plate.disability_expires_at).toLocaleDateString()}`
-                                      : '⚠️ Expirado'}
-                                  </span>
-                                )}
-                              </div>
+                          >
+                            ⚡
+                            {plate.electric_expires_at && new Date(plate.electric_expires_at) < new Date() && ' EXPIRADO'}
+                          </Badge>
+                        )}
+                        
+                        {plate.approved_disability && (
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "gap-1 text-xs",
+                              plate.disability_expires_at && new Date(plate.disability_expires_at) < new Date()
+                                ? 'bg-red-500/10 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-800'
+                                : 'bg-blue-500/10 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-800'
                             )}
-                          </div>
-                          {plate.approved_at && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Aprobada el {new Date(plate.approved_at).toLocaleDateString()}
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <Badge variant="outline" className="border-warning text-warning gap-1">
-                          <Clock className="h-3 w-3" />
-                          Pendiente
-                        </Badge>
+                          >
+                            ♿
+                            {plate.disability_expires_at && new Date(plate.disability_expires_at) < new Date() && ' EXPIRADO'}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Fechas de expiración en líneas separadas */}
+                      {plate.approved_electric && plate.electric_expires_at && (
+                        <span className="text-xs text-muted-foreground">
+                          ⚡ {new Date(plate.electric_expires_at) > new Date() 
+                            ? `Válido hasta: ${new Date(plate.electric_expires_at).toLocaleDateString()}`
+                            : '⚠️ Expirado'}
+                        </span>
+                      )}
+                      
+                      {plate.approved_disability && plate.disability_expires_at && (
+                        <span className="text-xs text-muted-foreground">
+                          ♿ {new Date(plate.disability_expires_at) > new Date() 
+                            ? `Válido hasta: ${new Date(plate.disability_expires_at).toLocaleDateString()}`
+                            : '⚠️ Expirado'}
+                        </span>
+                      )}
+                      
+                      {/* Fecha de aprobación/rechazo */}
+                      {plate.approved_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Aprobada el {new Date(plate.approved_at).toLocaleDateString()}
+                        </p>
+                      )}
+                      {plate.rejected_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Rechazada el {new Date(plate.rejected_at).toLocaleDateString()}
+                        </p>
                       )}
                     </div>
                   </div>
+                  
+                  {/* Botón eliminar (solo para rechazadas) */}
                   {plate.rejected_at && (
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleDeletePlate(plate.id)}
+                      className="w-full sm:w-auto"
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Eliminar
+                      <Trash2 className="h-4 w-4 sm:mr-2" />
+                      <span className="sm:inline">Eliminar</span>
                     </Button>
                   )}
                 </div>
+                
+                {/* Mensaje de rechazo (debajo de todo) */}
                 {plate.rejected_at && (
                   <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
@@ -319,7 +369,7 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
                           <span className="font-medium">Motivo:</span> {plate.rejection_reason}
                         </p>
                       )}
-                      <p className="text-sm text-destructive/80">
+                      <p className="text-xs sm:text-sm text-destructive/80">
                         Puedes eliminarla y volver a solicitarla después de verificar los datos con la empresa.
                       </p>
                     </div>
