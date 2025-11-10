@@ -3,11 +3,54 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { LicensePlate, ExpirationType } from "@/types/admin";
 
+/**
+ * Custom hook for managing license plate approvals in the admin panel
+ * 
+ * Handles pending license plate requests from users, including:
+ * - Approving plates with optional electric/disability permits
+ * - Rejecting plates with reason
+ * - Updating permit expiration dates
+ * 
+ * **Caching**: Implements automatic caching to prevent unnecessary reloads.
+ * Use `forceReload=true` to invalidate cache after mutations.
+ * 
+ * @returns {Object} License plates state and operations
+ * @returns {LicensePlate[]} pendingPlates - Array of pending license plates
+ * @returns {boolean} loading - Loading state indicator
+ * @returns {Function} loadPendingPlates - Loads pending plates from DB (with cache)
+ * @returns {Function} approvePlate - Approves a license plate with permits
+ * @returns {Function} rejectPlate - Rejects a license plate with reason
+ * @returns {Function} updatePermissions - Updates electric/disability permits and expiration
+ * 
+ * @example
+ * ```tsx
+ * const {
+ *   pendingPlates,
+ *   loading,
+ *   approvePlate,
+ *   rejectPlate
+ * } = useLicensePlates();
+ * 
+ * useEffect(() => {
+ *   loadPendingPlates();
+ * }, []);
+ * 
+ * const handleApprove = async (plateId: string) => {
+ *   await approvePlate(plateId, true, false); // Approve with electric permit
+ * };
+ * ```
+ */
 export const useLicensePlates = () => {
   const [pendingPlates, setPendingPlates] = useState<LicensePlate[]>([]);
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
 
+  /**
+   * Loads all pending license plate requests with user profiles
+   * 
+   * @param {boolean} forceReload - If true, bypasses cache and fetches fresh data
+   * @returns {Promise<void>}
+   */
   const loadPendingPlates = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
     if (isCached.current && !forceReload) {
@@ -51,6 +94,15 @@ export const useLicensePlates = () => {
     }
   };
 
+  /**
+   * Approves a license plate request with optional special permits
+   * 
+   * @param {string} plateId - License plate UUID to approve
+   * @param {boolean} approveElectric - Grant electric vehicle permit
+   * @param {boolean} approveDisability - Grant disability/PMR permit
+   * @returns {Promise<void>}
+   * @throws {Error} If approval fails
+   */
   const approvePlate = async (
     plateId: string,
     approveElectric: boolean,
@@ -81,6 +133,14 @@ export const useLicensePlates = () => {
     }
   };
 
+  /**
+   * Rejects a license plate request with a reason
+   * 
+   * @param {string} plateId - License plate UUID to reject
+   * @param {string} reason - Rejection reason (shown to user)
+   * @returns {Promise<void>}
+   * @throws {Error} If rejection fails
+   */
   const rejectPlate = async (plateId: string, reason: string) => {
     try {
       const { error } = await supabase
@@ -103,6 +163,24 @@ export const useLicensePlates = () => {
     }
   };
 
+  /**
+   * Updates electric and disability permits with expiration dates
+   * 
+   * Expiration can be set as:
+   * - 'never': Permit never expires (null in DB)
+   * - 'days': Expires after N days from now
+   * - 'date': Expires on specific date
+   * 
+   * @param {string} plateId - License plate UUID
+   * @param {Object} electric - Electric permit configuration
+   * @param {boolean} electric.approved - Whether permit is approved
+   * @param {ExpirationType} electric.expirationType - 'never' | 'days' | 'date'
+   * @param {string} [electric.expirationDays] - Number of days (if type='days')
+   * @param {Date} [electric.expirationDate] - Expiration date (if type='date')
+   * @param {Object} disability - Disability permit configuration (same structure)
+   * @returns {Promise<void>}
+   * @throws {Error} If update fails
+   */
   const updatePermissions = async (
     plateId: string,
     electric: {

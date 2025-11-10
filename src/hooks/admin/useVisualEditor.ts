@@ -3,6 +3,62 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ParkingSpot, ParkingGroup } from "@/types/admin";
 
+/**
+ * Custom hook for visual parking map editor
+ * 
+ * Manages the interactive visual editor where admins can:
+ * - Place parking spots on a floor plan image by clicking
+ * - Edit spot attributes (number, accessible, charger, compact)
+ * - Delete spots from the map
+ * - Adjust spot button size (persisted to `parking_groups.button_size`)
+ * - Toggle drawing mode for rapid spot creation
+ * 
+ * **No Caching**: This hook doesn't implement caching as it's used in a single
+ * editing session. Spots are always reloaded after mutations for accuracy.
+ * 
+ * **Coordinates**: Stores X,Y positions relative to floor plan natural size.
+ * Used by both admin editor and user map view with `react-zoom-pan-pinch`.
+ * 
+ * @returns {Object} Visual editor state and operations
+ * @returns {ParkingGroup|null} selectedGroup - Currently selected parking group
+ * @returns {Function} setSelectedGroup - Sets the selected group
+ * @returns {ParkingSpot[]} spots - Spots in the selected group
+ * @returns {boolean} isDrawingMode - Whether drawing mode is active
+ * @returns {Function} setIsDrawingMode - Toggles drawing mode
+ * @returns {number} spotButtonSize - Current button size in pixels (16-64)
+ * @returns {Function} setSpotButtonSize - Sets button size locally
+ * @returns {Object} floorPlanDimensions - Floor plan image dimensions {width, height}
+ * @returns {Function} setFloorPlanDimensions - Sets floor plan dimensions
+ * @returns {boolean} loading - Loading state indicator
+ * @returns {Function} loadEditorSpots - Loads spots for selected group
+ * @returns {Function} updateButtonSize - Saves button size to DB
+ * @returns {Function} createSpot - Creates spot at X,Y coordinates
+ * @returns {Function} updateSpot - Updates spot attributes
+ * @returns {Function} deleteSpot - Deletes a spot
+ * 
+ * @example
+ * ```tsx
+ * const {
+ *   selectedGroup,
+ *   setSelectedGroup,
+ *   spots,
+ *   isDrawingMode,
+ *   createSpot,
+ *   spotButtonSize,
+ *   updateButtonSize
+ * } = useVisualEditor();
+ * 
+ * const handleMapClick = async (x: number, y: number) => {
+ *   if (isDrawingMode) {
+ *     await createSpot(x, y);
+ *   }
+ * };
+ * 
+ * const handleSizeChange = (newSize: number) => {
+ *   updateButtonSize(newSize); // Saves to DB
+ * };
+ * ```
+ */
 export const useVisualEditor = () => {
   const [selectedGroup, setSelectedGroup] = useState<ParkingGroup | null>(null);
   const [spots, setSpots] = useState<ParkingSpot[]>([]);

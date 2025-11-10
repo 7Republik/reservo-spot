@@ -3,6 +3,44 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ReservationSettings } from "@/types/admin";
 
+/**
+ * Custom hook for managing global reservation settings
+ * 
+ * Controls application-wide reservation rules:
+ * - Advance reservation days: How far in advance users can book
+ * - Daily refresh hour: When the reservation window "rolls forward"
+ * 
+ * **Caching**: Implements automatic caching to prevent unnecessary reloads.
+ * Use `forceReload=true` to invalidate cache after mutations.
+ * 
+ * @returns {Object} Reservation settings state and operations
+ * @returns {ReservationSettings} settings - Current reservation settings
+ * @returns {boolean} loading - Loading state indicator
+ * @returns {Function} loadSettings - Loads settings from DB (with cache)
+ * @returns {Function} saveSettings - Saves settings to DB
+ * @returns {Function} updateSettings - Updates local state without saving
+ * 
+ * @example
+ * ```tsx
+ * const {
+ *   settings,
+ *   loading,
+ *   updateSettings,
+ *   saveSettings
+ * } = useReservationSettings();
+ * 
+ * useEffect(() => {
+ *   loadSettings();
+ * }, []);
+ * 
+ * const handleSave = async () => {
+ *   const success = await saveSettings({
+ *     advance_reservation_days: 14,
+ *     daily_refresh_hour: 9
+ *   });
+ * };
+ * ```
+ */
 export const useReservationSettings = () => {
   const [settings, setSettings] = useState<ReservationSettings>({
     advance_reservation_days: 7,

@@ -3,6 +3,51 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ParkingSpot } from "@/types/admin";
 
+/**
+ * Custom hook for managing individual parking spots
+ * 
+ * Provides spot management operations including:
+ * - Loading all spots with their parking group info
+ * - Adding new spots with attributes (accessible, charger, compact)
+ * - Toggling spot active/inactive status
+ * 
+ * **Note**: For visual map editing with coordinates, use `useVisualEditor` instead.
+ * This hook is for the "Plazas" tab list view.
+ * 
+ * **Caching**: Implements automatic caching to prevent unnecessary reloads.
+ * Use `forceReload=true` to invalidate cache after mutations.
+ * 
+ * @returns {Object} Parking spots state and operations
+ * @returns {ParkingSpot[]} spots - Array of parking spots with group info
+ * @returns {boolean} loading - Loading state indicator
+ * @returns {Function} loadSpots - Loads all spots from DB (with cache)
+ * @returns {Function} addSpot - Creates a new parking spot
+ * @returns {Function} toggleSpot - Toggles spot active/inactive status
+ * 
+ * @example
+ * ```tsx
+ * const {
+ *   spots,
+ *   loading,
+ *   addSpot,
+ *   toggleSpot
+ * } = useParkingSpots();
+ * 
+ * useEffect(() => {
+ *   loadSpots();
+ * }, []);
+ * 
+ * const handleAdd = async () => {
+ *   const success = await addSpot({
+ *     spotNumber: "A-101",
+ *     groupId: "group-uuid",
+ *     isAccessible: true,
+ *     hasCharger: false,
+ *     isCompact: false
+ *   });
+ * };
+ * ```
+ */
 export const useParkingSpots = () => {
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [loading, setLoading] = useState(false);

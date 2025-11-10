@@ -3,6 +3,63 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { UserWithRole } from "@/types/admin";
 
+/**
+ * Custom hook for comprehensive user management in the admin panel
+ * 
+ * Provides complete user lifecycle management including:
+ * - Loading users with roles and license plates
+ * - Blocking/unblocking users
+ * - Deactivating/reactivating users
+ * - Permanently deleting users (requires password)
+ * - Managing user roles and parking group assignments
+ * - Approving/rejecting license plates from user cards
+ * 
+ * **Caching**: Implements automatic caching to prevent unnecessary reloads.
+ * Use `forceReload=true` to invalidate cache after mutations.
+ * 
+ * **UI State Management**: Includes expanded users tracking and active tabs
+ * for accordion-style user cards.
+ * 
+ * @returns {Object} User management state and operations
+ * @returns {UserWithRole[]} users - Array of users with roles and plates
+ * @returns {boolean} loading - Loading state indicator
+ * @returns {Set<string>} expandedUsers - Set of expanded user IDs (for accordion)
+ * @returns {Record<string,string>} activeTab - Active tab per user ID
+ * @returns {string|null} savingUserId - ID of user currently being saved
+ * @returns {Function} loadUsers - Loads all users from DB (with cache)
+ * @returns {Function} handleBlockUser - Blocks a user with reason
+ * @returns {Function} handleUnblockUser - Unblocks a user
+ * @returns {Function} handleDeactivateUser - Deactivates user (calls DB function)
+ * @returns {Function} handleReactivateUser - Reactivates user
+ * @returns {Function} handlePermanentlyDeleteUser - Permanently deletes user (requires password)
+ * @returns {Function} handleUpdateUserRoles - Updates user roles
+ * @returns {Function} debouncedSaveRoles - Debounced version of role update (1s delay)
+ * @returns {Function} handleApprovePlateFromUser - Approves plate from user card
+ * @returns {Function} handleRejectPlateFromUser - Rejects plate from user card
+ * @returns {Function} toggleUserExpanded - Toggles user card expansion
+ * @returns {Function} setUserTab - Sets active tab for user
+ * 
+ * @example
+ * ```tsx
+ * const {
+ *   users,
+ *   loading,
+ *   handleBlockUser,
+ *   handleDeactivateUser
+ * } = useUserManagement();
+ * 
+ * useEffect(() => {
+ *   loadUsers();
+ * }, []);
+ * 
+ * const handleBlock = async (userId: string) => {
+ *   const success = await handleBlockUser(userId, "Spam behavior");
+ *   if (success) {
+ *     // Users automatically reloaded
+ *   }
+ * };
+ * ```
+ */
 export const useUserManagement = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(false);
