@@ -219,7 +219,7 @@ const ParkingMapSelector = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto p-4 sm:p-6">
+      <DialogContent className="max-w-6xl max-h-[90vh] sm:max-h-[90vh] h-auto overflow-hidden w-[95vw] sm:w-auto">
         <DialogHeader>
           <DialogTitle>Selecciona tu plaza de parking</DialogTitle>
           <DialogDescription>
@@ -335,8 +335,8 @@ const ParkingMapSelector = ({
                 // Map view CON ZOOM/PAN
                 <div className="relative">
                   <TransformWrapper
-                    initialScale={window.innerWidth < 640 ? 0.6 : 1}
-                    minScale={window.innerWidth < 640 ? 0.5 : 1.0}
+                    initialScale={1}
+                    minScale={1.0}
                     maxScale={3}
                     centerOnInit={false}
                     wheel={{ step: 0.1 }}
@@ -383,13 +383,14 @@ const ParkingMapSelector = ({
                             backgroundColor: "#f9fafb"
                           }}
                           contentStyle={{
-                            width: "100%",
+                            minWidth: "100%",
                             minHeight: "100%"
                           }}
                         >
                           <div style={{ 
                             position: "relative", 
-                            width: "100%",
+                            width: "100%", 
+                            minWidth: "600px",
                             minHeight: "400px"
                           }}>
                             {selectedGroup?.floor_plan_url ? (
@@ -410,7 +411,7 @@ const ParkingMapSelector = ({
                                     key={spot.id}
                                     className={cn(
                                       "absolute transform -translate-x-1/2 -translate-y-1/2",
-                                      "rounded-lg flex items-center justify-center",
+                                      "rounded-lg flex flex-col items-center justify-center",
                                       "text-white font-bold shadow-lg border-2 border-white",
                                       "transition-all duration-200",
                                       getSpotColor(spot),
@@ -423,19 +424,24 @@ const ParkingMapSelector = ({
                                       top: `${spot.position_y}%`,
                                       width: `${buttonSize}px`,
                                       height: `${buttonSize}px`,
-                                      fontSize: `${Math.max(buttonSize * 0.35, 10)}px`,
+                                      fontSize: `${buttonSize * 0.3}px`,
                                     }}
                                     onClick={() => handleSpotClick(spot)}
-                                    title={`Plaza ${spot.spot_number}${spot.is_accessible ? ' ♿' : ''}${spot.has_charger ? ' ⚡' : ''}${spot.is_compact ? ' 🚗' : ''} - ${
+                                    title={`Plaza ${spot.spot_number} - ${
                                       spot.status === 'available' ? 'Disponible' :
                                       spot.status === 'occupied' ? 'Ocupada' :
                                       spot.status === 'user_reserved' ? 'Tu reserva' :
                                       'No disponible'
                                     }`}
                                   >
-                                    <span className="drop-shadow-md">
+                                    <span style={{ fontSize: `${buttonSize * 0.35}px` }}>
                                       {spot.spot_number.split('-')[1] || spot.spot_number}
                                     </span>
+                                    <div className="flex gap-0.5 mt-0.5">
+                                      {spot.is_accessible && <span style={{ fontSize: `${buttonSize * 0.25}px` }}>♿</span>}
+                                      {spot.has_charger && <span style={{ fontSize: `${buttonSize * 0.25}px` }}>⚡</span>}
+                                      {spot.is_compact && <span style={{ fontSize: `${buttonSize * 0.25}px` }}>🚗</span>}
+                                    </div>
                                   </div>
                                 ))}
                               </>
