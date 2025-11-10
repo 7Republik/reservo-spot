@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import logoReserveo from "@/assets/logo-reserveo.png";
 import { User, Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Calendar, Car, LogOut, Settings, ParkingSquare, Loader2 } from "lucide-react";
+import { Calendar, LogOut, Settings, ParkingSquare, Loader2 } from "lucide-react";
 import ParkingCalendar from "@/components/ParkingCalendar";
 import LicensePlateManager from "@/components/LicensePlateManager";
 import AdminPanel from "@/components/AdminPanel";
@@ -175,8 +176,12 @@ const Dashboard = () => {
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="bg-primary p-1.5 sm:p-2 rounded-lg">
-                <Car className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
+              <div className="bg-white/10 backdrop-blur-sm p-1.5 sm:p-2 rounded-lg">
+                <img 
+                  src={logoReserveo} 
+                  alt="Logo RESERVEO" 
+                  className="h-6 w-6 sm:h-7 sm:w-7 object-contain"
+                />
               </div>
               <div>
                 <h1 className="text-base sm:text-xl font-bold text-foreground">RESERVEO</h1>

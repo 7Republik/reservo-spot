@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import logoReserveo from "@/assets/logo-reserveo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Car, Eye, EyeOff, ArrowLeft, Mail, Lock, User, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import "@/styles/auth.css";
@@ -472,8 +473,12 @@ const Auth = () => {
       <div className="w-full max-w-md">
         {/* Logo animado */}
         <div className="flex justify-center mb-8 animate-fade-in">
-          <div className="bg-gradient-to-br from-primary to-primary/80 p-4 rounded-2xl shadow-lg auth-logo animate-pulse-glow">
-            <Car className="h-12 w-12 text-primary-foreground" />
+          <div className="bg-white/10 dark:bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl shadow-lg auth-logo animate-pulse-glow">
+            <img 
+              src={logoReserveo} 
+              alt="Logo RESERVEO" 
+              className="h-16 w-16 object-contain"
+            />
           </div>
         </div>
         

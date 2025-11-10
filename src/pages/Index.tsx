@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Car, Calendar, Shield, Users, CheckCircle2 } from "lucide-react";
+import { Calendar, Shield, Users, CheckCircle2 } from "lucide-react";
+import logoReserveo from "@/assets/logo-reserveo.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -17,8 +18,12 @@ const Index = () => {
               <div className="text-center space-y-8">
                 {/* Icono */}
                 <div className="flex justify-center">
-                  <div className="bg-primary p-6 rounded-3xl shadow-lg">
-                    <Car className="h-16 w-16 text-primary-foreground" />
+                  <div className="bg-white/10 backdrop-blur-sm p-6 rounded-3xl shadow-lg">
+                    <img 
+                      src={logoReserveo} 
+                      alt="Logo RESERVEO" 
+                      className="h-20 w-20 object-contain"
+                    />
                   </div>
                 </div>
                 
