@@ -15,6 +15,7 @@ interface ParkingMapSelectorProps {
   userId: string;
   selectedDate: Date | null;
   userGroups: string[];
+  selectedGroupId: string | null;
   onSpotSelected: (spotId: string, spotNumber: string) => void;
   onCancel: () => void;
   isOpen: boolean;
@@ -44,7 +45,8 @@ interface SpotWithStatus {
 const ParkingMapSelector = ({ 
   userId, 
   selectedDate, 
-  userGroups, 
+  userGroups,
+  selectedGroupId,
   onSpotSelected, 
   onCancel, 
   isOpen 
@@ -70,6 +72,25 @@ const ParkingMapSelector = ({
   const loadAvailableGroups = async () => {
     try {
       setLoading(true);
+      
+      // Si hay grupo pre-seleccionado, cargar solo ese
+      if (selectedGroupId) {
+        const { data, error } = await supabase
+          .from("parking_groups")
+          .select("*")
+          .eq("id", selectedGroupId)
+          .eq("is_active", true)
+          .single();
+
+        if (error) throw error;
+        
+        setAvailableGroups([data]);
+        setSelectedGroup(data);
+        setLoading(false);
+        return;
+      }
+
+      // Comportamiento original si no hay grupo pre-seleccionado
       const { data, error } = await supabase
         .from("parking_groups")
         .select("*")
@@ -201,8 +222,8 @@ const ParkingMapSelector = ({
           </div>
         ) : (
           <>
-            {/* Group selector (if multiple groups) */}
-            {availableGroups.length > 1 && (
+            {/* Group selector (if multiple groups and no pre-selected group) */}
+            {availableGroups.length > 1 && !selectedGroupId && (
               <Tabs 
                 value={selectedGroup?.id} 
                 onValueChange={(id) => {

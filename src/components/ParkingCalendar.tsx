@@ -8,6 +8,8 @@ import { Calendar as CalendarIcon, Check, X, AlertCircle, ChevronLeft, ChevronRi
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isBefore, startOfDay, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import ParkingMapSelector from "./ParkingMapSelector";
+import ReservationDetailsModal from "./ReservationDetailsModal";
+import GroupSelectorModal from "./GroupSelectorModal";
 
 interface ParkingCalendarProps {
   userId: string;
@@ -35,6 +37,11 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
   const [userGroupNames, setUserGroupNames] = useState<string[]>([]);
   const [showMapSelector, setShowMapSelector] = useState(false);
   const [selectedDateForMap, setSelectedDateForMap] = useState<Date | null>(null);
+  const [showGroupSelector, setShowGroupSelector] = useState(false);
+  const [showReservationDetails, setShowReservationDetails] = useState(false);
+  const [selectedReservationDetails, setSelectedReservationDetails] = useState<any>(null);
+  const [selectedGroupForReservation, setSelectedGroupForReservation] = useState<{id: string, name: string} | null>(null);
+  const [editingReservationId, setEditingReservationId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUserGroups();
@@ -188,9 +195,95 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       return;
     }
 
-    // Abrir selector visual
     setSelectedDateForMap(date);
+    
+    // Si solo tiene 1 grupo, ir directo al selector de plazas
+    if (userGroups.length === 1) {
+      setSelectedGroupForReservation({ id: userGroups[0], name: userGroupNames[0] });
+      setShowMapSelector(true);
+      return;
+    }
+    
+    // Si tiene múltiples grupos, abrir selector de grupo primero
+    setShowGroupSelector(true);
+  };
+
+  const handleGroupSelected = (groupId: string, groupName: string) => {
+    setSelectedGroupForReservation({ id: groupId, name: groupName });
+    setShowGroupSelector(false);
     setShowMapSelector(true);
+  };
+
+  const loadReservationDetails = async (reservationId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select(`
+          id,
+          reservation_date,
+          parking_spots (
+            id,
+            spot_number,
+            is_accessible,
+            has_charger,
+            is_compact,
+            parking_groups (
+              name
+            )
+          )
+        `)
+        .eq("id", reservationId)
+        .single();
+
+      if (error) throw error;
+
+      const spot = data.parking_spots as any;
+      const group = spot?.parking_groups as any;
+
+      setSelectedReservationDetails({
+        id: data.id,
+        date: new Date(data.reservation_date),
+        spotNumber: spot?.spot_number || "",
+        groupName: group?.name || "",
+        spotId: spot?.id || "",
+        isAccessible: spot?.is_accessible || false,
+        hasCharger: spot?.has_charger || false,
+        isCompact: spot?.is_compact || false,
+      });
+      setShowReservationDetails(true);
+    } catch (error: any) {
+      console.error("Error loading reservation details:", error);
+      toast.error("Error al cargar detalles de la reserva");
+    }
+  };
+
+  const handleEditReservation = async (reservationId: string, date: Date) => {
+    setShowReservationDetails(false);
+    
+    try {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("parking_spots(group_id, parking_groups(name))")
+        .eq("id", reservationId)
+        .single();
+
+      if (error) throw error;
+
+      const spot = data.parking_spots as any;
+      const group = spot?.parking_groups as any;
+      const groupId = spot?.group_id;
+      const groupName = group?.name;
+      
+      if (groupId) {
+        setSelectedGroupForReservation({ id: groupId, name: groupName });
+        setSelectedDateForMap(date);
+        setEditingReservationId(reservationId);
+        setShowMapSelector(true);
+      }
+    } catch (error: any) {
+      console.error("Error loading reservation for edit:", error);
+      toast.error("Error al preparar la edición");
+    }
   };
 
   const createReservationWithSpot = async (spotId: string, spotNumber: string, date: Date) => {
@@ -200,6 +293,30 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
     dayElement?.classList.add('animate-pulse');
     
     try {
+      // Si estamos editando, actualizar en lugar de insertar
+      if (editingReservationId) {
+        const { error: updateError } = await supabase
+          .from("reservations")
+          .update({ spot_id: spotId })
+          .eq("id", editingReservationId);
+
+        if (updateError) throw updateError;
+
+        dayElement?.classList.remove('animate-pulse');
+        dayElement?.classList.add('animate-bounce');
+        setTimeout(() => {
+          dayElement?.classList.remove('animate-bounce');
+        }, 500);
+
+        toast.success(`Plaza cambiada a ${spotNumber}`);
+        setEditingReservationId(null);
+        setSelectedGroupForReservation(null);
+        loadReservations();
+        loadAvailableSpots();
+        setShowMapSelector(false);
+        return true;
+      }
+
       // Validate reservation using database function
       const { data: validation, error: validationError } = await supabase
         .rpc("validate_parking_spot_reservation", {
@@ -249,6 +366,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       }, 500);
 
       toast.success(`¡Plaza ${spotNumber} reservada con éxito!`);
+      setSelectedGroupForReservation(null);
       loadReservations();
       loadAvailableSpots();
       setShowMapSelector(false);
@@ -301,26 +419,6 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Info de grupos asignados */}
-      {userGroupNames.length > 0 && (
-        <Card className="p-4 bg-blue-50 border-blue-200">
-          <div className="flex items-center gap-3">
-            <CalendarIcon className="w-5 h-5 text-blue-600" />
-            <div>
-              <p className="text-sm font-medium text-blue-900">
-                Tienes acceso a {userGroupNames.length} {userGroupNames.length === 1 ? "grupo" : "grupos"} de parking
-              </p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {userGroupNames.map((name, index) => (
-                  <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
-                    {name}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {userGroups.length === 0 && !loading && (
         <Card className="p-6 bg-yellow-50 border-yellow-200">
@@ -338,37 +436,37 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         </Card>
       )}
 
-      {/* Month Navigation - Mejorado con diseño moderno */}
-      <div className="flex items-center justify-center gap-4">
+      {/* Month Navigation - Optimizado para móvil */}
+      <div className="flex items-center justify-center gap-2 sm:gap-4">
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-full hover:bg-gray-100 transition-colors duration-200"
+          className="h-8 w-8 sm:h-10 sm:w-10 rounded-full hover:bg-gray-100 transition-colors duration-200"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </Button>
         
-        <div className="px-6 py-3 rounded-full bg-gray-100">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight capitalize">
-            {format(currentMonth, "MMMM yyyy", { locale: es })}
+        <div className="px-3 py-2 sm:px-6 sm:py-3 rounded-full bg-gray-100">
+          <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-900 tracking-tight capitalize">
+            {format(currentMonth, "MMM yyyy", { locale: es })}
           </h2>
         </div>
         
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-full hover:bg-gray-100 transition-colors duration-200"
+          className="h-8 w-8 sm:h-10 sm:w-10 rounded-full hover:bg-gray-100 transition-colors duration-200"
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
         </Button>
       </div>
 
-      {/* Calendar Grid - Con mejoras visuales */}
-      <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4">
+      {/* Calendar Grid - Optimizado para móvil */}
+      <div className="grid grid-cols-7 gap-1 sm:gap-2 md:gap-3">
         {["L", "M", "X", "J", "V", "S", "D"].map((day, index) => (
-          <div key={day} className="text-center font-semibold text-[0.95rem] sm:text-sm text-gray-600 py-3">
+          <div key={day} className="text-center font-bold text-[0.7rem] sm:text-sm text-gray-700 py-1 sm:py-2">
             {day}
           </div>
         ))}
@@ -389,14 +487,16 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
             <Card
               key={day.toString()}
               data-date={dateStr}
-              className={`group relative overflow-hidden transition-all duration-200 hover:scale-[1.02] hover:shadow-lg min-h-[88px] sm:min-h-[100px] flex flex-col justify-between cursor-pointer ${
+              className={`group relative overflow-hidden transition-all duration-200 hover:scale-[1.02] hover:shadow-lg min-h-[70px] sm:min-h-[90px] md:min-h-[100px] flex flex-col justify-between cursor-pointer ${
                 !isSameMonth(day, currentMonth) ? "opacity-30" : ""
               } ${isToday(day) ? "ring-2 ring-blue-500 shadow-md" : ""} ${
                 reserved ? "bg-emerald-50 border-emerald-500" : 
                 available > 0 && !isPast ? "hover:border-blue-300 hover:shadow-md" : ""
               } ${isPast ? "opacity-40 cursor-not-allowed" : ""}`}
               onClick={() => {
-                if (!reserved && available > 0 && isSameMonth(day, currentMonth) && !isPast) {
+                if (reserved && reservation && !isPast) {
+                  loadReservationDetails(reservation.id);
+                } else if (!reserved && available > 0 && isSameMonth(day, currentMonth) && !isPast) {
                   handleReserve(day);
                 }
               }}
@@ -407,7 +507,9 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  if (!reserved && available > 0 && isSameMonth(day, currentMonth) && !isPast) {
+                  if (reserved && reservation && !isPast) {
+                    loadReservationDetails(reservation.id);
+                  } else if (!reserved && available > 0 && isSameMonth(day, currentMonth) && !isPast) {
                     handleReserve(day);
                   }
                 }
@@ -416,63 +518,43 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
               {/* Fondo con gradiente suave */}
               <div className="absolute inset-0 bg-gradient-to-br from-white to-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
               {/* Contenido principal */}
-              <div className="relative z-10 p-2 sm:p-3 flex flex-col h-full">
-                {/* Número del día con mejor jerarquía */}
-                <div className="flex items-center justify-between mb-1 sm:mb-2">
-                  <span className={`text-lg sm:text-xl font-bold ${
+              <div className="relative z-10 p-1 sm:p-2 md:p-3 flex flex-col h-full">
+                {/* Número del día */}
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-base sm:text-lg md:text-xl font-bold ${
                     isToday(day) ? "text-blue-600" : 
                     reserved ? "text-emerald-700" : 
                     "text-gray-900"
                   }`}>
                     {format(day, "d")}
                   </span>
-                  {/* Icono de estado más prominente */}
+                  {/* Icono de estado */}
                   {reserved && (
-                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
-                      <Check className="w-3 h-3 text-white" />
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
+                      <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
                     </div>
                   )}
                 </div>
                 
-                {/* Indicador de disponibilidad más visual */}
+                {/* Indicador de disponibilidad */}
                 <div className="mt-auto">
                   {!isPast && !reserved && available > 0 && (
-                    <div className="flex items-center gap-1">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
-                      <span className="hidden sm:inline text-xs font-medium text-emerald-700">
-                        {available} disponibles
-                      </span>
-                      <span className="sm:hidden text-xs font-semibold text-emerald-700" aria-hidden="true">
+                    <div className="flex items-center gap-0.5 sm:gap-1">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500" aria-hidden="true" />
+                      <span className="text-[0.6rem] sm:text-xs font-medium text-emerald-700">
                         {available}
                       </span>
                     </div>
                   )}
                   {available === 0 && !isPast && !reserved && (
-                    <div className="flex items-center gap-1">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500" aria-hidden="true" />
-                      <span className="hidden sm:inline text-xs font-medium text-red-700">
-                        Completo
+                    <div className="flex items-center gap-0.5 sm:gap-1">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" aria-hidden="true" />
+                      <span className="text-[0.6rem] sm:text-xs font-medium text-red-700">
+                        No
                       </span>
-                      <span className="sr-only">Completo</span>
                     </div>
                   )}
                 </div>
-                
-                {/* Botón de cancelar */}
-                {reserved && reservation && !isPast && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="w-full text-xs h-7 sm:h-6 text-red-600 hover:text-red-700 hover:bg-red-50 mt-2 px-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCancel(reservation.id);
-                    }}
-                  >
-                    <X className="h-3 w-3 mr-1" />
-                    Cancelar
-                  </Button>
-                )}
               </div>
             </Card>
           );
@@ -496,17 +578,41 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       </div>
 
       {/* Parking Map Selector */}
+      <GroupSelectorModal
+        isOpen={showGroupSelector}
+        selectedDate={selectedDateForMap}
+        userGroups={userGroups}
+        onGroupSelected={handleGroupSelected}
+        onCancel={() => setShowGroupSelector(false)}
+      />
+
       <ParkingMapSelector
         isOpen={showMapSelector}
         userId={userId}
         selectedDate={selectedDateForMap}
         userGroups={userGroups}
+        selectedGroupId={selectedGroupForReservation?.id || null}
         onSpotSelected={(spotId, spotNumber) => {
           if (selectedDateForMap) {
             createReservationWithSpot(spotId, spotNumber, selectedDateForMap);
           }
         }}
-        onCancel={() => setShowMapSelector(false)}
+        onCancel={() => {
+          setShowMapSelector(false);
+          setSelectedGroupForReservation(null);
+          setEditingReservationId(null);
+        }}
+      />
+
+      <ReservationDetailsModal
+        isOpen={showReservationDetails}
+        reservation={selectedReservationDetails}
+        onCancel={handleCancel}
+        onEdit={handleEditReservation}
+        onClose={() => {
+          setShowReservationDetails(false);
+          setSelectedReservationDetails(null);
+        }}
       />
     </div>
   );
