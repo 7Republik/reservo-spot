@@ -74,49 +74,57 @@ const Index = () => {
       {/* Features Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="border-border/50 hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center mb-2">
-                <Calendar className="h-6 w-6 text-primary" />
+          {/* Card 1 */}
+          <Card className="group relative border-border/50 bg-card/50 backdrop-blur-sm hover:shadow-2xl hover:shadow-primary/20 transition-all duration-500 hover:-translate-y-2 animate-fade-in overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <CardHeader className="relative z-10">
+              <div className="bg-gradient-to-br from-primary to-primary/60 w-14 h-14 rounded-xl flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                <Calendar className="h-7 w-7 text-primary-foreground group-hover:scale-110 transition-transform duration-500" />
               </div>
-              <CardTitle>Reservas Fáciles</CardTitle>
-              <CardDescription>
+              <CardTitle className="group-hover:text-primary transition-colors duration-300">Reservas Fáciles</CardTitle>
+              <CardDescription className="group-hover:text-foreground/80 transition-colors duration-300">
                 Reserva tu plaza de aparcamiento por día completo con un solo clic
               </CardDescription>
             </CardHeader>
           </Card>
 
-          <Card className="border-border/50 hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="bg-success/10 w-12 h-12 rounded-lg flex items-center justify-center mb-2">
-                <CheckCircle2 className="h-6 w-6 text-success" />
+          {/* Card 2 */}
+          <Card className="group relative border-border/50 bg-card/50 backdrop-blur-sm hover:shadow-2xl hover:shadow-success/20 transition-all duration-500 hover:-translate-y-2 animate-fade-in [animation-delay:100ms] overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-success/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <CardHeader className="relative z-10">
+              <div className="bg-gradient-to-br from-success to-success/60 w-14 h-14 rounded-xl flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                <CheckCircle2 className="h-7 w-7 text-white group-hover:scale-110 transition-transform duration-500" />
               </div>
-              <CardTitle>Disponibilidad en Tiempo Real</CardTitle>
-              <CardDescription>
+              <CardTitle className="group-hover:text-success transition-colors duration-300">Disponibilidad en Tiempo Real</CardTitle>
+              <CardDescription className="group-hover:text-foreground/80 transition-colors duration-300">
                 Visualiza plazas disponibles con indicadores de color intuitivos
               </CardDescription>
             </CardHeader>
           </Card>
 
-          <Card className="border-border/50 hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center mb-2">
-                <Shield className="h-6 w-6 text-primary" />
+          {/* Card 3 */}
+          <Card className="group relative border-border/50 bg-card/50 backdrop-blur-sm hover:shadow-2xl hover:shadow-primary/20 transition-all duration-500 hover:-translate-y-2 animate-fade-in [animation-delay:200ms] overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <CardHeader className="relative z-10">
+              <div className="bg-gradient-to-br from-primary to-primary/60 w-14 h-14 rounded-xl flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                <Shield className="h-7 w-7 text-primary-foreground group-hover:scale-110 transition-transform duration-500" />
               </div>
-              <CardTitle>Gestión de Matrículas</CardTitle>
-              <CardDescription>
+              <CardTitle className="group-hover:text-primary transition-colors duration-300">Gestión de Matrículas</CardTitle>
+              <CardDescription className="group-hover:text-foreground/80 transition-colors duration-300">
                 Registra y gestiona tus vehículos con aprobación administrativa
               </CardDescription>
             </CardHeader>
           </Card>
 
-          <Card className="border-border/50 hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="bg-success/10 w-12 h-12 rounded-lg flex items-center justify-center mb-2">
-                <Users className="h-6 w-6 text-success" />
+          {/* Card 4 */}
+          <Card className="group relative border-border/50 bg-card/50 backdrop-blur-sm hover:shadow-2xl hover:shadow-success/20 transition-all duration-500 hover:-translate-y-2 animate-fade-in [animation-delay:300ms] overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-success/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <CardHeader className="relative z-10">
+              <div className="bg-gradient-to-br from-success to-success/60 w-14 h-14 rounded-xl flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                <Users className="h-7 w-7 text-white group-hover:scale-110 transition-transform duration-500" />
               </div>
-              <CardTitle>Grupos de Acceso</CardTitle>
-              <CardDescription>
+              <CardTitle className="group-hover:text-success transition-colors duration-300">Grupos de Acceso</CardTitle>
+              <CardDescription className="group-hover:text-foreground/80 transition-colors duration-300">
                 Sistema de roles con acceso diferenciado según privilegios
               </CardDescription>
             </CardHeader>
