@@ -3,12 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Shield, Users, CheckCircle2 } from "lucide-react";
 import logoReserveo from "@/assets/logo-reserveo.png";
-
 const Index = () => {
   const navigate = useNavigate();
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background">
+  return <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background">
       {/* Hero Section */}
       <header className="container mx-auto px-4 py-16 md:py-24">
         <div className="max-w-5xl mx-auto">
@@ -19,11 +16,7 @@ const Index = () => {
                 {/* Icono */}
                 <div className="flex justify-center">
                   <div className="bg-white/10 backdrop-blur-sm p-2 rounded-3xl shadow-lg">
-                    <img 
-                      src={logoReserveo} 
-                      alt="Logo RESERVEO" 
-                      className="h-32 w-32 object-contain"
-                    />
+                    <img src={logoReserveo} alt="Logo RESERVEO" className="h-32 w-32 object-contain" />
                   </div>
                 </div>
                 
@@ -45,19 +38,10 @@ const Index = () => {
 
                 {/* Botones */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                  <Button 
-                    size="lg" 
-                    className="text-lg px-10 h-14"
-                    onClick={() => navigate("/auth")}
-                  >
+                  <Button size="lg" className="text-lg px-10 h-14" onClick={() => navigate("/auth")}>
                     Acceder al Sistema
                   </Button>
-                  <Button 
-                    size="lg" 
-                    variant="outline"
-                    className="text-lg px-10 h-14"
-                    onClick={() => navigate("/auth")}
-                  >
+                  <Button size="lg" variant="outline" className="text-lg px-10 h-14" onClick={() => navigate("/auth")}>
                     Crear Cuenta
                   </Button>
                 </div>
@@ -139,18 +123,14 @@ const Index = () => {
           <Card className="border-border/50 shadow-2xl bg-card overflow-hidden">
             <CardHeader className="text-center pb-8">
               <div className="flex items-center justify-center gap-4 mb-4">
-                <div className="hidden md:block bg-gradient-to-br from-primary to-primary/60 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Calendar className="h-9 w-9 text-primary-foreground" />
-                </div>
+                
                 <div>
                   <CardTitle className="text-4xl mb-2">Optimiza la Gestión de tu Aparcamiento</CardTitle>
                   <CardDescription className="text-lg">
                     Diseñado específicamente para empresas modernas
                   </CardDescription>
                 </div>
-                <div className="hidden md:block bg-gradient-to-br from-success to-success/60 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Shield className="h-9 w-9 text-white" />
-                </div>
+                
               </div>
               
               {/* Microclaim */}
@@ -224,11 +204,7 @@ const Index = () => {
           <p className="text-xl text-muted-foreground">
             Únete a empresas que ya confían en RESERVEO
           </p>
-          <Button 
-            size="lg" 
-            className="text-lg px-12"
-            onClick={() => navigate("/auth")}
-          >
+          <Button size="lg" className="text-lg px-12" onClick={() => navigate("/auth")}>
             Comenzar Ahora
           </Button>
         </div>
@@ -251,8 +227,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
