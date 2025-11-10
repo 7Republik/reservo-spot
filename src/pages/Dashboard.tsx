@@ -179,8 +179,8 @@ const Dashboard = () => {
                 <Car className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-base sm:text-xl font-bold text-foreground">ParkingManager</h1>
-                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Gestión de Aparcamiento</p>
+                <h1 className="text-base sm:text-xl font-bold text-foreground">RESERVEO</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Te veo y te reservo</p>
               </div>
             </div>
             

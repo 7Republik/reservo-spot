@@ -480,11 +480,11 @@ const Auth = () => {
         {/* Card principal con animación */}
         <Card className="border-0 shadow-2xl backdrop-blur-sm bg-white/90 dark:bg-slate-900/90 animate-slide-up auth-card">
           <CardHeader className="space-y-3 text-center pb-6">
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent auth-title">
-              ParkingManager
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent auth-title">
+              RESERVEO
             </CardTitle>
             <CardDescription className="text-base text-muted-foreground auth-description">
-              Sistema de gestión inteligente de aparcamiento corporativo
+              Te veo y te reservo 😉 · Gestión inteligente de aparcamiento
             </CardDescription>
           </CardHeader>
           
@@ -501,12 +501,19 @@ const Auth = () => {
         </Card>
 
         {/* Footer con información de seguridad */}
-        <div className="mt-6 text-center text-xs text-muted-foreground">
+        <div className="mt-6 text-center text-xs text-muted-foreground space-y-2">
           <div className="flex items-center justify-center gap-1 mb-2">
-            <CheckCircle className="h-3 w-3 text-green-500" />
+            <CheckCircle className="h-3 w-3 text-success" />
             <span>Conexión segura con encriptación SSL</span>
           </div>
-          <p>© 2024 ParkingManager. Todos los derechos reservados.</p>
+          <p className="font-medium">© 2025 RESERVEO. Todos los derechos reservados.</p>
+          <p className="text-muted-foreground/70">
+            Creado por{" "}
+            <span className="font-semibold text-primary">Gustoso Studio</span>
+          </p>
+          <p className="italic text-muted-foreground/60">
+            "Diseñamos webs y apps que tu cuñado querrá copiar"
+          </p>
         </div>
       </div>
     </div>

@@ -18,10 +18,13 @@ const Index = () => {
           </div>
           
           <div className="space-y-4">
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
-              ParkingManager
+            <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
+              RESERVEO
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
+              Te veo y te reservo 😉
+            </p>
+            <p className="text-base md:text-lg text-muted-foreground/80 max-w-xl mx-auto">
               Sistema inteligente de gestión de aparcamiento corporativo
             </p>
           </div>
@@ -164,7 +167,7 @@ const Index = () => {
             ¿Listo para optimizar tu aparcamiento?
           </h2>
           <p className="text-xl text-muted-foreground">
-            Únete a empresas que ya confían en ParkingManager
+            Únete a empresas que ya confían en RESERVEO
           </p>
           <Button 
             size="lg" 
@@ -179,9 +182,16 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border/50 bg-card/50 backdrop-blur-sm py-8">
         <div className="container mx-auto px-4">
-          <div className="text-center text-muted-foreground">
-            <p className="text-sm">
-              © 2024 ParkingManager. Sistema de gestión de aparcamiento corporativo.
+          <div className="text-center text-muted-foreground space-y-2">
+            <p className="text-sm font-medium">
+              © 2025 RESERVEO. Sistema de gestión de aparcamiento corporativo.
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Diseñado con guasa por{" "}
+              <span className="font-semibold text-primary">Gustoso Studio</span>
+            </p>
+            <p className="text-xs text-muted-foreground italic mt-1">
+              "Diseñamos webs y apps que tu cuñado querrá copiar"
             </p>
           </div>
         </div>
