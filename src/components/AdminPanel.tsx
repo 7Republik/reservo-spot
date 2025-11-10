@@ -70,8 +70,19 @@ interface UserWithRole {
 interface ParkingSpot {
   id: string;
   spot_number: string;
-  spot_type: string;
+  group_id: string | null;
   is_active: boolean;
+  is_accessible: boolean;
+  has_charger: boolean;
+  is_compact: boolean;
+  position_x: number | null;
+  position_y: number | null;
+  visual_size: string;
+  notes: string | null;
+  parking_groups?: {
+    id: string;
+    name: string;
+  };
 }
 
 interface ParkingGroup {
@@ -90,7 +101,10 @@ const AdminPanel = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [newSpotNumber, setNewSpotNumber] = useState("");
-  const [newSpotType, setNewSpotType] = useState("general");
+  const [newSpotGroupId, setNewSpotGroupId] = useState<string>("");
+  const [newSpotIsAccessible, setNewSpotIsAccessible] = useState(false);
+  const [newSpotHasCharger, setNewSpotHasCharger] = useState(false);
+  const [newSpotIsCompact, setNewSpotIsCompact] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedPlateId, setSelectedPlateId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -129,6 +143,20 @@ const AdminPanel = () => {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserGroups, setSelectedUserGroups] = useState<string[]>([]);
+
+  // Visual editor state
+  const [selectedGroupForEditor, setSelectedGroupForEditor] = useState<ParkingGroup | null>(null);
+  const [editorSpots, setEditorSpots] = useState<ParkingSpot[]>([]);
+  const [selectedSpotForEdit, setSelectedSpotForEdit] = useState<ParkingSpot | null>(null);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [floorPlanDimensions, setFloorPlanDimensions] = useState({ width: 0, height: 0 });
+
+  // Spot attributes dialog state
+  const [spotAttributesDialogOpen, setSpotAttributesDialogOpen] = useState(false);
+  const [editSpotNumber, setEditSpotNumber] = useState("");
+  const [editSpotAccessible, setEditSpotAccessible] = useState(false);
+  const [editSpotCharger, setEditSpotCharger] = useState(false);
+  const [editSpotCompact, setEditSpotCompact] = useState(false);
 
   useEffect(() => {
     loadPendingPlates();
@@ -212,13 +240,17 @@ const AdminPanel = () => {
     try {
       const { data, error } = await supabase
         .from("parking_spots")
-        .select("*")
+        .select(`
+          *,
+          parking_groups(id, name)
+        `)
         .order("spot_number");
 
       if (error) throw error;
       setSpots(data || []);
     } catch (error: any) {
       console.error("Error loading spots:", error);
+      toast.error("Error al cargar las plazas");
     }
   };
 
@@ -516,25 +548,13 @@ const AdminPanel = () => {
   };
 
   const handleAddSpot = async () => {
-    // Validate input with Zod schema
-    const spotSchema = z.object({
-      spotNumber: z.string()
-        .trim()
-        .min(1, "El número de plaza no puede estar vacío")
-        .max(20, "El número de plaza no puede tener más de 20 caracteres")
-        .regex(/^[A-Z0-9-]+$/i, "Solo se permiten letras, números y guiones"),
-      spotType: z.enum(['general', 'preferred', 'director', 'visitor', 'admin'] as const, {
-        errorMap: () => ({ message: "Tipo de plaza no válido" })
-      })
-    });
-
-    const validation = spotSchema.safeParse({
-      spotNumber: newSpotNumber,
-      spotType: newSpotType
-    });
-
-    if (!validation.success) {
-      toast.error(validation.error.errors[0].message);
+    if (!newSpotNumber.trim()) {
+      toast.error("El número de plaza es obligatorio");
+      return;
+    }
+    
+    if (!newSpotGroupId) {
+      toast.error("Debes seleccionar un grupo de parking");
       return;
     }
 
@@ -542,9 +562,13 @@ const AdminPanel = () => {
       const { error } = await supabase
         .from("parking_spots")
         .insert([{
-          spot_number: validation.data.spotNumber,
-          spot_type: validation.data.spotType,
+          spot_number: newSpotNumber.trim(),
+          group_id: newSpotGroupId,
+          is_accessible: newSpotIsAccessible,
+          has_charger: newSpotHasCharger,
+          is_compact: newSpotIsCompact,
           is_active: true,
+          visual_size: 'medium',
         }]);
 
       if (error) {
@@ -558,7 +582,10 @@ const AdminPanel = () => {
 
       toast.success("Plaza añadida correctamente");
       setNewSpotNumber("");
-      setNewSpotType("general");
+      setNewSpotGroupId("");
+      setNewSpotIsAccessible(false);
+      setNewSpotHasCharger(false);
+      setNewSpotIsCompact(false);
       loadSpots();
     } catch (error: any) {
       console.error("Error adding spot:", error);
@@ -758,6 +785,127 @@ const AdminPanel = () => {
     } catch (error: any) {
       console.error("Error saving user group assignments:", error);
       toast.error("Error al asignar grupos");
+    }
+  };
+
+  // Visual editor functions
+  const loadEditorSpots = async (groupId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("parking_spots")
+        .select("*")
+        .eq("group_id", groupId)
+        .order("spot_number");
+
+      if (error) throw error;
+      setEditorSpots(data || []);
+    } catch (error: any) {
+      console.error("Error loading editor spots:", error);
+      toast.error("Error al cargar las plazas del grupo");
+    }
+  };
+
+  const handleFloorPlanClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawingMode || !selectedGroupForEditor) {
+      toast.error("Activa el modo dibujo primero");
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const nextSpotNumber = `${selectedGroupForEditor.name.substring(0, 2).toUpperCase()}-${editorSpots.length + 1}`;
+
+    try {
+      const { data, error } = await supabase
+        .from("parking_spots")
+        .insert([{
+          spot_number: nextSpotNumber,
+          group_id: selectedGroupForEditor.id,
+          position_x: parseFloat(x.toFixed(2)),
+          position_y: parseFloat(y.toFixed(2)),
+          visual_size: 'medium',
+          is_active: true,
+          is_accessible: false,
+          has_charger: false,
+          is_compact: false,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success(`Plaza ${nextSpotNumber} creada`);
+      loadEditorSpots(selectedGroupForEditor.id);
+      loadSpots();
+    } catch (error: any) {
+      console.error("Error creating spot:", error);
+      toast.error("Error al crear la plaza");
+    }
+  };
+
+  const handleSpotClick = (spot: ParkingSpot) => {
+    if (isDrawingMode) return;
+    
+    setSelectedSpotForEdit(spot);
+    setEditSpotNumber(spot.spot_number);
+    setEditSpotAccessible(spot.is_accessible);
+    setEditSpotCharger(spot.has_charger);
+    setEditSpotCompact(spot.is_compact);
+    setSpotAttributesDialogOpen(true);
+  };
+
+  const handleUpdateSpotAttributes = async () => {
+    if (!selectedSpotForEdit) return;
+
+    try {
+      const { error } = await supabase
+        .from("parking_spots")
+        .update({
+          spot_number: editSpotNumber.trim(),
+          is_accessible: editSpotAccessible,
+          has_charger: editSpotCharger,
+          is_compact: editSpotCompact,
+        })
+        .eq("id", selectedSpotForEdit.id);
+
+      if (error) throw error;
+
+      toast.success("Atributos actualizados");
+      setSpotAttributesDialogOpen(false);
+      if (selectedGroupForEditor) {
+        loadEditorSpots(selectedGroupForEditor.id);
+      }
+      loadSpots();
+    } catch (error: any) {
+      console.error("Error updating spot:", error);
+      toast.error("Error al actualizar la plaza");
+    }
+  };
+
+  const handleDeleteSpot = async () => {
+    if (!selectedSpotForEdit || !selectedGroupForEditor) return;
+
+    if (!confirm(`¿Eliminar la plaza ${selectedSpotForEdit.spot_number}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("parking_spots")
+        .delete()
+        .eq("id", selectedSpotForEdit.id);
+
+      if (error) throw error;
+
+      toast.success("Plaza eliminada");
+      setSpotAttributesDialogOpen(false);
+      loadEditorSpots(selectedGroupForEditor.id);
+      loadSpots();
+    } catch (error: any) {
+      console.error("Error deleting spot:", error);
+      toast.error("Error al eliminar la plaza");
     }
   };
 
@@ -1175,29 +1323,81 @@ const AdminPanel = () => {
               {/* Add New Spot */}
               <Card className="p-4 bg-secondary/20">
                 <div className="space-y-4">
-                  <Label>Añadir Nueva Plaza</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Número de plaza (ej: A-01)"
-                      value={newSpotNumber}
-                      onChange={(e) => setNewSpotNumber(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Select value={newSpotType} onValueChange={setNewSpotType}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="general">General</SelectItem>
-                        <SelectItem value="preferred">Preferente</SelectItem>
-                        <SelectItem value="director">Director</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={handleAddSpot}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Añadir
-                    </Button>
+                  <Label className="text-lg font-semibold">Añadir Nueva Plaza</Label>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="spot-number">Número de Plaza *</Label>
+                      <Input
+                        id="spot-number"
+                        placeholder="Ej: A-01, P1-15, etc."
+                        value={newSpotNumber}
+                        onChange={(e) => setNewSpotNumber(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="spot-group">Grupo de Parking *</Label>
+                      <Select value={newSpotGroupId} onValueChange={setNewSpotGroupId}>
+                        <SelectTrigger id="spot-group">
+                          <SelectValue placeholder="Selecciona un grupo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {parkingGroups
+                            .filter(g => g.is_active)
+                            .map(group => (
+                              <SelectItem key={group.id} value={group.id}>
+                                {group.name}
+                              </SelectItem>
+                            ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Atributos Especiales</Label>
+                    <div className="flex flex-wrap gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="spot-accessible"
+                          checked={newSpotIsAccessible}
+                          onCheckedChange={(checked) => setNewSpotIsAccessible(checked as boolean)}
+                        />
+                        <Label htmlFor="spot-accessible" className="cursor-pointer flex items-center gap-1">
+                          ♿ Plaza PMR (Movilidad Reducida)
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="spot-charger"
+                          checked={newSpotHasCharger}
+                          onCheckedChange={(checked) => setNewSpotHasCharger(checked as boolean)}
+                        />
+                        <Label htmlFor="spot-charger" className="cursor-pointer flex items-center gap-1">
+                          ⚡ Con Cargador Eléctrico
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="spot-compact"
+                          checked={newSpotIsCompact}
+                          onCheckedChange={(checked) => setNewSpotIsCompact(checked as boolean)}
+                        />
+                        <Label htmlFor="spot-compact" className="cursor-pointer flex items-center gap-1">
+                          🚗 Plaza Reducida (Aviso)
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button onClick={handleAddSpot} className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Añadir Plaza
+                  </Button>
                 </div>
               </Card>
 
@@ -1206,12 +1406,38 @@ const AdminPanel = () => {
                 {spots.map((spot) => (
                   <Card key={spot.id} className="p-4">
                     <div className="flex items-center justify-between flex-wrap gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg min-w-[80px] text-center">
                           {spot.spot_number}
                         </div>
-                        <div className="flex gap-2">
-                          <Badge variant="outline">{spot.spot_type}</Badge>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline" className="font-medium">
+                            📍 {spot.parking_groups?.name || "Sin grupo"}
+                          </Badge>
+
+                          {spot.is_accessible && (
+                            <Badge variant="outline" className="bg-blue-50 border-blue-200">
+                              ♿ PMR
+                            </Badge>
+                          )}
+                          {spot.has_charger && (
+                            <Badge variant="outline" className="bg-yellow-50 border-yellow-200">
+                              ⚡ Cargador
+                            </Badge>
+                          )}
+                          {spot.is_compact && (
+                            <Badge variant="outline" className="bg-gray-100 border-gray-300">
+                              🚗 Reducida
+                            </Badge>
+                          )}
+
+                          {spot.position_x !== null && spot.position_y !== null && (
+                            <Badge variant="outline" className="bg-green-50 border-green-200">
+                              🗺️ Posicionada en plano
+                            </Badge>
+                          )}
+
                           <Badge 
                             variant={spot.is_active ? "default" : "secondary"}
                             className={spot.is_active ? "bg-success" : ""}
@@ -1220,6 +1446,7 @@ const AdminPanel = () => {
                           </Badge>
                         </div>
                       </div>
+
                       <Button
                         size="sm"
                         variant={spot.is_active ? "outline" : "default"}
@@ -1240,8 +1467,8 @@ const AdminPanel = () => {
             <TabsList className="mb-4">
               <TabsTrigger value="groups-list">Grupos de Parking</TabsTrigger>
               <TabsTrigger value="assign-users">Asignar Usuarios</TabsTrigger>
-              <TabsTrigger value="visual-editor" disabled>
-                Editor Visual (Próximamente)
+              <TabsTrigger value="visual-editor">
+                Editor Visual
               </TabsTrigger>
             </TabsList>
 
@@ -1391,15 +1618,152 @@ const AdminPanel = () => {
               </Card>
             </TabsContent>
 
-            {/* Sub-tab: Editor Visual (Placeholder) */}
-            <TabsContent value="visual-editor">
+            {/* Sub-tab: Editor Visual */}
+            <TabsContent value="visual-editor" className="space-y-4">
               <Card>
-                <CardContent className="py-12 text-center">
-                  <Settings className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <h3 className="text-lg font-semibold mb-2">Editor Visual</h3>
-                  <p className="text-muted-foreground">
-                    Esta funcionalidad estará disponible próximamente
-                  </p>
+                <CardHeader>
+                  <CardTitle>Editor Visual de Plazas</CardTitle>
+                  <CardDescription>
+                    Dibuja y posiciona plazas directamente sobre el plano del parking
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Selecciona un Grupo para Editar</Label>
+                    <Select
+                      value={selectedGroupForEditor?.id || ""}
+                      onValueChange={(value) => {
+                        const group = parkingGroups.find(g => g.id === value);
+                        setSelectedGroupForEditor(group || null);
+                        if (group) {
+                          loadEditorSpots(group.id);
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un grupo..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {parkingGroups
+                          .filter(g => g.is_active && g.floor_plan_url)
+                          .map(group => (
+                            <SelectItem key={group.id} value={group.id}>
+                              {group.name} ({group.capacity} plazas)
+                            </SelectItem>
+                          ))
+                        }
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedGroupForEditor && selectedGroupForEditor.floor_plan_url ? (
+                    <>
+                      <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <Button
+                            variant={isDrawingMode ? "default" : "outline"}
+                            onClick={() => setIsDrawingMode(!isDrawingMode)}
+                          >
+                            {isDrawingMode ? "🖊️ Modo Dibujo Activo" : "✏️ Activar Modo Dibujo"}
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            {isDrawingMode 
+                              ? "Haz clic en el plano para añadir plazas" 
+                              : "Haz clic en una plaza para editarla"}
+                          </span>
+                        </div>
+                        <Badge variant="secondary">
+                          {editorSpots.length} plazas en este grupo
+                        </Badge>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                        <span className="font-semibold">Leyenda:</span>
+                        <span>🟦 Plaza normal</span>
+                        <span>🟦♿ Plaza PMR</span>
+                        <span>🟨⚡ Con cargador</span>
+                        <span>🟩 Múltiples atributos</span>
+                        <span>⚪ Inactiva</span>
+                      </div>
+
+                      <div className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
+                        <div
+                          className="relative cursor-crosshair"
+                          onClick={handleFloorPlanClick}
+                          style={{ minHeight: '500px' }}
+                        >
+                          <img
+                            src={selectedGroupForEditor.floor_plan_url}
+                            alt={`Plano de ${selectedGroupForEditor.name}`}
+                            className="w-full h-auto"
+                            onLoad={(e) => {
+                              setFloorPlanDimensions({
+                                width: e.currentTarget.naturalWidth,
+                                height: e.currentTarget.naturalHeight,
+                              });
+                            }}
+                          />
+
+                          {editorSpots.map(spot => {
+                            if (spot.position_x === null || spot.position_y === null) return null;
+
+                            let bgColor = "bg-blue-500";
+                            if (!spot.is_active) bgColor = "bg-gray-300";
+                            else if (spot.is_accessible && spot.has_charger) bgColor = "bg-green-500";
+                            else if (spot.has_charger) bgColor = "bg-yellow-500";
+                            else if (spot.is_accessible) bgColor = "bg-blue-600";
+
+                            return (
+                              <div
+                                key={spot.id}
+                                className={cn(
+                                  "absolute transform -translate-x-1/2 -translate-y-1/2",
+                                  "w-12 h-12 rounded-lg flex items-center justify-center",
+                                  "text-white font-bold text-xs shadow-lg border-2 border-white",
+                                  "cursor-pointer hover:scale-110 transition-transform",
+                                  bgColor
+                                )}
+                                style={{
+                                  left: `${spot.position_x}%`,
+                                  top: `${spot.position_y}%`,
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSpotClick(spot);
+                                }}
+                                title={`${spot.spot_number}${spot.is_accessible ? ' ♿' : ''}${spot.has_charger ? ' ⚡' : ''}${spot.is_compact ? ' 🚗' : ''}`}
+                              >
+                                <span className="drop-shadow-md">
+                                  {spot.spot_number.split('-')[1] || spot.spot_number}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <Card className="bg-yellow-50 border-yellow-200">
+                        <CardContent className="pt-4">
+                          <p className="text-sm text-yellow-800">
+                            <strong>Modo Dibujo:</strong> Haz clic en el plano para crear nuevas plazas. 
+                            Se creará automáticamente con el siguiente número disponible.
+                          </p>
+                          <p className="text-sm text-yellow-800 mt-2">
+                            <strong>Modo Edición:</strong> Haz clic en una plaza existente para editar sus atributos, 
+                            cambiar su número o eliminarla.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </>
+                  ) : (
+                    <Card className="p-8 text-center bg-muted/50">
+                      <p className="text-muted-foreground">
+                        {selectedGroupForEditor 
+                          ? "Este grupo no tiene un plano cargado. Sube uno en la pestaña 'Grupos de Parking'."
+                          : "Selecciona un grupo con plano para comenzar a dibujar plazas"}
+                      </p>
+                    </Card>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1840,6 +2204,97 @@ const AdminPanel = () => {
             <Button onClick={handleSaveUserGroupAssignments}>
               Guardar
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Spot Attributes Dialog */}
+      <Dialog open={spotAttributesDialogOpen} onOpenChange={setSpotAttributesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Plaza</DialogTitle>
+            <DialogDescription>
+              Modifica el número y los atributos especiales de esta plaza
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-spot-number">Número de Plaza</Label>
+              <Input
+                id="edit-spot-number"
+                value={editSpotNumber}
+                onChange={(e) => setEditSpotNumber(e.target.value)}
+                placeholder="Ej: A-01"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label>Atributos Especiales</Label>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-accessible"
+                  checked={editSpotAccessible}
+                  onCheckedChange={(checked) => setEditSpotAccessible(checked as boolean)}
+                />
+                <Label htmlFor="edit-accessible" className="cursor-pointer">
+                  ♿ Plaza PMR (Movilidad Reducida)
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-charger"
+                  checked={editSpotCharger}
+                  onCheckedChange={(checked) => setEditSpotCharger(checked as boolean)}
+                />
+                <Label htmlFor="edit-charger" className="cursor-pointer">
+                  ⚡ Con Cargador Eléctrico
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-compact"
+                  checked={editSpotCompact}
+                  onCheckedChange={(checked) => setEditSpotCompact(checked as boolean)}
+                />
+                <Label htmlFor="edit-compact" className="cursor-pointer">
+                  🚗 Plaza Reducida (Aviso)
+                </Label>
+              </div>
+            </div>
+
+            {selectedSpotForEdit && (
+              <Card className="p-3 bg-muted/50">
+                <p className="text-xs text-muted-foreground">
+                  <strong>Posición en plano:</strong> X: {selectedSpotForEdit.position_x?.toFixed(1)}%, 
+                  Y: {selectedSpotForEdit.position_y?.toFixed(1)}%
+                </p>
+              </Card>
+            )}
+          </div>
+
+          <DialogFooter className="flex justify-between">
+            <Button
+              variant="destructive"
+              onClick={handleDeleteSpot}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Eliminar Plaza
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setSpotAttributesDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdateSpotAttributes}>
+                Guardar Cambios
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
