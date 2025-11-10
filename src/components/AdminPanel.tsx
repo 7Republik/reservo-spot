@@ -32,80 +32,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-
-interface LicensePlate {
-  id: string;
-  plate_number: string;
-  user_id: string;
-  is_approved: boolean;
-  requested_electric: boolean;
-  approved_electric: boolean;
-  requested_disability: boolean;
-  approved_disability: boolean;
-  electric_expires_at?: string | null;
-  disability_expires_at?: string | null;
-  profiles: {
-    email: string;
-    full_name: string;
-  };
-}
-
-interface UserWithRole {
-  id: string;
-  email: string;
-  full_name: string;
-  is_blocked: boolean;
-  is_deactivated: boolean;
-  blocked_reason: string | null;
-  blocked_at: string | null;
-  deactivated_at: string | null;
-  user_roles: Array<{ id: string; role: string }>;
-  license_plates?: Array<{
-    id: string;
-    plate_number: string;
-    is_approved: boolean;
-    rejected_at: string | null;
-    rejection_reason: string | null;
-    approved_electric: boolean;
-    approved_disability: boolean;
-    electric_expires_at?: string | null;
-    disability_expires_at?: string | null;
-  }>;
-}
-
-interface ParkingSpot {
-  id: string;
-  spot_number: string;
-  group_id: string | null;
-  is_active: boolean;
-  is_accessible: boolean;
-  has_charger: boolean;
-  is_compact: boolean;
-  position_x: number | null;
-  position_y: number | null;
-  visual_size: string;
-  notes: string | null;
-  parking_groups?: {
-    id: string;
-    name: string;
-  };
-}
-
-interface ParkingGroup {
-  id: string;
-  name: string;
-  description: string | null;
-  capacity: number;
-  floor_plan_url: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  button_size: number;
-  deactivated_at?: string | null;
-  deactivated_by?: string | null;
-  deactivation_reason?: string | null;
-  scheduled_deactivation_date?: string | null;
-}
+import type {
+  LicensePlate,
+  UserWithRole,
+  ParkingSpot,
+  ParkingGroup,
+  ExpirationType,
+} from "@/types/admin";
 
 const AdminPanel = () => {
   const [pendingPlates, setPendingPlates] = useState<LicensePlate[]>([]);
@@ -132,10 +65,10 @@ const AdminPanel = () => {
   const [editingPlate, setEditingPlate] = useState<LicensePlate | null>(null);
   const [editElectric, setEditElectric] = useState(false);
   const [editDisability, setEditDisability] = useState(false);
-  const [electricExpirationType, setElectricExpirationType] = useState<'none' | 'days' | 'date'>('none');
+  const [electricExpirationType, setElectricExpirationType] = useState<ExpirationType>('none');
   const [electricExpirationDays, setElectricExpirationDays] = useState<string>('30');
   const [electricExpirationDate, setElectricExpirationDate] = useState<Date | undefined>();
-  const [disabilityExpirationType, setDisabilityExpirationType] = useState<'none' | 'days' | 'date'>('none');
+  const [disabilityExpirationType, setDisabilityExpirationType] = useState<ExpirationType>('none');
   const [disabilityExpirationDays, setDisabilityExpirationDays] = useState<string>('30');
   const [disabilityExpirationDate, setDisabilityExpirationDate] = useState<Date | undefined>();
 
