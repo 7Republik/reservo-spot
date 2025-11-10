@@ -11,11 +11,8 @@ import { useParkingGroups } from "@/hooks/admin/useParkingGroups";
 const AdminPanel = () => {
   const parkingGroupsHook = useParkingGroups();
   const [userGroupAssignments, setUserGroupAssignments] = useState<Record<string, string[]>>({});
-
-  useEffect(() => {
-    parkingGroupsHook.loadParkingGroups();
-    loadUserGroupAssignments();
-  }, []);
+  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set(["plates"]));
+  const [activeTab, setActiveTab] = useState("plates");
 
   const loadUserGroupAssignments = async () => {
     try {
@@ -39,9 +36,28 @@ const AdminPanel = () => {
     }
   };
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    
+    if (loadedTabs.has(value)) return;
+
+    // Lazy load data based on tab
+    if (value === "users" || value === "spots" || value === "groups") {
+      if (!loadedTabs.has("groups")) {
+        parkingGroupsHook.loadParkingGroups();
+      }
+    }
+
+    if (value === "users") {
+      loadUserGroupAssignments();
+    }
+
+    setLoadedTabs(prev => new Set([...prev, value]));
+  };
+
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="plates" className="w-full">
+      <Tabs defaultValue="plates" className="w-full" value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="plates">
             <CreditCard className="w-4 h-4 mr-2" />
