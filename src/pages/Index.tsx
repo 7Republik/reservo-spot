@@ -9,42 +9,59 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background">
       {/* Hero Section */}
-      <header className="container mx-auto px-4 py-20">
-        <div className="text-center space-y-8 max-w-4xl mx-auto">
-          <div className="flex justify-center">
-            <div className="bg-primary p-6 rounded-3xl shadow-2xl">
-              <Car className="h-16 w-16 text-primary-foreground" />
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-              RESERVEO
-            </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-              Te veo y te reservo 😉
-            </p>
-            <p className="text-base md:text-lg text-muted-foreground/80 max-w-xl mx-auto">
-              Sistema inteligente de gestión de aparcamiento corporativo
-            </p>
-          </div>
+      <header className="container mx-auto px-4 py-16 md:py-24">
+        <div className="max-w-5xl mx-auto">
+          <div className="relative">
+            {/* Contenedor principal con backdrop blur */}
+            <div className="bg-card/70 backdrop-blur-md rounded-3xl shadow-2xl border border-border/50 p-8 md:p-12 lg:p-16">
+              <div className="text-center space-y-8">
+                {/* Icono */}
+                <div className="flex justify-center">
+                  <div className="bg-primary p-6 rounded-3xl shadow-lg">
+                    <Car className="h-16 w-16 text-primary-foreground" />
+                  </div>
+                </div>
+                
+                {/* Contenido de texto */}
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground">
+                      RESERVEO
+                    </h1>
+                    <p className="text-2xl md:text-3xl font-medium text-primary">
+                      Te veo y te reservo 😉
+                    </p>
+                  </div>
+                  
+                  <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+                    Sistema inteligente de gestión de aparcamiento corporativo
+                  </p>
+                </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              className="text-lg px-8"
-              onClick={() => navigate("/auth")}
-            >
-              Acceder al Sistema
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="text-lg px-8"
-              onClick={() => navigate("/auth")}
-            >
-              Crear Cuenta
-            </Button>
+                {/* Botones */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                  <Button 
+                    size="lg" 
+                    className="text-lg px-10 h-14"
+                    onClick={() => navigate("/auth")}
+                  >
+                    Acceder al Sistema
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    className="text-lg px-10 h-14"
+                    onClick={() => navigate("/auth")}
+                  >
+                    Crear Cuenta
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Elementos decorativos */}
+            <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/20 rounded-full blur-3xl -z-10" />
+            <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-secondary/20 rounded-full blur-3xl -z-10" />
           </div>
         </div>
       </header>
