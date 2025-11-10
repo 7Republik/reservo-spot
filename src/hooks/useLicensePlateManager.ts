@@ -29,6 +29,78 @@ export const plateSchema = z.object({
     .regex(/^([A-Z]{1,2}\d{4}[A-Z]{0,2}|\d{4}[A-Z]{3})$/, "Formato inválido. Use formato español: 1234ABC, A1234BC, o AB1234C"),
 });
 
+/**
+ * Custom hook for managing user's license plates
+ * 
+ * Handles complete license plate lifecycle for end users:
+ * - Submitting new plates with optional electric/disability permit requests
+ * - Viewing active and deleted plates
+ * - Soft deleting plates (freed for other users)
+ * - Validation of Spanish plate format (1234ABC, A1234BC, AB1234C)
+ * - Duplicate detection (prevents registering already-approved plates)
+ * - UI state management for forms and modals
+ * 
+ * **Soft Delete**: Deleted plates remain in history but are freed for other users
+ * to register. Uses `deleted_at` and `deleted_by_user` columns.
+ * 
+ * **Approval Flow**: New plates start as `is_approved=false`. Admins must approve
+ * in admin panel before user can make reservations.
+ * 
+ * **Spanish Format**: Uses Zod schema to validate Spanish license plate formats.
+ * 
+ * @param {string} userId - Current user ID (from auth)
+ * 
+ * @returns {Object} License plates state and operations
+ * @returns {LicensePlate[]} activePlates - User's active license plates
+ * @returns {LicensePlate[]} deletedPlates - User's deleted plates (history)
+ * @returns {string} newPlate - New plate input value
+ * @returns {Function} setNewPlate - Sets new plate input
+ * @returns {boolean} loading - Loading state indicator
+ * @returns {boolean} requestedElectric - Electric permit checkbox state
+ * @returns {Function} setRequestedElectric - Sets electric permit checkbox
+ * @returns {boolean} requestedDisability - Disability permit checkbox state
+ * @returns {Function} setRequestedDisability - Sets disability permit checkbox
+ * @returns {boolean} isFormOpen - License plate form visibility
+ * @returns {Function} setIsFormOpen - Controls form visibility
+ * @returns {boolean} isHistoryOpen - Deleted plates history visibility
+ * @returns {Function} setIsHistoryOpen - Controls history visibility
+ * @returns {boolean} deleteDialogOpen - Delete confirmation dialog visibility
+ * @returns {Function} setDeleteDialogOpen - Controls delete dialog
+ * @returns {LicensePlate|null} plateToDelete - Plate selected for deletion
+ * @returns {Function} setPlateToDelete - Sets plate to delete
+ * @returns {Function} handleAddPlate - Submits new license plate
+ * @returns {Function} handleDeletePlate - Soft deletes a license plate
+ * @returns {Function} openDeleteDialog - Opens delete confirmation (if approved)
+ * 
+ * @example
+ * ```tsx
+ * const {
+ *   activePlates,
+ *   deletedPlates,
+ *   newPlate,
+ *   setNewPlate,
+ *   loading,
+ *   requestedElectric,
+ *   setRequestedElectric,
+ *   handleAddPlate,
+ *   openDeleteDialog
+ * } = useLicensePlateManager(userId);
+ * 
+ * // Submit new plate
+ * <Input
+ *   value={newPlate}
+ *   onChange={(e) => setNewPlate(e.target.value.toUpperCase())}
+ * />
+ * <Checkbox
+ *   checked={requestedElectric}
+ *   onCheckedChange={setRequestedElectric}
+ * />
+ * <Button onClick={handleAddPlate}>Submit</Button>
+ * 
+ * // Delete plate
+ * <Button onClick={() => openDeleteDialog(plate)}>Delete</Button>
+ * ```
+ */
 export const useLicensePlateManager = (userId: string) => {
   const [activePlates, setActivePlates] = useState<LicensePlate[]>([]);
   const [deletedPlates, setDeletedPlates] = useState<LicensePlate[]>([]);
@@ -41,6 +113,14 @@ export const useLicensePlateManager = (userId: string) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [plateToDelete, setPlateToDelete] = useState<LicensePlate | null>(null);
 
+  /**
+   * Loads all license plates for user (active and deleted)
+   * 
+   * Separates into `activePlates` (deleted_at IS NULL) and
+   * `deletedPlates` (deleted_at IS NOT NULL) for display.
+   * 
+   * @returns {Promise<void>}
+   */
   const loadPlates = async () => {
     try {
       const { data, error } = await supabase
@@ -64,6 +144,22 @@ export const useLicensePlateManager = (userId: string) => {
     }
   };
 
+  /**
+   * Submits a new license plate request
+   * 
+   * **Validation**:
+   * - Validates Spanish format with Zod schema
+   * - Checks if plate is already approved for another user
+   * - Prevents duplicate submissions
+   * 
+   * **Approval Flow**: Plate starts as `is_approved=false`, requiring admin approval.
+   * 
+   * **Permits**: Can optionally request electric and/or disability permits.
+   * 
+   * Resets form and reloads plates on success.
+   * 
+   * @returns {Promise<void>}
+   */
   const handleAddPlate = async () => {
     try {
       const upperPlate = newPlate.toUpperCase();
@@ -119,6 +215,17 @@ export const useLicensePlateManager = (userId: string) => {
     }
   };
 
+  /**
+   * Soft deletes a license plate
+   * 
+   * Sets `deleted_at` and `deleted_by_user=true` instead of physical deletion.
+   * This frees the plate number for other users while maintaining history.
+   * 
+   * If plate was approved, shows message that it's now available for others.
+   * 
+   * @param {LicensePlate} plate - Plate to delete
+   * @returns {Promise<void>}
+   */
   const handleDeletePlate = async (plate: LicensePlate) => {
     try {
       const { error } = await supabase
@@ -147,6 +254,16 @@ export const useLicensePlateManager = (userId: string) => {
     }
   };
 
+  /**
+   * Opens delete confirmation dialog for approved plates
+   * 
+   * **Logic**:
+   * - If plate is approved: Shows confirmation dialog (warns about consequences)
+   * - If plate is not approved: Deletes immediately without confirmation
+   * 
+   * @param {LicensePlate} plate - Plate to delete
+   * @returns {void}
+   */
   const openDeleteDialog = (plate: LicensePlate) => {
     if (plate.is_approved) {
       setPlateToDelete(plate);

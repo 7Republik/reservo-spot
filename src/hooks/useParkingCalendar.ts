@@ -16,6 +16,74 @@ interface ParkingGroup {
   name: string;
 }
 
+/**
+ * Custom hook for managing parking calendar and reservations
+ * 
+ * Handles the complete parking reservation workflow including:
+ * - Loading user's parking group assignments
+ * - Displaying monthly calendar with availability
+ * - Creating, editing, and cancelling reservations
+ * - Group selection modal for multi-group users
+ * - Quick reservation options (last used spot, random spot)
+ * - Reservation details modal with edit/cancel actions
+ * - Real-time spot availability calculation
+ * - Date validation with blocked dates and reservable range
+ * 
+ * **Navigation Integration**: Works seamlessly with `/select-parking-spot` page
+ * for visual spot selection. Returns state via navigation state after spot selection.
+ * 
+ * **Permissions**: Automatically loads user's group assignments and includes
+ * "General" group if exists. Users without group access receive error feedback.
+ * 
+ * @param {string} userId - Current user ID (from auth)
+ * 
+ * @returns {Object} Calendar state and reservation operations
+ * @returns {Date} currentMonth - Currently displayed month
+ * @returns {Function} setCurrentMonth - Changes displayed month
+ * @returns {Reservation[]} reservations - User's active reservations for current month
+ * @returns {Record<string,number>} availableSpots - Available spots count per date (YYYY-MM-DD)
+ * @returns {boolean} loading - Loading state for reservations
+ * @returns {boolean} loadingSpots - Loading state for availability calculation
+ * @returns {string[]} userGroups - User's accessible parking group IDs
+ * @returns {string[]} userGroupNames - User's accessible parking group names
+ * @returns {Date|null} selectedDateForMap - Date selected for reservation
+ * @returns {boolean} showGroupSelector - Group selector modal visibility
+ * @returns {Function} setShowGroupSelector - Controls group selector modal
+ * @returns {boolean} showReservationDetails - Reservation details modal visibility
+ * @returns {Function} setShowReservationDetails - Controls details modal
+ * @returns {Object|null} selectedReservationDetails - Details of selected reservation
+ * @returns {Function} setSelectedReservationDetails - Sets reservation details
+ * @returns {Function} handleReserve - Initiates reservation for a date
+ * @returns {Function} handleGroupSelected - Handles group selection for reservation
+ * @returns {Function} handleQuickReserve - Creates reservation with quick options
+ * @returns {Function} loadReservationDetails - Loads details for a reservation
+ * @returns {Function} handleEditReservation - Navigates to edit reservation
+ * @returns {Function} handleCancel - Cancels an existing reservation
+ * 
+ * @example
+ * ```tsx
+ * const {
+ *   currentMonth,
+ *   setCurrentMonth,
+ *   reservations,
+ *   availableSpots,
+ *   loading,
+ *   handleReserve,
+ *   handleCancel
+ * } = useParkingCalendar(userId);
+ * 
+ * // Display calendar
+ * <Calendar
+ *   month={currentMonth}
+ *   onMonthChange={setCurrentMonth}
+ *   availability={availableSpots}
+ *   onDateClick={handleReserve}
+ * />
+ * 
+ * // Cancel reservation
+ * await handleCancel(reservationId);
+ * ```
+ */
 export const useParkingCalendar = (userId: string) => {
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -30,6 +98,16 @@ export const useParkingCalendar = (userId: string) => {
   const [showReservationDetails, setShowReservationDetails] = useState(false);
   const [selectedReservationDetails, setSelectedReservationDetails] = useState<any>(null);
 
+  /**
+   * Loads user's parking group assignments
+   * 
+   * Fetches groups from `user_group_assignments` table plus "General" group if exists.
+   * Sets `userGroups` (IDs) and `userGroupNames` for access control.
+   * 
+   * Shows error toast if user has no group access.
+   * 
+   * @returns {Promise<void>}
+   */
   const loadUserGroups = async () => {
     try {
       const { data: assignments, error: assignError } = await supabase
@@ -81,6 +159,11 @@ export const useParkingCalendar = (userId: string) => {
     }
   };
 
+  /**
+   * Loads user's active reservations for current month
+   * 
+   * @returns {Promise<void>}
+   */
   const loadReservations = async () => {
     try {
       const start = startOfMonth(currentMonth);
@@ -103,6 +186,20 @@ export const useParkingCalendar = (userId: string) => {
     }
   };
 
+  /**
+   * Loads available spots count for each day in current month
+   * 
+   * Complex calculation considering:
+   * - User's group assignments
+   * - Global and group-specific blocked dates
+   * - Reservable date range from settings
+   * - Active spots in user's groups
+   * - Existing reservations
+   * 
+   * Updates `availableSpots` with format: { "2025-01-15": 3, "2025-01-16": 5 }
+   * 
+   * @returns {Promise<void>}
+   */
   const loadAvailableSpots = async () => {
     try {
       setLoadingSpots(true);
@@ -206,6 +303,17 @@ export const useParkingCalendar = (userId: string) => {
     }
   };
 
+  /**
+   * Initiates reservation flow for a selected date
+   * 
+   * - Validates user has group access
+   * - Checks spot availability
+   * - If single group: navigates directly to spot selection
+   * - If multiple groups: opens group selector modal
+   * 
+   * @param {Date} date - Selected reservation date
+   * @returns {Promise<void>}
+   */
   const handleReserve = async (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
 
@@ -242,6 +350,15 @@ export const useParkingCalendar = (userId: string) => {
     setShowGroupSelector(true);
   };
 
+  /**
+   * Handles group selection from modal
+   * 
+   * Navigates to spot selection page with selected group and date.
+   * 
+   * @param {string} groupId - Selected parking group UUID
+   * @param {string} groupName - Selected parking group name
+   * @returns {void}
+   */
   const handleGroupSelected = (groupId: string, groupName: string) => {
     setShowGroupSelector(false);
 
@@ -257,6 +374,22 @@ export const useParkingCalendar = (userId: string) => {
     });
   };
 
+  /**
+   * Creates reservation with pre-selected spot (quick reserve)
+   * 
+   * Used by quick reservation options:
+   * - "Last used spot": Reserves user's most recent spot if available
+   * - "Random spot": Reserves a randomly assigned available spot
+   * 
+   * Shows loading toast during reservation process.
+   * 
+   * @param {string} groupId - Parking group UUID
+   * @param {string} groupName - Parking group name
+   * @param {string} spotId - Pre-selected spot UUID
+   * @param {string} spotNumber - Spot identifier for display
+   * @param {'last'|'random'} type - Quick reservation type
+   * @returns {Promise<void>}
+   */
   const handleQuickReserve = async (
     groupId: string, 
     groupName: string, 
@@ -279,6 +412,15 @@ export const useParkingCalendar = (userId: string) => {
     }
   };
 
+  /**
+   * Loads full details of a reservation for display in modal
+   * 
+   * Fetches reservation with spot and group information.
+   * Opens reservation details modal with loaded data.
+   * 
+   * @param {string} reservationId - Reservation UUID
+   * @returns {Promise<void>}
+   */
   const loadReservationDetails = async (reservationId: string) => {
     try {
       const { data, error } = await supabase
@@ -322,6 +464,16 @@ export const useParkingCalendar = (userId: string) => {
     }
   };
 
+  /**
+   * Initiates reservation editing flow
+   * 
+   * Navigates to spot selection page with reservation context for editing.
+   * Allows user to change spot while keeping same date.
+   * 
+   * @param {string} reservationId - Reservation UUID to edit
+   * @param {Date} date - Reservation date
+   * @returns {Promise<void>}
+   */
   const handleEditReservation = async (reservationId: string, date: Date) => {
     setShowReservationDetails(false);
 
@@ -355,6 +507,25 @@ export const useParkingCalendar = (userId: string) => {
     }
   };
 
+  /**
+   * Creates or updates a reservation with validation
+   * 
+   * **Validation**: Calls `validate_parking_spot_reservation` DB function to check:
+   * - Date range validity
+   * - Blocked dates
+   * - User permissions
+   * - Spot attributes (PMR, charger)
+   * 
+   * **Visual Feedback**: Adds CSS animations to calendar date cell.
+   * 
+   * **Edit Mode**: If `editingId` provided, updates existing reservation instead of creating new.
+   * 
+   * @param {string} spotId - Spot UUID to reserve
+   * @param {string} spotNumber - Spot identifier for display
+   * @param {Date} date - Reservation date
+   * @param {string|null} [editingId] - Existing reservation ID if editing
+   * @returns {Promise<boolean>} True if successful, false otherwise
+   */
   const createReservationWithSpot = async (
     spotId: string, 
     spotNumber: string, 
@@ -442,6 +613,15 @@ export const useParkingCalendar = (userId: string) => {
     }
   };
 
+  /**
+   * Cancels an existing reservation
+   * 
+   * Sets status to 'cancelled' and records cancellation timestamp.
+   * Reloads reservations and availability after cancellation.
+   * 
+   * @param {string} reservationId - Reservation UUID to cancel
+   * @returns {Promise<void>}
+   */
   const handleCancel = async (reservationId: string) => {
     try {
       const { error } = await supabase
