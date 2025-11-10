@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ReservationSettings } from "@/types/admin";
@@ -9,8 +9,14 @@ export const useReservationSettings = () => {
     daily_refresh_hour: 10
   });
   const [loading, setLoading] = useState(false);
+  const isCached = useRef(false);
 
-  const loadSettings = async () => {
+  const loadSettings = async (forceReload = false) => {
+    // Si ya está en caché y no se fuerza la recarga, no hacer nada
+    if (isCached.current && !forceReload) {
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -25,6 +31,7 @@ export const useReservationSettings = () => {
           daily_refresh_hour: data.daily_refresh_hour
         });
       }
+      isCached.current = true;
     } catch (error: any) {
       console.error("Error loading settings:", error);
     } finally {

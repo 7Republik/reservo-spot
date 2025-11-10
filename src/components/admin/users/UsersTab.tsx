@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserManagement } from "@/hooks/admin/useUserManagement";
@@ -22,6 +22,7 @@ export const UsersTab = ({ parkingGroups, userGroupAssignments, onReloadAssignme
     expandedUsers,
     activeTab,
     savingUserId,
+    loadUsers,
     handleBlockUser,
     handleUnblockUser,
     handleDeactivateUser,
@@ -33,6 +34,10 @@ export const UsersTab = ({ parkingGroups, userGroupAssignments, onReloadAssignme
     toggleUserExpanded,
     setUserTab,
   } = useUserManagement();
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const [selectedUserForAction, setSelectedUserForAction] = useState<UserWithRole | null>(null);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ParkingGroup } from "@/types/admin";
@@ -6,8 +6,14 @@ import type { ParkingGroup } from "@/types/admin";
 export const useParkingGroups = () => {
   const [parkingGroups, setParkingGroups] = useState<ParkingGroup[]>([]);
   const [loading, setLoading] = useState(false);
+  const isCached = useRef(false);
 
-  const loadParkingGroups = async () => {
+  const loadParkingGroups = async (forceReload = false) => {
+    // Si ya está en caché y no se fuerza la recarga, no hacer nada
+    if (isCached.current && !forceReload) {
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -17,6 +23,7 @@ export const useParkingGroups = () => {
 
       if (error) throw error;
       setParkingGroups(data || []);
+      isCached.current = true;
     } catch (error: any) {
       console.error("Error loading parking groups:", error);
       toast.error("Error al cargar grupos de parking");
@@ -61,7 +68,7 @@ export const useParkingGroups = () => {
 
       if (error) throw error;
       toast.success("Grupo creado correctamente");
-      await loadParkingGroups();
+      await loadParkingGroups(true);
       return true;
     } catch (error: any) {
       console.error("Error creating group:", error);
@@ -106,7 +113,7 @@ export const useParkingGroups = () => {
 
       if (error) throw error;
       toast.success("Grupo actualizado correctamente");
-      await loadParkingGroups();
+      await loadParkingGroups(true);
       return true;
     } catch (error: any) {
       console.error("Error updating group:", error);
@@ -124,7 +131,7 @@ export const useParkingGroups = () => {
 
       if (error) throw error;
       toast.success(isActive ? "Grupo desactivado" : "Grupo activado");
-      await loadParkingGroups();
+      await loadParkingGroups(true);
     } catch (error: any) {
       console.error("Error toggling group status:", error);
       toast.error("Error al cambiar el estado del grupo");
@@ -148,7 +155,7 @@ export const useParkingGroups = () => {
         { duration: 5000 }
       );
       
-      await loadParkingGroups();
+      await loadParkingGroups(true);
       return true;
     } catch (error: any) {
       console.error("Error deactivating group:", error);
@@ -173,7 +180,7 @@ export const useParkingGroups = () => {
         { duration: 5000 }
       );
       
-      await loadParkingGroups();
+      await loadParkingGroups(true);
       return true;
     } catch (error: any) {
       console.error("Error scheduling deactivation:", error);
@@ -191,7 +198,7 @@ export const useParkingGroups = () => {
 
       if (error) throw error;
       toast.success("Desactivación programada cancelada");
-      await loadParkingGroups();
+      await loadParkingGroups(true);
     } catch (error: any) {
       console.error("Error cancelling scheduled deactivation:", error);
       toast.error("Error al cancelar desactivación programada");

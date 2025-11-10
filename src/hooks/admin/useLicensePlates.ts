@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { LicensePlate, ExpirationType } from "@/types/admin";
@@ -6,8 +6,14 @@ import type { LicensePlate, ExpirationType } from "@/types/admin";
 export const useLicensePlates = () => {
   const [pendingPlates, setPendingPlates] = useState<LicensePlate[]>([]);
   const [loading, setLoading] = useState(false);
+  const isCached = useRef(false);
 
-  const loadPendingPlates = async () => {
+  const loadPendingPlates = async (forceReload = false) => {
+    // Si ya está en caché y no se fuerza la recarga, no hacer nada
+    if (isCached.current && !forceReload) {
+      return;
+    }
+
     try {
       setLoading(true);
       const { data: plates, error } = await supabase
@@ -36,6 +42,7 @@ export const useLicensePlates = () => {
       );
       
       setPendingPlates(platesWithProfiles as any);
+      isCached.current = true;
     } catch (error: any) {
       console.error("Error loading pending plates:", error);
       toast.error("Error al cargar matrículas pendientes");
@@ -66,7 +73,7 @@ export const useLicensePlates = () => {
       if (error) throw error;
 
       toast.success("Matrícula aprobada correctamente");
-      await loadPendingPlates();
+      await loadPendingPlates(true);
     } catch (error: any) {
       console.error("Error approving plate:", error);
       toast.error("Error al aprobar la matrícula");
@@ -88,7 +95,7 @@ export const useLicensePlates = () => {
       if (error) throw error;
 
       toast.success("Matrícula rechazada. El usuario será notificado");
-      await loadPendingPlates();
+      await loadPendingPlates(true);
     } catch (error: any) {
       console.error("Error rejecting plate:", error);
       toast.error("Error al rechazar la matrícula");

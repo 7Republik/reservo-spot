@@ -1,17 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ParkingSpot } from "@/types/admin";
 
 export const useParkingSpots = () => {
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const isCached = useRef(false);
 
-  useEffect(() => {
-    loadSpots();
-  }, []);
+  const loadSpots = async (forceReload = false) => {
+    // Si ya está en caché y no se fuerza la recarga, no hacer nada
+    if (isCached.current && !forceReload) {
+      return;
+    }
 
-  const loadSpots = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -24,6 +26,7 @@ export const useParkingSpots = () => {
 
       if (error) throw error;
       setSpots(data || []);
+      isCached.current = true;
     } catch (error: any) {
       console.error("Error loading spots:", error);
       toast.error("Error al cargar las plazas");
@@ -72,7 +75,7 @@ export const useParkingSpots = () => {
       }
 
       toast.success("Plaza añadida correctamente");
-      loadSpots();
+      loadSpots(true);
       return true;
     } catch (error: any) {
       console.error("Error adding spot:", error);
@@ -91,7 +94,7 @@ export const useParkingSpots = () => {
       if (error) throw error;
 
       toast.success(`Plaza ${!currentStatus ? "activada" : "desactivada"} correctamente`);
-      loadSpots();
+      loadSpots(true);
       return true;
     } catch (error: any) {
       console.error("Error toggling spot:", error);

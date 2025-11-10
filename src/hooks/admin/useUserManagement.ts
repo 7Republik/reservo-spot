@@ -1,20 +1,22 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { UserWithRole } from "@/types/admin";
 
 export const useUserManagement = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<Record<string, string>>({});
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const isCached = useRef(false);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  const loadUsers = async (forceReload = false) => {
+    // Si ya está en caché y no se fuerza la recarga, no hacer nada
+    if (isCached.current && !forceReload) {
+      return;
+    }
 
-  const loadUsers = async () => {
     try {
       setLoading(true);
       const { data: profiles, error } = await supabase
@@ -47,6 +49,7 @@ export const useUserManagement = () => {
       );
       
       setUsers(usersWithData as any);
+      isCached.current = true;
     } catch (error: any) {
       console.error("Error loading users:", error);
       toast.error("Error al cargar usuarios");
@@ -70,7 +73,7 @@ export const useUserManagement = () => {
       
       if (error) throw error;
       toast.success("Usuario bloqueado correctamente");
-      loadUsers();
+      loadUsers(true);
       return true;
     } catch (error: any) {
       console.error("Error al bloquear usuario:", error);
@@ -93,7 +96,7 @@ export const useUserManagement = () => {
       
       if (error) throw error;
       toast.success("Usuario desbloqueado correctamente");
-      loadUsers();
+      loadUsers(true);
       return true;
     } catch (error: any) {
       console.error("Error al desbloquear usuario:", error);
@@ -112,7 +115,7 @@ export const useUserManagement = () => {
       
       if (error) throw error;
       toast.success("Usuario dado de baja. Matrículas liberadas.");
-      loadUsers();
+      loadUsers(true);
       return true;
     } catch (error: any) {
       console.error("Error al dar de baja usuario:", error);
@@ -131,7 +134,7 @@ export const useUserManagement = () => {
       
       if (error) throw error;
       toast.success("Usuario reactivado. Debe solicitar matrículas de nuevo.");
-      loadUsers();
+      loadUsers(true);
       return true;
     } catch (error: any) {
       console.error("Error al reactivar usuario:", error);
@@ -156,7 +159,7 @@ export const useUserManagement = () => {
       
       if (error) throw error;
       toast.success("Usuario eliminado permanentemente");
-      loadUsers();
+      loadUsers(true);
       return true;
     } catch (error: any) {
       console.error("Error al borrar usuario:", error);
@@ -216,7 +219,7 @@ export const useUserManagement = () => {
       }
 
       toast.success("Roles actualizados");
-      loadUsers();
+      loadUsers(true);
     } catch (error: any) {
       console.error("Error updating roles:", error);
       toast.error("Error al actualizar los roles");
@@ -256,7 +259,7 @@ export const useUserManagement = () => {
       if (error) throw error;
 
       toast.success("Matrícula aprobada");
-      loadUsers();
+      loadUsers(true);
     } catch (error: any) {
       console.error("Error approving plate:", error);
       toast.error("Error al aprobar la matrícula");
@@ -277,7 +280,7 @@ export const useUserManagement = () => {
       if (error) throw error;
 
       toast.success("Matrícula rechazada");
-      loadUsers();
+      loadUsers(true);
     } catch (error: any) {
       console.error("Error rejecting plate:", error);
       toast.error("Error al rechazar la matrícula");

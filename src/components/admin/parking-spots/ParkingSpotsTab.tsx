@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ParkingSquare, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,11 @@ interface ParkingSpotsTabProps {
 }
 
 export const ParkingSpotsTab = ({ parkingGroups }: ParkingSpotsTabProps) => {
-  const { spots, loading, addSpot, toggleSpot } = useParkingSpots();
+  const { spots, loading, loadSpots, addSpot, toggleSpot } = useParkingSpots();
+  
+  useEffect(() => {
+    loadSpots();
+  }, []);
   
   const [newSpotNumber, setNewSpotNumber] = useState("");
   const [newSpotGroupId, setNewSpotGroupId] = useState<string>("");

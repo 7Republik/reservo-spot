@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { BlockedDate } from "@/types/admin";
@@ -6,8 +6,14 @@ import type { BlockedDate } from "@/types/admin";
 export const useBlockedDates = () => {
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
   const [loading, setLoading] = useState(false);
+  const isCached = useRef(false);
 
-  const loadBlockedDates = async () => {
+  const loadBlockedDates = async (forceReload = false) => {
+    // Si ya está en caché y no se fuerza la recarga, no hacer nada
+    if (isCached.current && !forceReload) {
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -20,6 +26,7 @@ export const useBlockedDates = () => {
 
       if (error) throw error;
       setBlockedDates(data || []);
+      isCached.current = true;
     } catch (error: any) {
       console.error("Error loading blocked dates:", error);
     } finally {
@@ -73,7 +80,7 @@ export const useBlockedDates = () => {
         toast.success("Día bloqueado correctamente");
       }
 
-      await loadBlockedDates();
+      await loadBlockedDates(true);
       return true;
     } catch (error: any) {
       console.error("Error blocking date:", error);
@@ -91,7 +98,7 @@ export const useBlockedDates = () => {
 
       if (error) throw error;
       toast.success("Día desbloqueado correctamente");
-      await loadBlockedDates();
+      await loadBlockedDates(true);
     } catch (error: any) {
       console.error("Error unblocking date:", error);
       toast.error("Error al desbloquear el día");
