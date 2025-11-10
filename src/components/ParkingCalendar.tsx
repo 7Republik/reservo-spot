@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,6 @@ import { toast } from "sonner";
 import { Calendar as CalendarIcon, Check, X, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isBefore, startOfDay, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
-import ParkingMapSelector from "./ParkingMapSelector";
 import ReservationDetailsModal from "./ReservationDetailsModal";
 import GroupSelectorModal from "./GroupSelectorModal";
 
@@ -29,6 +29,7 @@ interface ParkingGroup {
 }
 
 const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
+  const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [availableSpots, setAvailableSpots] = useState<Record<string, number>>({});
@@ -36,13 +37,10 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
   const [loadingSpots, setLoadingSpots] = useState(true);
   const [userGroups, setUserGroups] = useState<string[]>([]);
   const [userGroupNames, setUserGroupNames] = useState<string[]>([]);
-  const [showMapSelector, setShowMapSelector] = useState(false);
   const [selectedDateForMap, setSelectedDateForMap] = useState<Date | null>(null);
   const [showGroupSelector, setShowGroupSelector] = useState(false);
   const [showReservationDetails, setShowReservationDetails] = useState(false);
   const [selectedReservationDetails, setSelectedReservationDetails] = useState<any>(null);
-  const [selectedGroupForReservation, setSelectedGroupForReservation] = useState<{id: string, name: string} | null>(null);
-  const [editingReservationId, setEditingReservationId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUserGroups();
@@ -54,6 +52,27 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       loadAvailableSpots();
     }
   }, [currentMonth, userId, userGroups]);
+
+  useEffect(() => {
+    const handleNavigationState = async () => {
+      const navigationState = window.history.state?.usr;
+
+      if (navigationState?.selectedSpot && navigationState?.reservationDate) {
+        const { spotId, spotNumber, reservationDate, editingReservationId } = navigationState.selectedSpot;
+
+        await createReservationWithSpot(
+          spotId,
+          spotNumber,
+          new Date(reservationDate),
+          editingReservationId
+        );
+
+        window.history.replaceState({}, document.title);
+      }
+    };
+
+    handleNavigationState();
+  }, []);
 
   const loadUserGroups = async () => {
     try {
@@ -184,8 +203,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
 
   const handleReserve = async (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    
-    // Validar que el usuario tiene grupos asignados
+
     if (userGroups.length === 0) {
       toast.error("No tienes acceso a ningún grupo de parking", {
         description: "Contacta con el administrador",
@@ -193,31 +211,45 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       return;
     }
 
-    // Verificar que hay plazas disponibles
     const available = availableSpots[dateStr] || 0;
-    
+
     if (available === 0) {
       toast.error("No hay plazas disponibles para este día");
       return;
     }
 
     setSelectedDateForMap(date);
-    
-    // Si solo tiene 1 grupo, ir directo al selector de plazas
+
     if (userGroups.length === 1) {
-      setSelectedGroupForReservation({ id: userGroups[0], name: userGroupNames[0] });
-      setShowMapSelector(true);
+      navigate("/select-parking-spot", {
+        state: {
+          userId,
+          selectedDate: date.toISOString(),
+          userGroups,
+          userGroupNames,
+          selectedGroupId: userGroups[0],
+          editingReservationId: null
+        }
+      });
       return;
     }
-    
-    // Si tiene múltiples grupos, abrir selector de grupo primero
+
     setShowGroupSelector(true);
   };
 
   const handleGroupSelected = (groupId: string, groupName: string) => {
-    setSelectedGroupForReservation({ id: groupId, name: groupName });
     setShowGroupSelector(false);
-    setShowMapSelector(true);
+
+    navigate("/select-parking-spot", {
+      state: {
+        userId,
+        selectedDate: selectedDateForMap?.toISOString(),
+        userGroups,
+        userGroupNames,
+        selectedGroupId: groupId,
+        editingReservationId: null
+      }
+    });
   };
 
   const handleQuickReserve = async (
@@ -287,7 +319,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
 
   const handleEditReservation = async (reservationId: string, date: Date) => {
     setShowReservationDetails(false);
-    
+
     try {
       const { data, error } = await supabase
         .from("reservations")
@@ -298,35 +330,43 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       if (error) throw error;
 
       const spot = data.parking_spots as any;
-      const group = spot?.parking_groups as any;
       const groupId = spot?.group_id;
-      const groupName = group?.name;
-      
+
       if (groupId) {
-        setSelectedGroupForReservation({ id: groupId, name: groupName });
-        setSelectedDateForMap(date);
-        setEditingReservationId(reservationId);
-        setShowMapSelector(true);
+        navigate("/select-parking-spot", {
+          state: {
+            userId,
+            selectedDate: date.toISOString(),
+            userGroups,
+            userGroupNames,
+            selectedGroupId: groupId,
+            editingReservationId: reservationId
+          }
+        });
       }
     } catch (error: any) {
-      console.error("Error loading reservation for edit:", error);
+      console.error("Error:", error);
       toast.error("Error al preparar la edición");
     }
   };
 
-  const createReservationWithSpot = async (spotId: string, spotNumber: string, date: Date) => {
+  const createReservationWithSpot = async (
+    spotId: string, 
+    spotNumber: string, 
+    date: Date,
+    editingId?: string | null
+  ) => {
     const dateStr = format(date, "yyyy-MM-dd");
     const dayElement = document.querySelector(`[data-date="${dateStr}"]`);
     
     dayElement?.classList.add('animate-pulse');
     
     try {
-      // Si estamos editando, actualizar en lugar de insertar
-      if (editingReservationId) {
+      if (editingId) {
         const { error: updateError } = await supabase
           .from("reservations")
           .update({ spot_id: spotId })
-          .eq("id", editingReservationId);
+          .eq("id", editingId);
 
         if (updateError) throw updateError;
 
@@ -337,11 +377,8 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         }, 500);
 
         toast.success(`Plaza cambiada a ${spotNumber}`);
-        setEditingReservationId(null);
-        setSelectedGroupForReservation(null);
         loadReservations();
         loadAvailableSpots();
-        setShowMapSelector(false);
         return true;
       }
 
@@ -394,10 +431,8 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       }, 500);
 
       toast.success(`¡Plaza ${spotNumber} reservada con éxito!`);
-      setSelectedGroupForReservation(null);
       loadReservations();
       loadAvailableSpots();
-      setShowMapSelector(false);
       return true;
     } catch (error: any) {
       console.error("Error creating reservation:", error);
@@ -623,24 +658,6 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
         onGroupSelected={handleGroupSelected}
         onQuickReserve={handleQuickReserve}
         onCancel={() => setShowGroupSelector(false)}
-      />
-
-      <ParkingMapSelector
-        isOpen={showMapSelector}
-        userId={userId}
-        selectedDate={selectedDateForMap}
-        userGroups={userGroups}
-        selectedGroupId={selectedGroupForReservation?.id || null}
-        onSpotSelected={(spotId, spotNumber) => {
-          if (selectedDateForMap) {
-            createReservationWithSpot(spotId, spotNumber, selectedDateForMap);
-          }
-        }}
-        onCancel={() => {
-          setShowMapSelector(false);
-          setSelectedGroupForReservation(null);
-          setEditingReservationId(null);
-        }}
       />
 
       <ReservationDetailsModal
