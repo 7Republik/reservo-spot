@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Check, X, Users, ParkingSquare, Plus, Trash2, ChevronDown, ChevronUp, CreditCard } from "lucide-react";
+import { Check, X, Users, ParkingSquare, Plus, Trash2, ChevronDown, ChevronUp, CreditCard, Shield, UserCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import {
@@ -68,9 +68,8 @@ const AdminPanel = () => {
   const [selectedPlateId, setSelectedPlateId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
-  const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedIsAdmin, setSelectedIsAdmin] = useState(false);
+  const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadPendingPlates();
@@ -219,6 +218,8 @@ const AdminPanel = () => {
 
   const handleUpdateUserRoles = async (userId: string, roles: string[], isAdmin: boolean) => {
     try {
+      setSavingUserId(userId);
+      
       // Delete existing non-admin roles (preserve admin if not being changed)
       const { data: currentRoles } = await supabase
         .from("user_roles")
@@ -268,14 +269,28 @@ const AdminPanel = () => {
         if (error) throw error;
       }
 
-      toast.success("Roles actualizados correctamente");
-      setEditingUserId(null);
+      toast.success("Roles actualizados");
       loadUsers();
     } catch (error: any) {
       console.error("Error updating roles:", error);
       toast.error("Error al actualizar los roles");
+    } finally {
+      setSavingUserId(null);
     }
   };
+
+  const debouncedSaveRoles = useMemo(
+    () => {
+      let timeout: NodeJS.Timeout;
+      return (userId: string, roles: string[], isAdmin: boolean) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          handleUpdateUserRoles(userId, roles, isAdmin);
+        }, 1000);
+      };
+    },
+    []
+  );
 
   const handleApprovePlateFromUser = async (plateId: string) => {
     try {
@@ -335,20 +350,16 @@ const AdminPanel = () => {
     });
   };
 
-  const startEditingRoles = (userId: string, currentRoles: string[]) => {
-    setEditingUserId(userId);
-    const parkingRoles = currentRoles.filter(r => r !== 'admin');
-    const isAdmin = currentRoles.includes('admin');
-    setSelectedRoles(parkingRoles);
-    setSelectedIsAdmin(isAdmin);
+  const setUserTab = (userId: string, tab: string) => {
+    setActiveTab(prev => ({ ...prev, [userId]: tab }));
   };
 
-  const toggleRole = (role: string) => {
-    setSelectedRoles(prev => 
-      prev.includes(role) 
-        ? prev.filter(r => r !== role)
-        : [...prev, role]
-    );
+  const getRoleCount = (user: UserWithRole) => {
+    return user.user_roles.filter(ur => ur.role !== 'admin').length;
+  };
+
+  const getPlateCount = (user: UserWithRole) => {
+    return user.license_plates?.length || 0;
   };
 
   const handleAddSpot = async () => {
@@ -508,35 +519,37 @@ const AdminPanel = () => {
                     <Card>
                       <CollapsibleTrigger asChild>
                         <div className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                          <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center justify-between gap-4 flex-wrap">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <UserCircle className="h-8 w-8 text-muted-foreground flex-shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium truncate">{user.full_name || "Sin nombre"}</p>
-                                <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-                              </div>
-                              <div className="flex flex-wrap gap-1">
-                                {user.user_roles.length === 0 ? (
-                                  <Badge variant="outline">general</Badge>
-                                ) : (
-                                  user.user_roles.map((ur) => (
-                                    <Badge key={ur.id} variant="outline">
-                                      {ur.role}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium">{user.full_name || "Sin nombre"}</p>
+                                  {user.user_roles.some(ur => ur.role === 'admin') && (
+                                    <Badge variant="destructive" className="gap-1">
+                                      <Shield className="h-3 w-3" />
+                                      ADMIN
                                     </Badge>
-                                  ))
-                                )}
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <ParkingSquare className="h-3 w-3" />
+                                    {getRoleCount(user)} grupos
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <CreditCard className="h-3 w-3" />
+                                    {getPlateCount(user)} matrículas
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              {user.license_plates && user.license_plates.length > 0 && (
-                                <Badge variant="secondary" className="gap-1">
-                                  <CreditCard className="h-3 w-3" />
-                                  {user.license_plates.length}
-                                </Badge>
-                              )}
                               {expandedUsers.has(user.id) ? (
-                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                <ChevronUp className="h-5 w-5 text-muted-foreground" />
                               ) : (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                <ChevronDown className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
                           </div>
@@ -544,206 +557,166 @@ const AdminPanel = () => {
                       </CollapsibleTrigger>
                       
                       <CollapsibleContent>
-                        <div className="border-t p-4 space-y-4 bg-muted/20">
-                          {/* Roles Section */}
-                          <div className="space-y-4">
-                            <div>
-                              <Label className="text-sm font-semibold mb-2 block">Permisos de Administrador</Label>
-                              {editingUserId === user.id ? (
-                                <div className="flex items-center space-x-2 p-3 bg-background rounded-lg border">
-                                  <Checkbox
-                                    id={`${user.id}-admin-toggle`}
-                                    checked={selectedIsAdmin}
-                                    onCheckedChange={(checked) => setSelectedIsAdmin(!!checked)}
-                                  />
-                                  <label
-                                    htmlFor={`${user.id}-admin-toggle`}
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                  >
-                                    Acceso al Panel de Administración
-                                  </label>
-                                </div>
-                              ) : (
-                                <div>
-                                  {user.user_roles.some(ur => ur.role === 'admin') ? (
-                                    <Badge variant="default" className="bg-destructive">Administrador</Badge>
-                                  ) : (
-                                    <Badge variant="outline">Usuario Normal</Badge>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                        <div className="border-t p-4 bg-muted/20">
+                          <Tabs 
+                            value={activeTab[user.id] || "permissions"} 
+                            onValueChange={(value) => setUserTab(user.id, value)}
+                            className="w-full"
+                          >
+                            <TabsList className="grid w-full grid-cols-3">
+                              <TabsTrigger value="permissions">Permisos</TabsTrigger>
+                              <TabsTrigger value="groups">Grupos</TabsTrigger>
+                              <TabsTrigger value="plates">Matrículas</TabsTrigger>
+                            </TabsList>
 
-                            <div>
-                              <Label className="text-sm font-semibold mb-2 block">Grupos de Plazas de Aparcamiento</Label>
-                              {editingUserId === user.id ? (
-                                <div className="space-y-3">
-                                  <p className="text-xs text-muted-foreground">
-                                    Selecciona los tipos de plazas que este usuario puede reservar
-                                  </p>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {["general", "preferred", "director", "visitor"].map((role) => (
-                                      <div key={role} className="flex items-center space-x-2">
-                                        <Checkbox
-                                          id={`${user.id}-${role}`}
-                                          checked={selectedRoles.includes(role)}
-                                          onCheckedChange={() => toggleRole(role)}
-                                        />
-                                        <label
-                                          htmlFor={`${user.id}-${role}`}
-                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize"
-                                        >
-                                          {role === 'general' ? 'General' : 
-                                           role === 'preferred' ? 'Preferente' :
-                                           role === 'director' ? 'Director' :
-                                           'Visitante'}
-                                        </label>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      size="sm" 
-                                      onClick={() => handleUpdateUserRoles(user.id, selectedRoles, selectedIsAdmin)}
-                                    >
-                                      Guardar Cambios
-                                    </Button>
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline"
-                                      onClick={() => {
-                                        setEditingUserId(null);
-                                        setSelectedRoles([]);
-                                        setSelectedIsAdmin(false);
+                            <TabsContent value="permissions" className="space-y-3 mt-4">
+                              <div className="flex items-center space-x-2 p-3 bg-background rounded-lg border">
+                                <Checkbox
+                                  id={`${user.id}-admin`}
+                                  checked={user.user_roles.some(ur => ur.role === 'admin')}
+                                  onCheckedChange={(checked) => {
+                                    const currentRoles = user.user_roles.filter(ur => ur.role !== 'admin').map(ur => ur.role);
+                                    debouncedSaveRoles(user.id, currentRoles, !!checked);
+                                  }}
+                                  disabled={savingUserId === user.id}
+                                />
+                                <label
+                                  htmlFor={`${user.id}-admin`}
+                                  className="text-sm font-medium leading-none cursor-pointer"
+                                >
+                                  Acceso al Panel de Administración
+                                </label>
+                              </div>
+                              {savingUserId === user.id && (
+                                <p className="text-xs text-muted-foreground">Guardando cambios...</p>
+                              )}
+                            </TabsContent>
+
+                            <TabsContent value="groups" className="space-y-3 mt-4">
+                              <p className="text-xs text-muted-foreground">
+                                Selecciona los tipos de plazas que este usuario puede reservar
+                              </p>
+                              <div className="grid grid-cols-2 gap-2">
+                                {["general", "preferred", "director", "visitor"].map((role) => (
+                                  <div key={role} className="flex items-center space-x-2 p-2 bg-background rounded-lg border">
+                                    <Checkbox
+                                      id={`${user.id}-${role}`}
+                                      checked={user.user_roles.some(ur => ur.role === role)}
+                                      onCheckedChange={(checked) => {
+                                        const currentRoles = user.user_roles.filter(ur => ur.role !== 'admin').map(ur => ur.role);
+                                        const newRoles = checked 
+                                          ? [...currentRoles.filter(r => r !== role), role]
+                                          : currentRoles.filter(r => r !== role);
+                                        const isAdmin = user.user_roles.some(ur => ur.role === 'admin');
+                                        debouncedSaveRoles(user.id, newRoles, isAdmin);
                                       }}
+                                      disabled={savingUserId === user.id}
+                                    />
+                                    <label
+                                      htmlFor={`${user.id}-${role}`}
+                                      className="text-sm font-medium leading-none cursor-pointer capitalize"
                                     >
-                                      Cancelar
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="flex flex-wrap gap-1">
-                                    {user.user_roles.filter(ur => ur.role !== 'admin').length === 0 ? (
-                                      <Badge variant="outline">Sin grupos asignados</Badge>
-                                    ) : (
-                                      user.user_roles
-                                        .filter(ur => ur.role !== 'admin')
-                                        .map((ur) => (
-                                          <Badge key={ur.id}>
-                                            {ur.role === 'general' ? 'General' : 
-                                             ur.role === 'preferred' ? 'Preferente' :
-                                             ur.role === 'director' ? 'Director' :
-                                             ur.role === 'visitor' ? 'Visitante' : ur.role}
-                                          </Badge>
-                                        ))
-                                    )}
-                                  </div>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => startEditingRoles(
-                                      user.id, 
-                                      user.user_roles.map(ur => ur.role)
-                                    )}
-                                  >
-                                    Editar
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* License Plates Section */}
-                          <div>
-                            <Label className="text-sm font-semibold mb-2 block">Matrículas ({user.license_plates?.length || 0})</Label>
-                            {user.license_plates && user.license_plates.length > 0 ? (
-                              <div className="space-y-2">
-                                {user.license_plates.map((plate) => (
-                                  <div key={plate.id} className="flex items-center justify-between p-3 bg-background rounded-lg border">
-                                    <div className="flex items-center gap-3">
-                                      {/* European License Plate Design */}
-                                      <div className="flex items-center border-2 border-black rounded overflow-hidden shadow-sm">
-                                        <div className="bg-[#003399] flex flex-col items-center justify-center px-1.5 py-2 text-white">
-                                          <div className="text-[8px] leading-none mb-0.5">★ ★ ★</div>
-                                          <div className="text-[10px] font-bold leading-none mb-0.5">E</div>
-                                          <div className="text-[8px] leading-none">★ ★ ★</div>
-                                        </div>
-                                        <div className="bg-white px-3 py-1.5">
-                                          <div className="font-mono font-bold text-base text-black tracking-wider">
-                                            {plate.plate_number}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div>
-                                        {plate.rejected_at ? (
-                                          <Badge variant="destructive" className="gap-1">
-                                            <X className="h-3 w-3" />
-                                            Rechazada
-                                          </Badge>
-                                        ) : plate.is_approved ? (
-                                          <Badge variant="default" className="bg-success gap-1">
-                                            <Check className="h-3 w-3" />
-                                            Aprobada
-                                          </Badge>
-                                        ) : (
-                                          <Badge variant="outline" className="border-warning text-warning">
-                                            Pendiente
-                                          </Badge>
-                                        )}
-                                        {plate.rejection_reason && (
-                                          <p className="text-xs text-muted-foreground mt-1">
-                                            {plate.rejection_reason}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      {!plate.is_approved && !plate.rejected_at && (
-                                        <Button
-                                          size="sm"
-                                          variant="default"
-                                          onClick={() => handleApprovePlateFromUser(plate.id)}
-                                          className="bg-success hover:bg-success/90"
-                                        >
-                                          <Check className="h-3 w-3 mr-1" />
-                                          Aprobar
-                                        </Button>
-                                      )}
-                                      {!plate.rejected_at && (
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          onClick={() => {
-                                            setSelectedPlateId(plate.id);
-                                            setRejectionReason("");
-                                            setRejectDialogOpen(true);
-                                          }}
-                                        >
-                                          <X className="h-3 w-3 mr-1" />
-                                          Rechazar
-                                        </Button>
-                                      )}
-                                      {plate.rejected_at && (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => handleApprovePlateFromUser(plate.id)}
-                                        >
-                                          <Check className="h-3 w-3 mr-1" />
-                                          Aprobar
-                                        </Button>
-                                      )}
-                                    </div>
+                                      {role === 'general' ? 'General' : 
+                                       role === 'preferred' ? 'Preferente' :
+                                       role === 'director' ? 'Director' :
+                                       'Visitante'}
+                                    </label>
                                   </div>
                                 ))}
                               </div>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">
-                                Este usuario no tiene matrículas registradas
-                              </p>
-                            )}
-                          </div>
+                              {savingUserId === user.id && (
+                                <p className="text-xs text-muted-foreground">Guardando cambios...</p>
+                              )}
+                            </TabsContent>
+
+                            <TabsContent value="plates" className="space-y-3 mt-4">
+                              {user.license_plates && user.license_plates.length > 0 ? (
+                                <div className="space-y-2">
+                                  {user.license_plates.map((plate) => (
+                                    <div key={plate.id} className="flex items-center justify-between p-3 bg-background rounded-lg border">
+                                      <div className="flex items-center gap-3">
+                                        {/* European License Plate Design */}
+                                        <div className="flex items-center border-2 border-black rounded overflow-hidden shadow-sm">
+                                          <div className="bg-[#003399] flex flex-col items-center justify-center px-1.5 py-1.5 text-white">
+                                            <div className="text-[10px] leading-none mb-0.5" style={{ color: '#FFD700' }}>★</div>
+                                            <div className="text-[10px] font-bold leading-none">E</div>
+                                          </div>
+                                          <div className="bg-white px-3 py-1.5">
+                                            <div className="font-mono font-bold text-base text-black tracking-wider">
+                                              {plate.plate_number}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div>
+                                          {plate.rejected_at ? (
+                                            <Badge variant="destructive" className="gap-1">
+                                              <X className="h-3 w-3" />
+                                              Rechazada
+                                            </Badge>
+                                          ) : plate.is_approved ? (
+                                            <Badge variant="default" className="bg-success gap-1">
+                                              <Check className="h-3 w-3" />
+                                              Aprobada
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="border-warning text-warning">
+                                              Pendiente
+                                            </Badge>
+                                          )}
+                                          {plate.rejection_reason && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                              {plate.rejection_reason}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        {!plate.is_approved && !plate.rejected_at && (
+                                          <Button
+                                            size="sm"
+                                            variant="default"
+                                            onClick={() => handleApprovePlateFromUser(plate.id)}
+                                            className="bg-success hover:bg-success/90"
+                                          >
+                                            <Check className="h-3 w-3 mr-1" />
+                                            Aprobar
+                                          </Button>
+                                        )}
+                                        {!plate.rejected_at && (
+                                          <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={() => {
+                                              setSelectedPlateId(plate.id);
+                                              setRejectionReason("");
+                                              setRejectDialogOpen(true);
+                                            }}
+                                          >
+                                            <X className="h-3 w-3 mr-1" />
+                                            Rechazar
+                                          </Button>
+                                        )}
+                                        {plate.rejected_at && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleApprovePlateFromUser(plate.id)}
+                                          >
+                                            <Check className="h-3 w-3 mr-1" />
+                                            Aprobar
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground text-center py-8">
+                                  Este usuario no tiene matrículas registradas
+                                </p>
+                              )}
+                            </TabsContent>
+                          </Tabs>
                         </div>
                       </CollapsibleContent>
                     </Card>

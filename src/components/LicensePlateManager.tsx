@@ -162,10 +162,9 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
                     {/* European License Plate Design */}
                     <div className="flex items-center border-2 border-black rounded overflow-hidden shadow-md">
                       {/* Blue EU Section */}
-                      <div className="bg-[#003399] flex flex-col items-center justify-center px-2 py-3 text-white">
-                        <div className="text-[10px] leading-none mb-1">★ ★ ★</div>
-                        <div className="text-xs font-bold leading-none mb-1">E</div>
-                        <div className="text-[10px] leading-none">★ ★ ★</div>
+                      <div className="bg-[#003399] flex flex-col items-center justify-center px-2 py-2 text-white">
+                        <div className="text-sm leading-none mb-1" style={{ color: '#FFD700' }}>★</div>
+                        <div className="text-xs font-bold leading-none">E</div>
                       </div>
                       {/* White Plate Section */}
                       <div className="bg-white px-4 py-2">
