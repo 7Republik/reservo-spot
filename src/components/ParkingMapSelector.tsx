@@ -9,7 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { MapIcon, List } from "lucide-react";
+import { MapIcon, List, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 interface ParkingMapSelectorProps {
   userId: string;
@@ -56,6 +57,7 @@ const ParkingMapSelector = ({
   const [spots, setSpots] = useState<SpotWithStatus[]>([]);
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [loading, setLoading] = useState(true);
+  const [buttonSize, setButtonSize] = useState(32);
 
   useEffect(() => {
     if (isOpen && selectedDate && userGroups.length > 0) {
@@ -117,6 +119,15 @@ const ParkingMapSelector = ({
   const loadSpotsForGroup = async (groupId: string, date: Date) => {
     try {
       const dateStr = format(date, "yyyy-MM-dd");
+
+      // Cargar button_size del grupo
+      const { data: groupData } = await supabase
+        .from("parking_groups")
+        .select("button_size")
+        .eq("id", groupId)
+        .single();
+      
+      setButtonSize(groupData?.button_size || 32);
 
       // Load all spots from the group with defined positions
       const { data: spotsData, error: spotsError } = await supabase
@@ -300,58 +311,119 @@ const ParkingMapSelector = ({
             {/* Main content */}
             <ScrollArea className="h-[500px]">
               {viewMode === 'map' ? (
-                // Map view
-                <div className="relative border-2 border-gray-200 rounded-lg overflow-hidden bg-gray-50">
-                  {selectedGroup?.floor_plan_url ? (
-                    <>
-                      <img
-                        src={selectedGroup.floor_plan_url}
-                        alt={`Plano de ${selectedGroup.name}`}
-                        className="w-full h-auto"
-                      />
-                      
-                      {/* Spots overlay */}
-                      {spots.map(spot => (
-                        <div
-                          key={spot.id}
-                          className={cn(
-                            "absolute transform -translate-x-1/2 -translate-y-1/2",
-                            "w-12 h-12 rounded-lg flex flex-col items-center justify-center",
-                            "text-white font-bold text-xs shadow-lg border-2 border-white",
-                            "transition-all duration-200",
-                            getSpotColor(spot),
-                            spot.status === 'available' 
-                              ? "cursor-pointer hover:scale-125 hover:shadow-xl hover:z-50" 
-                              : "cursor-not-allowed opacity-70"
-                          )}
-                          style={{
-                            left: `${spot.position_x}%`,
-                            top: `${spot.position_y}%`,
-                          }}
-                          onClick={() => handleSpotClick(spot)}
-                          title={`Plaza ${spot.spot_number} - ${
-                            spot.status === 'available' ? 'Disponible' :
-                            spot.status === 'occupied' ? 'Ocupada' :
-                            spot.status === 'user_reserved' ? 'Tu reserva' :
-                            'No disponible'
-                          }`}
-                        >
-                          <span className="text-[10px] leading-none">
-                            {spot.spot_number.split('-')[1] || spot.spot_number}
-                          </span>
-                          <div className="flex gap-0.5 mt-0.5">
-                            {spot.is_accessible && <span className="text-[8px]">♿</span>}
-                            {spot.has_charger && <span className="text-[8px]">⚡</span>}
-                            {spot.is_compact && <span className="text-[8px]">🚗</span>}
-                          </div>
+                // Map view CON ZOOM/PAN
+                <div className="relative">
+                  <TransformWrapper
+                    initialScale={1}
+                    minScale={0.5}
+                    maxScale={3}
+                    centerOnInit={true}
+                    wheel={{ step: 0.1 }}
+                    doubleClick={{ disabled: true }}
+                  >
+                    {({ zoomIn, zoomOut, resetTransform }) => (
+                      <>
+                        {/* Controles de zoom */}
+                        <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+                          <Button
+                            size="icon"
+                            variant="secondary"
+                            onClick={() => zoomIn()}
+                            className="shadow-lg"
+                          >
+                            <ZoomIn className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="secondary"
+                            onClick={() => zoomOut()}
+                            className="shadow-lg"
+                          >
+                            <ZoomOut className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="secondary"
+                            onClick={() => resetTransform()}
+                            className="shadow-lg"
+                          >
+                            <Maximize2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      ))}
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-center h-64 text-muted-foreground">
-                      No hay plano disponible para este grupo
-                    </div>
-                  )}
+
+                        <TransformComponent
+                          wrapperStyle={{
+                            width: "100%",
+                            height: "500px",
+                            border: "2px solid #e5e7eb",
+                            borderRadius: "0.5rem",
+                            overflow: "hidden",
+                            backgroundColor: "#f9fafb"
+                          }}
+                        >
+                          <div style={{ position: "relative", width: "100%", minHeight: "500px" }}>
+                            {selectedGroup?.floor_plan_url ? (
+                              <>
+                                <img
+                                  src={selectedGroup.floor_plan_url}
+                                  alt={`Plano de ${selectedGroup.name}`}
+                                  style={{
+                                    width: "100%",
+                                    height: "auto",
+                                    display: "block"
+                                  }}
+                                />
+                                
+                                {/* Spots overlay - TAMAÑO DINÁMICO */}
+                                {spots.map(spot => (
+                                  <div
+                                    key={spot.id}
+                                    className={cn(
+                                      "absolute transform -translate-x-1/2 -translate-y-1/2",
+                                      "rounded-lg flex flex-col items-center justify-center",
+                                      "text-white font-bold shadow-lg border-2 border-white",
+                                      "transition-all duration-200",
+                                      getSpotColor(spot),
+                                      spot.status === 'available' 
+                                        ? "cursor-pointer hover:scale-125 hover:shadow-xl hover:z-50" 
+                                        : "cursor-not-allowed opacity-70"
+                                    )}
+                                    style={{
+                                      left: `${spot.position_x}%`,
+                                      top: `${spot.position_y}%`,
+                                      width: `${buttonSize}px`,
+                                      height: `${buttonSize}px`,
+                                      fontSize: `${buttonSize * 0.3}px`,
+                                    }}
+                                    onClick={() => handleSpotClick(spot)}
+                                    title={`Plaza ${spot.spot_number} - ${
+                                      spot.status === 'available' ? 'Disponible' :
+                                      spot.status === 'occupied' ? 'Ocupada' :
+                                      spot.status === 'user_reserved' ? 'Tu reserva' :
+                                      'No disponible'
+                                    }`}
+                                  >
+                                    <span style={{ fontSize: `${buttonSize * 0.35}px` }}>
+                                      {spot.spot_number.split('-')[1] || spot.spot_number}
+                                    </span>
+                                    <div className="flex gap-0.5 mt-0.5">
+                                      {spot.is_accessible && <span style={{ fontSize: `${buttonSize * 0.25}px` }}>♿</span>}
+                                      {spot.has_charger && <span style={{ fontSize: `${buttonSize * 0.25}px` }}>⚡</span>}
+                                      {spot.is_compact && <span style={{ fontSize: `${buttonSize * 0.25}px` }}>🚗</span>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </>
+                            ) : (
+                              <div className="flex items-center justify-center h-64 text-muted-foreground">
+                                No hay plano disponible para este grupo
+                              </div>
+                            )}
+                          </div>
+                        </TransformComponent>
+                      </>
+                    )}
+                  </TransformWrapper>
                 </div>
               ) : (
                 // List view

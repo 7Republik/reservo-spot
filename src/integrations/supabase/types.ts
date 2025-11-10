@@ -108,6 +108,7 @@ export type Database = {
       }
       parking_groups: {
         Row: {
+          button_size: number | null
           capacity: number
           created_at: string | null
           description: string | null
@@ -118,6 +119,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          button_size?: number | null
           capacity?: number
           created_at?: string | null
           description?: string | null
@@ -128,6 +130,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          button_size?: number | null
           capacity?: number
           created_at?: string | null
           description?: string | null

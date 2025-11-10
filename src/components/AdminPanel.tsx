@@ -793,6 +793,19 @@ const AdminPanel = () => {
   // Visual editor functions
   const loadEditorSpots = async (groupId: string) => {
     try {
+      // Cargar grupo con button_size
+      const { data: groupData, error: groupError } = await supabase
+        .from("parking_groups")
+        .select("button_size")
+        .eq("id", groupId)
+        .single();
+
+      if (groupError) throw groupError;
+      
+      // Actualizar estado con el valor guardado
+      setSpotButtonSize(groupData?.button_size || 32);
+
+      // Cargar spots del grupo
       const { data, error } = await supabase
         .from("parking_spots")
         .select("*")
@@ -804,6 +817,24 @@ const AdminPanel = () => {
     } catch (error: any) {
       console.error("Error loading editor spots:", error);
       toast.error("Error al cargar las plazas del grupo");
+    }
+  };
+
+  const handleButtonSizeChange = async (newSize: number) => {
+    setSpotButtonSize(newSize);
+    
+    if (!selectedGroupForEditor) return;
+    
+    try {
+      const { error } = await supabase
+        .from("parking_groups")
+        .update({ button_size: newSize })
+        .eq("id", selectedGroupForEditor.id);
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Error updating button size:", error);
+      toast.error("Error al guardar el tamaño");
     }
   };
 
@@ -831,7 +862,6 @@ const AdminPanel = () => {
           group_id: selectedGroupForEditor.id,
           position_x: parseFloat(x.toFixed(2)),
           position_y: parseFloat(y.toFixed(2)),
-          visual_size: 'medium',
           is_active: true,
           is_accessible: false,
           has_charger: false,
@@ -1708,7 +1738,7 @@ const AdminPanel = () => {
                               min="16"
                               max="64"
                               value={spotButtonSize}
-                              onChange={(e) => setSpotButtonSize(Number(e.target.value))}
+                              onChange={(e) => handleButtonSizeChange(Number(e.target.value))}
                               className="w-32"
                             />
                             <span className="text-xs text-gray-500 min-w-[3rem]">{spotButtonSize}px</span>
