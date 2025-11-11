@@ -51,33 +51,81 @@ export type Database = {
       }
       incident_reports: {
         Row: {
+          admin_notes: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string | null
           description: string
           id: string
+          offending_license_plate: string | null
+          offending_user_id: string | null
+          original_spot_id: string | null
+          photo_url: string | null
+          reassigned_reservation_id: string | null
+          reassigned_spot_id: string | null
           reporter_id: string
           reservation_id: string
           resolved_at: string | null
           status: string
         }
         Insert: {
+          admin_notes?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           description: string
           id?: string
+          offending_license_plate?: string | null
+          offending_user_id?: string | null
+          original_spot_id?: string | null
+          photo_url?: string | null
+          reassigned_reservation_id?: string | null
+          reassigned_spot_id?: string | null
           reporter_id: string
           reservation_id: string
           resolved_at?: string | null
           status?: string
         }
         Update: {
+          admin_notes?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           description?: string
           id?: string
+          offending_license_plate?: string | null
+          offending_user_id?: string | null
+          original_spot_id?: string | null
+          photo_url?: string | null
+          reassigned_reservation_id?: string | null
+          reassigned_spot_id?: string | null
           reporter_id?: string
           reservation_id?: string
           resolved_at?: string | null
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "incident_reports_original_spot_id_fkey"
+            columns: ["original_spot_id"]
+            isOneToOne: false
+            referencedRelation: "parking_spots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_reports_reassigned_reservation_id_fkey"
+            columns: ["reassigned_reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_reports_reassigned_spot_id_fkey"
+            columns: ["reassigned_spot_id"]
+            isOneToOne: false
+            referencedRelation: "parking_spots"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "incident_reports_reservation_id_fkey"
             columns: ["reservation_id"]
@@ -159,6 +207,7 @@ export type Database = {
           floor_plan_url: string | null
           id: string
           is_active: boolean | null
+          is_incident_reserve: boolean | null
           name: string
           scheduled_deactivation_date: string | null
           updated_at: string | null
@@ -174,6 +223,7 @@ export type Database = {
           floor_plan_url?: string | null
           id?: string
           is_active?: boolean | null
+          is_incident_reserve?: boolean | null
           name: string
           scheduled_deactivation_date?: string | null
           updated_at?: string | null
@@ -189,6 +239,7 @@ export type Database = {
           floor_plan_url?: string | null
           id?: string
           is_active?: boolean | null
+          is_incident_reserve?: boolean | null
           name?: string
           scheduled_deactivation_date?: string | null
           updated_at?: string | null
@@ -459,6 +510,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_warnings: {
+        Row: {
+          created_at: string | null
+          id: string
+          incident_id: string
+          issued_at: string | null
+          issued_by: string
+          notes: string | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          incident_id: string
+          issued_at?: string | null
+          issued_by: string
+          notes?: string | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          incident_id?: string
+          issued_at?: string | null
+          issued_by?: string
+          notes?: string | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_warnings_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incident_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -484,6 +576,17 @@ export type Database = {
         Args: { _admin_id: string; _user_id: string }
         Returns: undefined
       }
+      find_available_spot_for_incident: {
+        Args: { _date: string; _original_spot_id: string; _user_id: string }
+        Returns: {
+          group_id: string
+          group_name: string
+          position_x: number
+          position_y: number
+          spot_id: string
+          spot_number: string
+        }[]
+      }
       get_available_spots_by_group: {
         Args: { _date: string; _group_id: string }
         Returns: {
@@ -504,6 +607,7 @@ export type Database = {
         }[]
       }
       get_user_role_priority: { Args: { _user_id: string }; Returns: number }
+      get_user_warning_count: { Args: { _user_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
