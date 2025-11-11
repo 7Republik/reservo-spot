@@ -1,6 +1,6 @@
 # Implementation Plan - Parking Spot Incident Reporting
 
-- [ ] 1. Database schema and functions setup
+- [x] 1. Database schema and functions setup
   - Create migration to extend `incident_reports` table with new columns (offending_license_plate, offending_user_id, original_spot_id, reassigned_spot_id, reassigned_reservation_id, photo_url, admin_notes, confirmed_by, confirmed_at)
   - Create migration to add `user_warnings` table with RLS policies
   - Create migration to add `is_incident_reserve` boolean column to `parking_groups` table
@@ -9,7 +9,7 @@
   - Update TypeScript types by running `supabase gen types typescript`
   - _Requirements: 3.1, 3.2, 3.3, 6.1, 6.4, 9.1, 9.2_
 
-- [ ] 2. Storage bucket configuration for incident photos
+- [x] 2. Storage bucket configuration for incident photos
   - Create `incident-photos` storage bucket in Supabase
   - Configure RLS policies for photo upload and access (users can upload their own, admins can view all)
   - _Requirements: 2.4, 2.7_

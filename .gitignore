@@ -26,3 +26,4 @@ dist-ssr
 # Kiro MCP Server dependencies
 .kiro/mcp-servers/*/node_modules/
 .kiro/mcp-servers/*/package-lock.json
+.vercel
