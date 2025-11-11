@@ -1,0 +1,21 @@
+{
+  "name": "supabase-reserveo-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for Supabase Reserveo Project Management",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@supabase/supabase-js": "^2.79.0"
+  },
+  "keywords": [
+    "mcp",
+    "supabase",
+    "reserveo"
+  ],
+  "author": "Reserveo Team",
+  "license": "MIT"
+}

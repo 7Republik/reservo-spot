@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Kiro MCP Server dependencies
+.kiro/mcp-servers/*/node_modules/
+.kiro/mcp-servers/*/package-lock.json
