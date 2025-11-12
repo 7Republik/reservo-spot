@@ -1,7 +1,7 @@
 # RESERVEO - Technical Stack
 
 ## Core Technologies
-
+Siempre hablame en español.
 - **Frontend Framework**: React 18.3 with TypeScript 5.8
 - **Build Tool**: Vite 5.4
 - **Routing**: React Router DOM 6.30

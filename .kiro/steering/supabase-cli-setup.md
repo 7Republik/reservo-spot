@@ -4,7 +4,7 @@ inclusion: always
 
 # Supabase CLI - Setup Completo
 
-## Estado Actual ✅
+## Estado Actual ✅ Siempre hablame en español.
 
 **CLI Instalado**: Supabase CLI v2.58.5 (vía Homebrew)  
 **Autenticación**: ✅ Completada (`supabase login`)  

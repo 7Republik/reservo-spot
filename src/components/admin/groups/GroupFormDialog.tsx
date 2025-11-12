@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import type { ParkingGroup } from "@/types/admin";
 
 interface GroupFormDialogProps {
@@ -14,14 +17,16 @@ interface GroupFormDialogProps {
     name: string,
     description: string,
     capacity: number,
-    floorPlanFile: File | null
+    floorPlanFile: File | null,
+    isIncidentReserve: boolean
   ) => Promise<boolean>;
   onUpdate: (
     groupId: string,
     name: string,
     capacity: number,
     floorPlanFile: File | null,
-    currentFloorPlanUrl: string | null
+    currentFloorPlanUrl: string | null,
+    isIncidentReserve: boolean
   ) => Promise<boolean>;
 }
 
@@ -36,6 +41,7 @@ export const GroupFormDialog = ({
   const [description, setDescription] = useState("");
   const [capacity, setCapacity] = useState("0");
   const [floorPlanFile, setFloorPlanFile] = useState<File | null>(null);
+  const [isIncidentReserve, setIsIncidentReserve] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -43,11 +49,13 @@ export const GroupFormDialog = ({
       setName(editingGroup.name);
       setDescription(editingGroup.description || "");
       setCapacity(editingGroup.capacity.toString());
+      setIsIncidentReserve(editingGroup.is_incident_reserve || false);
     } else {
       setName("");
       setDescription("");
       setCapacity("0");
       setFloorPlanFile(null);
+      setIsIncidentReserve(false);
     }
   }, [editingGroup, open]);
 
@@ -61,14 +69,16 @@ export const GroupFormDialog = ({
         name,
         parseInt(capacity) || 0,
         floorPlanFile,
-        editingGroup.floor_plan_url
+        editingGroup.floor_plan_url,
+        isIncidentReserve
       );
     } else {
       success = await onCreate(
         name,
         description,
         parseInt(capacity) || 0,
-        floorPlanFile
+        floorPlanFile,
+        isIncidentReserve
       );
     }
     
@@ -138,6 +148,36 @@ export const GroupFormDialog = ({
                 Ya hay un plano subido. Sube otro para reemplazarlo.
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isIncidentReserve"
+                checked={isIncidentReserve}
+                onCheckedChange={(checked) => setIsIncidentReserve(checked as boolean)}
+              />
+              <Label 
+                htmlFor="isIncidentReserve" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Reserva para Incidencias
+              </Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>
+                      Las plazas de este grupo se usarán como última opción cuando un usuario 
+                      reporte que su plaza está ocupada. Primero se intentará reasignar desde 
+                      grupos generales.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
         </div>
 

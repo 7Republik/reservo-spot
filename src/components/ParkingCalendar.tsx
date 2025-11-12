@@ -35,6 +35,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
     loadReservationDetails,
     handleEditReservation,
     handleCancel,
+    refreshData,
   } = useParkingCalendar(userId);
 
   const handleDayClick = (day: Date, reservation?: any) => {
@@ -97,6 +98,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
           setShowReservationDetails(false);
           setSelectedReservationDetails(null);
         }}
+        onIncidentReported={refreshData}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 # RESERVEO - Product Overview
 
 RESERVEO is a corporate parking reservation system that enables employees to book parking spots in advance through an interactive calendar and visual map interface.
+Siempre hablame en español.
 
 ## Core Features
 

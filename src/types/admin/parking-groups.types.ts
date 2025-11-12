@@ -20,6 +20,7 @@ export interface ParkingGroup {
   capacity: number;
   floor_plan_url: string | null;
   is_active: boolean;
+  is_incident_reserve: boolean;
   created_at: string;
   updated_at: string;
   button_size: number;

@@ -2,10 +2,10 @@
 inclusion: always
 ---
 
-# Supabase Development Guidelines - RESERVEO
+# Supabase Development Guidelines - RESERVEO 
 
 ## Current Project Configuration
-
+Siempre hablame en español.
 **Project ID**: `rlrzcfnhhvrvrxzfifeh`  
 **Project URL**: `https://rlrzcfnhhvrvrxzfifeh.supabase.co`  
 **Database Schema**: 12 tables, 20 migrations applied  
@@ -47,11 +47,11 @@ Use MCP Supabase tools for database operations:
 
 ### Key Database Patterns
 
-**12 Active Tables** (verified via MCP):
+**13 Active Tables** (verified via MCP):
 1. `profiles` - User profiles (extends auth.users)
 2. `user_roles` - Role assignments (general, visitor, preferred, director, admin)
-3. `user_warnings` - User warning system
-4. `parking_groups` - Parking zones/floors
+3. `user_warnings` - User warning system (tracks violations)
+4. `parking_groups` - Parking zones/floors (includes is_incident_reserve flag)
 5. `parking_spots` - Individual parking spaces
 6. `reservations` - Parking reservations
 7. `license_plates` - Vehicle plates (require approval)
@@ -59,7 +59,8 @@ Use MCP Supabase tools for database operations:
 9. `blocked_dates` - Dates when reservations are blocked
 10. `reservation_settings` - Global configuration (singleton)
 11. `reservation_cancellation_log` - Audit trail
-12. `incident_reports` - Problem reports with photo support
+12. `incident_reports` - Problem reports with photo support (photo_url column)
+13. `user_warnings` - Warnings issued to users for parking violations
 
 **20 Migrations Applied** (from 2025-11-05 to 2025-11-12):
 - Initial schema setup
@@ -67,8 +68,10 @@ Use MCP Supabase tools for database operations:
 - License plate management
 - Reservation validation
 - User blocking/deactivation
-- Incident reporting with photos
-- Storage buckets configuration
+- Incident reporting with photos (photo_url column)
+- User warnings system
+- Incident reserve groups (is_incident_reserve flag)
+- Storage bucket: incident-photos (created manually, RLS policies applied)
 
 **Critical Functions:**
 - `is_admin(user_id)` - Check admin role
@@ -78,6 +81,8 @@ Use MCP Supabase tools for database operations:
 - `validate_parking_spot_reservation()` - Comprehensive reservation validation
 - `get_reservable_date_range()` - Calculate valid booking window
 - `cancel_all_user_future_reservations()` - Cancel user's future bookings
+- `find_available_spot_for_incident(user_id, date, original_spot_id)` - Find alternative spot for incident reassignment
+- `get_user_warning_count(user_id)` - Get total warnings for a user
 
 **Automatic Triggers:**
 - `on_auth_user_created` - Auto-create profile + assign 'general' role
@@ -138,16 +143,29 @@ const { data, isLoading } = useQuery({
 
 ## Storage
 
+**IMPORTANT**: Storage buckets CANNOT be created via SQL migrations. They must be created manually via:
+- Supabase Dashboard: https://supabase.com/dashboard/project/rlrzcfnhhvrvrxzfifeh/storage/buckets
+- Or using Supabase Management API
+
+RLS policies for storage buckets CAN be applied via migrations.
+
 ### Bucket: `floor-plans`
 - Stores parking map images
 - Public read access
 - Admin-only write access
 - Referenced in `parking_groups.floor_plan_url`
 
-### Bucket: `incident-photos`
-- Stores incident report photos
-- User can upload for their own reports
-- Admin can view all
+### Bucket: `incident-photos` ✅
+- **Status**: Created manually via Dashboard (2025-11-12)
+- **Public**: No (requires authentication)
+- **File size limit**: 10 MB
+- **Allowed MIME types**: image/jpeg, image/png, image/heic, image/heif
+- **RLS Policies**: Applied via migration 20251112000130
+- **Structure**: `{user_id}/{filename}`
+- Users can upload/view their own photos
+- Admins can view/delete all photos
+- Users can delete their own photos within 24 hours
+- **Documentation**: See `docs/incident-photos-setup-complete.md`
 
 ## Business Logic Rules
 

@@ -672,6 +672,19 @@ export const useParkingCalendar = (userId: string) => {
     handleNavigationState();
   }, []);
 
+  /**
+   * Refreshes reservations and available spots data
+   * 
+   * Used after operations that modify reservations (e.g., incident reports)
+   * to ensure UI displays current state.
+   * 
+   * @returns {Promise<void>}
+   */
+  const refreshData = async () => {
+    await loadReservations();
+    await loadAvailableSpots();
+  };
+
   return {
     currentMonth,
     setCurrentMonth,
@@ -694,5 +707,6 @@ export const useParkingCalendar = (userId: string) => {
     loadReservationDetails,
     handleEditReservation,
     handleCancel,
+    refreshData,
   };
 };

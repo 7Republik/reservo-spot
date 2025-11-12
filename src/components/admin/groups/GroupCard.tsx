@@ -1,6 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { ParkingGroup } from "@/types/admin";
@@ -49,7 +51,21 @@ export const GroupCard = ({
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg truncate">{group.name}</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg truncate">{group.name}</CardTitle>
+              {group.is_incident_reserve && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Reserva para Incidencias</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
             <CardDescription className="line-clamp-2">
               {group.description || "Sin descripción"}
             </CardDescription>
@@ -65,6 +81,13 @@ export const GroupCard = ({
           <span className="text-muted-foreground">Capacidad:</span>
           <span className="font-semibold">{group.capacity} plazas</span>
         </div>
+
+        {group.is_incident_reserve && (
+          <div className="flex items-center gap-2 text-xs bg-orange-50 text-orange-700 border border-orange-200 rounded p-2">
+            <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+            <span>Grupo reservado para reasignación de incidencias</span>
+          </div>
+        )}
 
         {group.deactivated_at ? (
           <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">

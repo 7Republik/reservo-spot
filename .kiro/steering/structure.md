@@ -1,6 +1,6 @@
 # RESERVEO - Project Structure
 
-## Directory Organization
+## Directory Organization. Siempre hablame en español.
 
 ```
 src/

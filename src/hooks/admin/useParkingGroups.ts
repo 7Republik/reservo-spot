@@ -94,13 +94,15 @@ export const useParkingGroups = () => {
    * @param {string} description - Group description (optional)
    * @param {number} capacity - Total parking spots capacity
    * @param {File|null} floorPlanFile - Floor plan image file (uploaded to Supabase Storage)
+   * @param {boolean} isIncidentReserve - Whether this group is reserved for incident reassignments
    * @returns {Promise<boolean>} True if successful, false otherwise
    */
   const createGroup = async (
     name: string,
     description: string,
     capacity: number,
-    floorPlanFile: File | null
+    floorPlanFile: File | null,
+    isIncidentReserve: boolean
   ) => {
     try {
       let floorPlanUrl: string | null = null;
@@ -128,6 +130,7 @@ export const useParkingGroups = () => {
           capacity: capacity || 0,
           floor_plan_url: floorPlanUrl,
           is_active: true,
+          is_incident_reserve: isIncidentReserve,
         });
 
       if (error) throw error;
@@ -149,6 +152,7 @@ export const useParkingGroups = () => {
    * @param {number} capacity - New capacity
    * @param {File|null} floorPlanFile - New floor plan (if provided, replaces current)
    * @param {string|null} currentFloorPlanUrl - Current floor plan URL (preserved if no new file)
+   * @param {boolean} isIncidentReserve - Whether this group is reserved for incident reassignments
    * @returns {Promise<boolean>} True if successful, false otherwise
    */
   const updateGroup = async (
@@ -156,7 +160,8 @@ export const useParkingGroups = () => {
     name: string,
     capacity: number,
     floorPlanFile: File | null,
-    currentFloorPlanUrl: string | null
+    currentFloorPlanUrl: string | null,
+    isIncidentReserve: boolean
   ) => {
     try {
       let floorPlanUrl = currentFloorPlanUrl;
@@ -182,6 +187,7 @@ export const useParkingGroups = () => {
           name: name.trim(),
           capacity: capacity || 0,
           floor_plan_url: floorPlanUrl,
+          is_incident_reserve: isIncidentReserve,
         })
         .eq("id", groupId);
 

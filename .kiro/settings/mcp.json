@@ -17,7 +17,8 @@
         "supabase_describe_table",
         "supabase_list_migrations",
         "supabase_get_project_info",
-        "supabase_cli_status"
+        "supabase_cli_status",
+        "supabase_read_migration"
       ]
     },
     "fetch": {
