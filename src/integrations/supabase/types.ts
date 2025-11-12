@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       blocked_dates: {
@@ -105,20 +130,6 @@ export type Database = {
           status?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "incident_reports_confirmed_by_fkey"
-            columns: ["confirmed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "incident_reports_offending_user_id_fkey"
-            columns: ["offending_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "incident_reports_original_spot_id_fkey"
             columns: ["original_spot_id"]
@@ -503,6 +514,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_warnings: {
         Row: {
           created_at: string | null
@@ -542,42 +574,7 @@ export type Database = {
             referencedRelation: "incident_reports"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_warnings_issued_by_fkey"
-            columns: ["issued_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_warnings_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
-      }
-      user_roles: {
-        Row: {
-          created_at: string | null
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
       }
     }
     Views: {
@@ -604,6 +601,17 @@ export type Database = {
         Args: { _admin_id: string; _user_id: string }
         Returns: undefined
       }
+      find_available_spot_for_incident: {
+        Args: { _date: string; _original_spot_id: string; _user_id: string }
+        Returns: {
+          group_id: string
+          group_name: string
+          position_x: number
+          position_y: number
+          spot_id: string
+          spot_number: string
+        }[]
+      }
       get_available_spots_by_group: {
         Args: { _date: string; _group_id: string }
         Returns: {
@@ -624,6 +632,7 @@ export type Database = {
         }[]
       }
       get_user_role_priority: { Args: { _user_id: string }; Returns: number }
+      get_user_warning_count: { Args: { _user_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -660,21 +669,6 @@ export type Database = {
           error_message: string
           is_valid: boolean
         }[]
-      }
-      find_available_spot_for_incident: {
-        Args: { _user_id: string; _date: string; _original_spot_id: string }
-        Returns: {
-          spot_id: string
-          spot_number: string
-          group_id: string
-          group_name: string
-          position_x: number
-          position_y: number
-        }[]
-      }
-      get_user_warning_count: {
-        Args: { _user_id: string }
-        Returns: number
       }
     }
     Enums: {
@@ -804,6 +798,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["general", "preferred", "director", "visitor", "admin"],

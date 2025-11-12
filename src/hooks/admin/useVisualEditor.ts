@@ -123,9 +123,33 @@ export const useVisualEditor = () => {
       return false;
     }
 
-    const nextSpotNumber = `${selectedGroup.name.substring(0, 2).toUpperCase()}-${spots.length + 1}`;
-
     try {
+      // Get the highest spot number for THIS GROUP to ensure sequential numbering per group
+      const groupPrefix = selectedGroup.name.substring(0, 2).toUpperCase();
+      
+      const { data: groupSpots, error: countError } = await supabase
+        .from("parking_spots")
+        .select("spot_number")
+        .eq("group_id", selectedGroup.id)
+        .like("spot_number", `${groupPrefix}-%`);
+
+      if (countError) throw countError;
+
+      // Extract numeric part from group spots and find the max
+      let maxNumber = 0;
+      if (groupSpots && groupSpots.length > 0) {
+        groupSpots.forEach(spot => {
+          const match = spot.spot_number.match(/-(\d+)$/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNumber) maxNumber = num;
+          }
+        });
+      }
+
+      const nextNumber = maxNumber + 1;
+      const nextSpotNumber = `${groupPrefix}-${nextNumber}`;
+
       const { data, error } = await supabase
         .from("parking_spots")
         .insert([{
