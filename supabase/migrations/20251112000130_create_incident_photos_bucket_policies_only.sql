@@ -1,17 +1,8 @@
--- Migration: Create incident-photos storage bucket with RLS policies
--- 
--- IMPORTANT: The storage bucket must be created manually via Supabase Dashboard:
--- 1. Go to: https://supabase.com/dashboard/project/rlrzcfnhhvrvrxzfifeh/storage/buckets
--- 2. Create bucket with:
---    - Name: incident-photos
---    - Public: false
---    - File size limit: 10 MB
---    - Allowed MIME types: image/jpeg, image/png, image/heic, image/heif
---
--- This migration only creates the RLS policies for the bucket.
+-- Migration: Create RLS policies for incident-photos storage bucket
+-- Note: The bucket must be created manually via Supabase Dashboard first
 
 -- ============================================================================
--- 2. Storage RLS Policies for incident-photos bucket
+-- Storage RLS Policies for incident-photos bucket
 -- ============================================================================
 
 -- Policy: Authenticated users can upload their own incident photos
@@ -59,9 +50,3 @@ USING (
   bucket_id = 'incident-photos' AND
   public.is_admin(auth.uid())
 );
-
--- ============================================================================
--- Comments for documentation
--- ============================================================================
-
-COMMENT ON TABLE storage.buckets IS 'Storage buckets configuration';
