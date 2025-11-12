@@ -1,11 +1,30 @@
 ---
 inclusion: always
 ---
----
-inclusion: always
----
 
-# Supabase Development Guidelines
+# Supabase Development Guidelines - RESERVEO
+
+## Current Project Configuration
+
+**Project ID**: `rlrzcfnhhvrvrxzfifeh`  
+**Project URL**: `https://rlrzcfnhhvrvrxzfifeh.supabase.co`  
+**Database Schema**: 12 tables, 20 migrations applied  
+**Last Updated**: 2025-11-12
+
+### Quick Access Links
+- **Dashboard**: https://supabase.com/dashboard/project/rlrzcfnhhvrvrxzfifeh
+- **Table Editor**: https://supabase.com/dashboard/project/rlrzcfnhhvrvrxzfifeh/editor
+- **SQL Editor**: https://supabase.com/dashboard/project/rlrzcfnhhvrvrxzfifeh/sql/new
+- **API Docs**: https://supabase.com/dashboard/project/rlrzcfnhhvrvrxzfifeh/api
+- **Auth Users**: https://supabase.com/dashboard/project/rlrzcfnhhvrvrxzfifeh/auth/users
+- **Storage**: https://supabase.com/dashboard/project/rlrzcfnhhvrvrxzfifeh/storage/buckets
+
+### Environment Variables (from .env)
+```bash
+VITE_SUPABASE_PROJECT_ID="rlrzcfnhhvrvrxzfifeh"
+VITE_SUPABASE_URL="https://rlrzcfnhhvrvrxzfifeh.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
 
 ## Database Management
 
@@ -28,18 +47,28 @@ Use MCP Supabase tools for database operations:
 
 ### Key Database Patterns
 
-**11 Main Tables:**
-- `profiles` - User profiles (extends auth.users)
-- `user_roles` - Role assignments (general, visitor, preferred, director, admin)
-- `parking_groups` - Parking zones/floors
-- `parking_spots` - Individual parking spaces
-- `reservations` - Parking reservations
-- `license_plates` - Vehicle plates (require approval)
-- `user_group_assignments` - User access to parking groups
-- `blocked_dates` - Dates when reservations are blocked
-- `reservation_settings` - Global configuration (singleton)
-- `reservation_cancellation_log` - Audit trail
-- `incident_reports` - Problem reports
+**12 Active Tables** (verified via MCP):
+1. `profiles` - User profiles (extends auth.users)
+2. `user_roles` - Role assignments (general, visitor, preferred, director, admin)
+3. `user_warnings` - User warning system
+4. `parking_groups` - Parking zones/floors
+5. `parking_spots` - Individual parking spaces
+6. `reservations` - Parking reservations
+7. `license_plates` - Vehicle plates (require approval)
+8. `user_group_assignments` - User access to parking groups
+9. `blocked_dates` - Dates when reservations are blocked
+10. `reservation_settings` - Global configuration (singleton)
+11. `reservation_cancellation_log` - Audit trail
+12. `incident_reports` - Problem reports with photo support
+
+**20 Migrations Applied** (from 2025-11-05 to 2025-11-12):
+- Initial schema setup
+- Parking groups and visual editor
+- License plate management
+- Reservation validation
+- User blocking/deactivation
+- Incident reporting with photos
+- Storage buckets configuration
 
 **Critical Functions:**
 - `is_admin(user_id)` - Check admin role
@@ -200,15 +229,59 @@ try {
 }
 ```
 
+## MCP Integration
+
+**This project has Supabase MCP configured and connected.**
+
+Use these MCP tools to interact with the database:
+
+```typescript
+// List all tables
+mcp_supabase_reserveo_supabase_list_tables()
+
+// Describe table structure
+mcp_supabase_reserveo_supabase_describe_table({ tableName: "reservations" })
+
+// Execute SELECT query
+mcp_supabase_reserveo_supabase_query({ 
+  query: "SELECT * FROM profiles WHERE is_blocked = false LIMIT 10" 
+})
+
+// Count records
+mcp_supabase_reserveo_supabase_count_records({ 
+  tableName: "reservations",
+  filters: { status: "active" }
+})
+
+// View RLS policies
+mcp_supabase_reserveo_supabase_get_rls_policies({ tableName: "reservations" })
+
+// List migrations
+mcp_supabase_reserveo_supabase_list_migrations()
+
+// Read migration content
+mcp_supabase_reserveo_supabase_read_migration({ 
+  filename: "20251111234017_add_incident_reporting_features.sql" 
+})
+
+// Get project info
+mcp_supabase_reserveo_supabase_get_project_info()
+
+// Check CLI status
+mcp_supabase_reserveo_supabase_cli_status()
+```
+
 ## Development Best Practices
 
 1. **Always use MCP tools** to inspect database before making changes
-2. **Test locally first** with `supabase start` and local database
-3. **Write migrations** for all schema changes, never manual edits
-4. **Regenerate types** after every schema change
-5. **Use security definer functions** for operations that need elevated privileges
-6. **Log important operations** to `reservation_cancellation_log` or audit tables
-7. **Provide user feedback** with toast notifications for all mutations
-8. **Handle loading states** properly in UI
-9. **Invalidate React Query cache** after mutations with `queryClient.invalidateQueries()`
-10. **Use transactions** for multi-step operations that must succeed/fail together
+2. **Verify project ID** - Current project is `rlrzcfnhhvrvrxzfifeh`
+3. **Test locally first** with `supabase start` and local database
+4. **Write migrations** for all schema changes, never manual edits
+5. **Regenerate types** after every schema change: `supabase gen types typescript --linked > src/integrations/supabase/types.ts`
+6. **Use security definer functions** for operations that need elevated privileges
+7. **Log important operations** to `reservation_cancellation_log` or audit tables
+8. **Provide user feedback** with toast notifications for all mutations
+9. **Handle loading states** properly in UI
+10. **Invalidate React Query cache** after mutations with `queryClient.invalidateQueries()`
+11. **Use transactions** for multi-step operations that must succeed/fail together
+12. **Use MCP query tool** for read-only database inspection (safe, no modifications)
