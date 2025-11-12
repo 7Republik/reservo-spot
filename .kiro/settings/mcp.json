@@ -6,9 +6,9 @@
         ".kiro/mcp-servers/supabase-reserveo/index.js"
       ],
       "env": {
-        "SUPABASE_PROJECT_REF": "pevpefnemqvyygkrcwir",
-        "SUPABASE_URL": "https://pevpefnemqvyygkrcwir.supabase.co",
-        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBldnBlZm5lbXF2eXlna3Jjd2lyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjgyMTksImV4cCI6MjA3Nzk0NDIxOX0.A7iro-wAVpeHGyC9UtKI3TVIATQ8uOH84FEF-twfpP8"
+        "SUPABASE_PROJECT_REF": "rlrzcfnhhvrvrxzfifeh",
+        "SUPABASE_URL": "https://rlrzcfnhhvrvrxzfifeh.supabase.co",
+        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJscnpjZm5oaHZydnJ4emZpZmVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4ODI1NjgsImV4cCI6MjA3ODQ1ODU2OH0.W2pEH8bQJcN-R4aSkz3qYnV2R7LpYf7aE0wdWHVxBo0"
       },
       "disabled": false,
       "autoApprove": [
