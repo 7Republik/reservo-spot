@@ -20,6 +20,16 @@ export const VisualEditorTab = ({ parkingGroups }: VisualEditorTabProps) => {
   const [selectedSpotForEdit, setSelectedSpotForEdit] = useState<ParkingSpot | null>(null);
   const [spotDialogOpen, setSpotDialogOpen] = useState(false);
 
+  // Actualizar el grupo seleccionado si cambió en parkingGroups
+  useEffect(() => {
+    if (editor.selectedGroup) {
+      const updatedGroup = parkingGroups.find(g => g.id === editor.selectedGroup?.id);
+      if (updatedGroup) {
+        editor.setSelectedGroup(updatedGroup);
+      }
+    }
+  }, [parkingGroups]);
+
   const handleSelectGroup = (groupId: string) => {
     const group = parkingGroups.find(g => g.id === groupId);
     if (group) {

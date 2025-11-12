@@ -61,20 +61,17 @@ const AdminPanel = () => {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     
-    if (loadedTabs.has(value)) return;
-
     // Lazy load data based on tab
     if (value === "users" || value === "spots" || value === "groups") {
-      if (!loadedTabs.has("groups")) {
-        parkingGroupsHook.loadParkingGroups();
-      }
+      // Siempre recargar grupos cuando se accede a estas pestañas para reflejar cambios
+      parkingGroupsHook.loadParkingGroups(true);
     }
 
-    if (value === "users") {
+    if (value === "users" && !loadedTabs.has(value)) {
       loadUserGroupAssignments();
     }
 
-    if (value === "incidents") {
+    if (value === "incidents" && !loadedTabs.has(value)) {
       loadIncidents("all");
     }
 
