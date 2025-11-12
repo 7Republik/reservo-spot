@@ -17,6 +17,7 @@ interface ReservationDetailsModalProps {
     spotNumber: string;
     groupName: string;
     spotId: string;
+    userId: string;
     isAccessible: boolean;
     hasCharger: boolean;
     isCompact: boolean;
@@ -178,17 +179,26 @@ const ReservationDetailsModal = ({
         </DialogContent>
       </Dialog>
 
-      {/* Incident Report Flow */}
+      {/* Incident Report Flow - Full screen dialog */}
       {showIncidentReport && reservation && (
-        <IncidentReportFlow
-          reservationId={reservation.id}
-          spotId={reservation.spotId}
-          spotNumber={reservation.spotNumber}
-          groupName={reservation.groupName}
-          reservationDate={format(reservation.date, "yyyy-MM-dd")}
-          onComplete={handleIncidentComplete}
-          onCancel={handleIncidentCancel}
-        />
+        <Dialog open={showIncidentReport} onOpenChange={(open) => !open && handleIncidentCancel()}>
+          <DialogContent className="max-w-4xl h-[90vh] p-0 flex flex-col overflow-hidden" aria-describedby="incident-report-description">
+            <DialogTitle className="sr-only">Reportar Incidencia</DialogTitle>
+            <DialogDescription id="incident-report-description" className="sr-only">
+              Formulario para reportar una incidencia en tu plaza de parking reservada
+            </DialogDescription>
+            <IncidentReportFlow
+              reservationId={reservation.id}
+              spotId={reservation.spotId}
+              spotNumber={reservation.spotNumber}
+              groupName={reservation.groupName}
+              reservationDate={format(reservation.date, "yyyy-MM-dd")}
+              userId={reservation.userId}
+              onComplete={handleIncidentComplete}
+              onCancel={handleIncidentCancel}
+            />
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Confirmation dialog */}

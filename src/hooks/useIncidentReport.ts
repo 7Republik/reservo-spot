@@ -32,25 +32,28 @@ export const useIncidentReport = () => {
   ): Promise<string | null> => {
     try {
       const sanitized = sanitizeLicensePlate(licensePlate);
+      
+      console.log('Searching for license plate:', sanitized);
 
+      // Use security definer function to search without exposing all plates
       const { data, error } = await supabase
-        .from('license_plates')
-        .select('user_id')
-        .ilike('plate_number', sanitized)
-        .eq('is_approved', true)
-        .is('deleted_at', null)
-        .limit(1)
-        .single();
+        .rpc('find_user_by_license_plate', {
+          _plate_number: sanitized
+        });
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // No rows returned - license plate not found
-          return null;
-        }
-        throw error;
+        console.error('Error searching license plates:', error);
+        return null;
       }
 
-      return data?.user_id || null;
+      console.log('Found user ID:', data);
+
+      if (!data) {
+        console.log('No matching license plate found');
+        return null;
+      }
+
+      return data;
     } catch (error) {
       console.error('Error finding user by license plate:', error);
       return null;
@@ -89,9 +92,11 @@ export const useIncidentReport = () => {
           success: false,
           reassignedSpotId: null,
           reassignedSpotNumber: null,
+          reassignedGroupId: null,
           groupName: null,
           positionX: null,
           positionY: null,
+          floorPlanUrl: null,
           errorMessage: 'Error al buscar plaza disponible',
         };
       }
@@ -102,9 +107,11 @@ export const useIncidentReport = () => {
           success: false,
           reassignedSpotId: null,
           reassignedSpotNumber: null,
+          reassignedGroupId: null,
           groupName: null,
           positionX: null,
           positionY: null,
+          floorPlanUrl: null,
           errorMessage: 'No hay plazas disponibles',
         };
       }
@@ -114,9 +121,11 @@ export const useIncidentReport = () => {
         success: true,
         reassignedSpotId: spot.spot_id,
         reassignedSpotNumber: spot.spot_number,
+        reassignedGroupId: spot.group_id,
         groupName: spot.group_name,
         positionX: spot.position_x,
         positionY: spot.position_y,
+        floorPlanUrl: spot.floor_plan_url,
         errorMessage: null,
       };
     } catch (error) {
@@ -125,9 +134,11 @@ export const useIncidentReport = () => {
         success: false,
         reassignedSpotId: null,
         reassignedSpotNumber: null,
+        reassignedGroupId: null,
         groupName: null,
         positionX: null,
         positionY: null,
+        floorPlanUrl: null,
         errorMessage: 'Error inesperado al buscar plaza',
       };
     }
@@ -208,7 +219,32 @@ export const useIncidentReport = () => {
         params.originalSpotId
       );
 
-      // Step 3: Create reassigned reservation if spot found
+      // Step 3: Cancel original reservation
+      const { error: cancelError } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'cancelled', 
+          cancelled_at: new Date().toISOString() 
+        })
+        .eq('id', params.reservationId);
+
+      if (cancelError) {
+        console.error('Error cancelling original reservation:', cancelError);
+        toast.error('Error al cancelar la reserva original');
+        return {
+          success: false,
+          reassignedSpotId: null,
+          reassignedSpotNumber: null,
+          reassignedGroupId: null,
+          groupName: null,
+          positionX: null,
+          positionY: null,
+          floorPlanUrl: null,
+          errorMessage: 'Error al cancelar la reserva original',
+        };
+      }
+
+      // Step 4: Create reassigned reservation if spot found
       let reassignedReservationId: string | null = null;
       if (reassignmentResult.success && reassignmentResult.reassignedSpotId) {
         reassignedReservationId = await createReassignedReservation(
@@ -227,25 +263,25 @@ export const useIncidentReport = () => {
         }
       }
 
-      // Step 4: Generate incident ID for photo upload
+      // Step 5: Generate incident ID for photo upload
       const tempIncidentId = crypto.randomUUID();
 
-      // Step 5: Upload photo
-      let photoUrl: string | null = null;
+      // Step 6: Upload photo
+      let photoPath: string | null = null;
       try {
-        photoUrl = await uploadIncidentPhoto(
+        photoPath = await uploadIncidentPhoto(
           params.photoFile,
           params.userId,
           tempIncidentId
         );
-        setUploadedPhotoUrl(photoUrl);
+        setUploadedPhotoUrl(photoPath);
       } catch (error) {
         console.error('Photo upload failed:', error);
         toast.error('Error al subir la foto. El incidente se registrará sin foto.');
         // Continue without photo - incident is still valid
       }
 
-      // Step 6: Create incident report in database
+      // Step 7: Create incident report in database
       const incidentData: IncidentReportInsert = {
         id: tempIncidentId,
         reservation_id: params.reservationId,
@@ -257,7 +293,7 @@ export const useIncidentReport = () => {
         original_spot_id: params.originalSpotId,
         reassigned_spot_id: reassignmentResult.reassignedSpotId,
         reassigned_reservation_id: reassignedReservationId,
-        photo_url: photoUrl,
+        photo_url: photoPath,
       };
 
       const { error: insertError } = await supabase
@@ -268,9 +304,9 @@ export const useIncidentReport = () => {
         console.error('Error creating incident report:', insertError);
         
         // Clean up uploaded photo if incident creation failed
-        if (photoUrl) {
+        if (photoPath) {
           try {
-            await deleteIncidentPhoto(photoUrl);
+            await deleteIncidentPhoto(photoPath);
           } catch (cleanupError) {
             console.error('Error cleaning up photo:', cleanupError);
           }
@@ -281,9 +317,11 @@ export const useIncidentReport = () => {
           success: false,
           reassignedSpotId: null,
           reassignedSpotNumber: null,
+          reassignedGroupId: null,
           groupName: null,
           positionX: null,
           positionY: null,
+          floorPlanUrl: null,
           errorMessage: 'Error al crear el reporte',
         };
       }
@@ -303,9 +341,11 @@ export const useIncidentReport = () => {
         success: false,
         reassignedSpotId: null,
         reassignedSpotNumber: null,
+        reassignedGroupId: null,
         groupName: null,
         positionX: null,
         positionY: null,
+        floorPlanUrl: null,
         errorMessage: 'Error inesperado',
       };
     } finally {

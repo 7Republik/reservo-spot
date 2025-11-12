@@ -150,22 +150,83 @@ const { data, isLoading } = useQuery({
 RLS policies for storage buckets CAN be applied via migrations.
 
 ### Bucket: `floor-plans`
+- **Type**: Public bucket
 - Stores parking map images
-- Public read access
+- Public read access (anyone with URL can view)
 - Admin-only write access
 - Referenced in `parking_groups.floor_plan_url`
+- **Upload pattern**: Direct File object upload works fine
 
 ### Bucket: `incident-photos` ✅
+- **Type**: Public bucket (for performance)
 - **Status**: Created manually via Dashboard (2025-11-12)
-- **Public**: No (requires authentication)
 - **File size limit**: 10 MB
 - **Allowed MIME types**: image/jpeg, image/png, image/heic, image/heif
-- **RLS Policies**: Applied via migration 20251112000130
-- **Structure**: `{user_id}/{filename}`
-- Users can upload/view their own photos
+- **RLS Policies**: Applied for INSERT/DELETE operations
+- **Structure**: `{user_id}/{incident_id}.jpg`
+- Users can upload their own photos
 - Admins can view/delete all photos
 - Users can delete their own photos within 24 hours
-- **Documentation**: See `docs/incident-photos-setup-complete.md`
+
+### Storage Upload Best Practices
+
+**⚠️ CRITICAL BUG**: Supabase has a known bug where uploading `File` objects directly causes them to be stored with incorrect Content-Type (`application/json` instead of `image/jpeg`).
+
+**✅ SOLUTION**: Always convert File to ArrayBuffer before uploading:
+
+```typescript
+// ❌ WRONG - Will result in application/json Content-Type
+const { data, error } = await supabase.storage
+  .from('bucket-name')
+  .upload(path, file, {
+    contentType: file.type
+  });
+
+// ✅ CORRECT - Converts to ArrayBuffer first
+const arrayBuffer = await file.arrayBuffer();
+const { data, error } = await supabase.storage
+  .from('bucket-name')
+  .upload(path, arrayBuffer, {
+    contentType: file.type || 'image/jpeg'
+  });
+```
+
+**Why this happens**: When Supabase receives a File object, it incorrectly detects it as JSON. Converting to ArrayBuffer forces Supabase to respect the `contentType` parameter.
+
+**Reference**: https://github.com/orgs/supabase/discussions/34982
+
+### Storage Path vs URL
+
+**IMPORTANT**: Store only the **storage path** in the database, not the full URL.
+
+```typescript
+// ✅ CORRECT - Store path only
+photo_url: "userId/incidentId.jpg"
+
+// ❌ WRONG - Don't store full URL
+photo_url: "https://xxx.supabase.co/storage/v1/object/public/bucket/userId/incidentId.jpg"
+```
+
+**Why**: 
+- Paths are permanent, URLs can change
+- For private buckets, you need to generate signed URLs dynamically
+- For public buckets, you can generate public URLs on-demand
+
+**Generate URLs when needed**:
+
+```typescript
+// For public buckets
+const { data } = supabase.storage
+  .from('bucket-name')
+  .getPublicUrl(photoPath);
+const url = data.publicUrl;
+
+// For private buckets (expires in 1 hour)
+const { data } = await supabase.storage
+  .from('bucket-name')
+  .createSignedUrl(photoPath, 3600);
+const url = data.signedUrl;
+```
 
 ## Business Logic Rules
 

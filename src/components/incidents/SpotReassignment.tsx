@@ -2,13 +2,16 @@ import { CheckCircle2, MapPin, Navigation, AlertCircle, Phone, Mail } from "luci
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 interface SpotReassignmentProps {
   success: boolean;
   reassignedSpotNumber: string | null;
+  reassignedGroupId: string | null;
   groupName: string | null;
   positionX: number | null;
   positionY: number | null;
+  floorPlanUrl: string | null;
   incidentId?: string;
   onComplete: () => void;
 }
@@ -16,9 +19,11 @@ interface SpotReassignmentProps {
 export const SpotReassignment = ({
   success,
   reassignedSpotNumber,
+  reassignedGroupId,
   groupName,
   positionX,
   positionY,
+  floorPlanUrl,
   incidentId,
   onComplete,
 }: SpotReassignmentProps) => {
@@ -61,29 +66,63 @@ export const SpotReassignment = ({
                 </div>
               </div>
 
-              {/* Mini Map - Show if position data available */}
-              {positionX !== null && positionY !== null && (
+              {/* Visual Map - Show if floor plan and position data available */}
+              {floorPlanUrl && positionX !== null && positionY !== null && (
                 <div className="mt-4 bg-muted/30 rounded-lg p-3 border border-border">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                     <Navigation className="h-4 w-4" />
                     <span>Ubicación en el mapa</span>
                   </div>
-                  <div className="relative h-32 bg-background rounded border border-border overflow-hidden">
-                    {/* Simple visual representation */}
-                    <div
-                      className="absolute h-3 w-3 bg-primary rounded-full animate-pulse"
-                      style={{
-                        left: `${Math.min(Math.max(positionX, 5), 95)}%`,
-                        top: `${Math.min(Math.max(positionY, 5), 95)}%`,
-                        transform: 'translate(-50%, -50%)',
-                      }}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-xs text-muted-foreground">
-                        Plaza marcada en el plano
-                      </p>
-                    </div>
+                  
+                  <div className="bg-background rounded-lg border border-border overflow-hidden">
+                    <TransformWrapper
+                      initialScale={1}
+                      minScale={0.5}
+                      maxScale={3}
+                      centerOnInit={true}
+                      wheel={{ step: 0.1 }}
+                      doubleClick={{ disabled: true }}
+                      panning={{ velocityDisabled: true }}
+                    >
+                      <TransformComponent
+                        wrapperStyle={{
+                          width: "100%",
+                          height: "250px",
+                          backgroundColor: "#f9fafb"
+                        }}
+                      >
+                        <div style={{ position: "relative", width: "100%", minHeight: "250px" }}>
+                          <img
+                            src={floorPlanUrl}
+                            alt={`Plano ${groupName}`}
+                            style={{ width: "100%", height: "auto", display: "block" }}
+                          />
+                          
+                          {/* Highlight the reassigned spot */}
+                          <div
+                            className="absolute transform -translate-x-1/2 -translate-y-1/2 rounded-lg flex items-center justify-center text-white font-bold shadow-xl border-4 border-white bg-primary animate-pulse"
+                            style={{
+                              left: `${positionX}%`,
+                              top: `${positionY}%`,
+                              width: "48px",
+                              height: "48px",
+                              fontSize: "16px",
+                              zIndex: 50,
+                            }}
+                            title={`Plaza ${reassignedSpotNumber}`}
+                          >
+                            <span className="drop-shadow-md">
+                              {reassignedSpotNumber.split('-')[1] || reassignedSpotNumber}
+                            </span>
+                          </div>
+                        </div>
+                      </TransformComponent>
+                    </TransformWrapper>
                   </div>
+                  
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Pellizca para hacer zoom • Arrastra para moverte
+                  </p>
                 </div>
               )}
             </div>

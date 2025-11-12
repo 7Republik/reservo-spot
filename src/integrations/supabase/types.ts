@@ -601,9 +601,11 @@ export type Database = {
         Args: { _admin_id: string; _user_id: string }
         Returns: undefined
       }
+      extract_storage_path_from_url: { Args: { url: string }; Returns: string }
       find_available_spot_for_incident: {
         Args: { _date: string; _original_spot_id: string; _user_id: string }
         Returns: {
+          floor_plan_url: string
           group_id: string
           group_name: string
           position_x: number
@@ -611,6 +613,10 @@ export type Database = {
           spot_id: string
           spot_number: string
         }[]
+      }
+      find_user_by_license_plate: {
+        Args: { _plate_number: string }
+        Returns: string
       }
       get_available_spots_by_group: {
         Args: { _date: string; _group_id: string }

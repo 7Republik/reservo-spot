@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
@@ -86,6 +86,7 @@ interface ParkingGroup {
  */
 export const useParkingCalendar = (userId: string) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [availableSpots, setAvailableSpots] = useState<Record<string, number>>({});
@@ -128,9 +129,9 @@ export const useParkingCalendar = (userId: string) => {
         .select("id, name")
         .eq("name", "General")
         .eq("is_active", true)
-        .single();
+        .maybeSingle();
 
-      if (generalError && generalError.code !== "PGRST116") {
+      if (generalError) {
         console.error("Error loading general group:", generalError);
       }
 
@@ -427,6 +428,7 @@ export const useParkingCalendar = (userId: string) => {
         .from("reservations")
         .select(`
           id,
+          user_id,
           reservation_date,
           parking_spots (
             id,
@@ -449,6 +451,7 @@ export const useParkingCalendar = (userId: string) => {
 
       setSelectedReservationDetails({
         id: data.id,
+        userId: data.user_id,
         date: new Date(data.reservation_date),
         spotNumber: spot?.spot_number || "",
         groupName: group?.name || "",
@@ -653,10 +656,12 @@ export const useParkingCalendar = (userId: string) => {
 
   useEffect(() => {
     const handleNavigationState = async () => {
-      const navigationState = window.history.state?.usr;
+      const navigationState = location.state as any;
 
-      if (navigationState?.selectedSpot && navigationState?.reservationDate) {
+      if (navigationState?.selectedSpot) {
         const { spotId, spotNumber, reservationDate, editingReservationId } = navigationState.selectedSpot;
+
+        console.log("Processing spot selection:", { spotId, spotNumber, reservationDate, editingReservationId });
 
         await createReservationWithSpot(
           spotId,
@@ -665,12 +670,13 @@ export const useParkingCalendar = (userId: string) => {
           editingReservationId
         );
 
-        window.history.replaceState({}, document.title);
+        // Limpiar el estado de navegación
+        navigate(location.pathname, { replace: true, state: {} });
       }
     };
 
     handleNavigationState();
-  }, []);
+  }, [location.state]);
 
   /**
    * Refreshes reservations and available spots data

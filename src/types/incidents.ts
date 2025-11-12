@@ -46,8 +46,10 @@ export interface SpotReassignmentResult {
   success: boolean;
   reassignedSpotId: string | null;
   reassignedSpotNumber: string | null;
+  reassignedGroupId: string | null;
   groupName: string | null;
   positionX: number | null;
   positionY: number | null;
+  floorPlanUrl: string | null;
   errorMessage: string | null;
 }

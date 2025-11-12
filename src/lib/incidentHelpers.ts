@@ -145,7 +145,7 @@ export const isValidFileSize = (file: File, maxSizeMB: number = 10): boolean => 
  * @param file - The image file to upload
  * @param userId - The user ID (for folder organization)
  * @param incidentId - The incident ID (for filename)
- * @returns Promise<string> - Public URL of the uploaded photo
+ * @returns Promise<string> - Storage path of the uploaded photo (not URL)
  * @throws Error if upload fails
  */
 export const uploadIncidentPhoto = async (
@@ -178,12 +178,27 @@ export const uploadIncidentPhoto = async (
     const fileExtension = fileToUpload.type === 'image/png' ? 'png' : 'jpg';
     const filePath = `${userId}/${incidentId}.${fileExtension}`;
     
-    // Upload to Supabase Storage
+    // Determine correct content type
+    let contentType = 'image/jpeg';
+    if (fileToUpload.type === 'image/png') {
+      contentType = 'image/png';
+    } else if (fileToUpload.type === 'image/heic' || fileToUpload.type === 'image/heif') {
+      contentType = 'image/heic';
+    }
+    
+    // WORKAROUND: Convert File to ArrayBuffer to avoid Supabase bug with File objects
+    // When uploading File objects, Supabase incorrectly detects them as application/json
+    // Converting to ArrayBuffer forces Supabase to respect the contentType parameter
+    // See: https://github.com/orgs/supabase/discussions/34982
+    const arrayBuffer = await fileToUpload.arrayBuffer();
+    
+    // Upload to Supabase Storage with explicit contentType
     const { data, error } = await supabase.storage
       .from('incident-photos')
-      .upload(filePath, fileToUpload, {
+      .upload(filePath, arrayBuffer, {
         cacheControl: '3600',
-        upsert: true, // Allow overwriting if retrying
+        upsert: true,
+        contentType: fileToUpload.type || 'image/jpeg',
       });
     
     if (error) {
@@ -191,16 +206,8 @@ export const uploadIncidentPhoto = async (
       throw new Error(`Failed to upload photo: ${error.message}`);
     }
     
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('incident-photos')
-      .getPublicUrl(filePath);
-    
-    if (!urlData?.publicUrl) {
-      throw new Error('Failed to get photo URL');
-    }
-    
-    return urlData.publicUrl;
+    // Return the storage path (not URL) - we'll generate signed URLs when needed
+    return filePath;
   } catch (error) {
     console.error('Error uploading incident photo:', error);
     throw error;
@@ -211,20 +218,23 @@ export const uploadIncidentPhoto = async (
  * Deletes a photo from Supabase Storage
  * Used when canceling an incident report
  * 
- * @param photoUrl - The public URL of the photo to delete
+ * @param photoPath - The storage path of the photo to delete (e.g., "userId/incidentId.jpg")
  * @returns Promise<void>
  */
-export const deleteIncidentPhoto = async (photoUrl: string): Promise<void> => {
+export const deleteIncidentPhoto = async (photoPath: string): Promise<void> => {
   try {
-    // Extract file path from URL
-    const url = new URL(photoUrl);
-    const pathParts = url.pathname.split('/incident-photos/');
-    
-    if (pathParts.length < 2) {
-      throw new Error('Invalid photo URL');
+    // If it's a full URL, extract the path
+    let filePath = photoPath;
+    if (photoPath.startsWith('http')) {
+      const url = new URL(photoPath);
+      const pathParts = url.pathname.split('/incident-photos/');
+      
+      if (pathParts.length < 2) {
+        throw new Error('Invalid photo URL');
+      }
+      
+      filePath = pathParts[1];
     }
-    
-    const filePath = pathParts[1];
     
     // Delete from storage
     const { error } = await supabase.storage
@@ -238,5 +248,47 @@ export const deleteIncidentPhoto = async (photoUrl: string): Promise<void> => {
   } catch (error) {
     console.error('Error deleting incident photo:', error);
     throw error;
+  }
+};
+
+/**
+ * Gets a signed URL for a private incident photo
+ * Signed URLs expire after 1 hour
+ * 
+ * @param photoPath - The storage path of the photo (e.g., "userId/incidentId.jpg")
+ * @returns Promise<string | null> - Signed URL or null if error
+ */
+export const getIncidentPhotoUrl = async (photoPath: string): Promise<string | null> => {
+  try {
+    if (!photoPath) return null;
+    
+    // If it's already a full URL, extract the path
+    let filePath = photoPath;
+    if (photoPath.startsWith('http')) {
+      const url = new URL(photoPath);
+      const pathParts = url.pathname.split('/incident-photos/');
+      
+      if (pathParts.length < 2) {
+        console.error('Invalid photo URL format');
+        return null;
+      }
+      
+      filePath = pathParts[1];
+    }
+    
+    // Generate signed URL (expires in 1 hour)
+    const { data, error } = await supabase.storage
+      .from('incident-photos')
+      .createSignedUrl(filePath, 3600);
+    
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return null;
+    }
+    
+    return data?.signedUrl || null;
+  } catch (error) {
+    console.error('getIncidentPhotoUrl: Unexpected error:', error);
+    return null;
   }
 };

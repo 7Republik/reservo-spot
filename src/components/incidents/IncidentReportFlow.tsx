@@ -225,39 +225,45 @@ export const IncidentReportFlow = ({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Progress Indicators */}
-      {renderProgressIndicators()}
+      <div className="flex-shrink-0">
+        {renderProgressIndicators()}
+      </div>
 
-      {/* Step Content */}
-      <div className="pb-6">
-        {currentStep === IncidentStep.VERIFICATION && (
-          <LocationVerification
-            spotNumber={spotNumber}
-            groupName={groupName}
-            onConfirm={handleLocationConfirmed}
-            onCancel={handleCancelRequest}
-          />
-        )}
+      {/* Step Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="min-h-full flex items-center justify-center py-6">
+          {currentStep === IncidentStep.VERIFICATION && (
+            <LocationVerification
+              spotNumber={spotNumber}
+              groupName={groupName}
+              onConfirm={handleLocationConfirmed}
+              onCancel={handleCancelRequest}
+            />
+          )}
 
-        {currentStep === IncidentStep.EVIDENCE && (
-          <EvidenceCapture
-            onSubmit={handleEvidenceSubmit}
-            onBack={handleBackToVerification}
-            onCancel={handleCancelRequest}
-          />
-        )}
+          {currentStep === IncidentStep.EVIDENCE && (
+            <EvidenceCapture
+              onSubmit={handleEvidenceSubmit}
+              onBack={handleBackToVerification}
+              onCancel={handleCancelRequest}
+            />
+          )}
 
-        {currentStep === IncidentStep.REASSIGNMENT && reassignmentResult && (
-          <SpotReassignment
-            success={reassignmentResult.success}
-            reassignedSpotNumber={reassignmentResult.reassignedSpotNumber}
-            groupName={reassignmentResult.groupName}
-            positionX={reassignmentResult.positionX}
-            positionY={reassignmentResult.positionY}
-            onComplete={handleComplete}
-          />
-        )}
+          {currentStep === IncidentStep.REASSIGNMENT && reassignmentResult && (
+            <SpotReassignment
+              success={reassignmentResult.success}
+              reassignedSpotNumber={reassignmentResult.reassignedSpotNumber}
+              reassignedGroupId={reassignmentResult.reassignedGroupId}
+              groupName={reassignmentResult.groupName}
+              positionX={reassignmentResult.positionX}
+              positionY={reassignmentResult.positionY}
+              floorPlanUrl={reassignmentResult.floorPlanUrl}
+              onComplete={handleComplete}
+            />
+          )}
+        </div>
       </div>
 
       {/* Loading Overlay */}

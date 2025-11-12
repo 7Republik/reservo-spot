@@ -3,8 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { 
   User, 
   MapPin, 
@@ -21,6 +22,7 @@ import type { IncidentReportWithDetails } from "@/types/incidents";
 import { useIncidentManagement } from "@/hooks/admin/useIncidentManagement";
 import { IncidentActions } from "./IncidentActions";
 import { toast } from "sonner";
+import { getIncidentPhotoUrl } from "@/lib/incidentHelpers";
 
 interface IncidentDetailsProps {
   incidentId: string;
@@ -52,6 +54,8 @@ export const IncidentDetails = ({ incidentId, onClose, onUpdate }: IncidentDetai
   const [adminNotes, setAdminNotes] = useState("");
   const [warningCount, setWarningCount] = useState(0);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [loadingPhoto, setLoadingPhoto] = useState(false);
   
   const { 
     incidents,
@@ -78,6 +82,19 @@ export const IncidentDetails = ({ incidentId, onClose, onUpdate }: IncidentDetai
       setAdminNotes(foundIncident.admin_notes || "");
     }
   }, [incidents, incidentId]);
+
+  // Load signed URL for photo
+  useEffect(() => {
+    const loadPhotoUrl = async () => {
+      if (incident?.photo_url) {
+        setLoadingPhoto(true);
+        const signedUrl = await getIncidentPhotoUrl(incident.photo_url);
+        setPhotoUrl(signedUrl);
+        setLoadingPhoto(false);
+      }
+    };
+    loadPhotoUrl();
+  }, [incident?.photo_url]);
 
   // Auto-save admin notes with debounce
   useEffect(() => {
@@ -226,27 +243,51 @@ export const IncidentDetails = ({ incidentId, onClose, onUpdate }: IncidentDetai
             <ImageIcon className="h-4 w-4 text-muted-foreground" />
             <h3 className="font-semibold">Evidencia Fotográfica</h3>
           </div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <div className="cursor-pointer hover:opacity-80 transition-opacity">
+          {loadingPhoto ? (
+            <div className="w-full h-48 bg-muted rounded-lg border flex items-center justify-center">
+              <p className="text-sm text-muted-foreground">Cargando foto...</p>
+            </div>
+          ) : photoUrl ? (
+            <Dialog>
+              <DialogTrigger asChild>
+                <div className="cursor-pointer hover:opacity-80 transition-opacity">
+                  <img
+                    src={photoUrl}
+                    alt="Evidencia del incidente"
+                    className="w-full h-48 object-cover rounded-lg border"
+                    onError={(e) => {
+                      console.error('Error loading image');
+                      e.currentTarget.src = '/placeholder.svg';
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Click para ver en tamaño completo
+                  </p>
+                </div>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl">
+                <VisuallyHidden>
+                  <DialogTitle>Evidencia fotográfica del incidente</DialogTitle>
+                  <DialogDescription>
+                    Imagen en tamaño completo de la evidencia del incidente reportado
+                  </DialogDescription>
+                </VisuallyHidden>
                 <img
-                  src={incident.photo_url}
+                  src={photoUrl}
                   alt="Evidencia del incidente"
-                  className="w-full h-48 object-cover rounded-lg border"
+                  className="w-full h-auto"
+                  onError={(e) => {
+                    console.error('Error loading full size image');
+                    e.currentTarget.src = '/placeholder.svg';
+                  }}
                 />
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Click para ver en tamaño completo
-                </p>
-              </div>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl">
-              <img
-                src={incident.photo_url}
-                alt="Evidencia del incidente"
-                className="w-full h-auto"
-              />
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <div className="w-full h-48 bg-muted rounded-lg border flex items-center justify-center">
+              <p className="text-sm text-muted-foreground">No se pudo cargar la foto</p>
+            </div>
+          )}
         </Card>
       )}
 
