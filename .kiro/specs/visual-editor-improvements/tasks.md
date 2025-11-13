@@ -287,7 +287,7 @@ El editor visual actual es funcional pero básico. Este plan lo transforma en un
   - Limpiar sessionStorage al cerrar sesión
   - _Requirements: 4.7_
 
-- [ ] 24. Refactorizar Hook useVisualEditor
+- [x] 24. Refactorizar Hook useVisualEditor
   - Agregar estados: `isHandToolActive`, `isCanvasLocked`, `ghostPosition: {x, y} | null`, `dragState`
   - Agregar funciones: `updateSpotPosition(spotId, x, y)`, `toggleHandTool()`, `toggleCanvasLock()`
   - La validación de límite se implementa en tarea 16 (modificar createSpot existente)

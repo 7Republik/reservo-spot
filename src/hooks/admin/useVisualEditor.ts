@@ -366,9 +366,6 @@ export const useVisualEditor = () => {
    * @returns Success status
    */
   const updateSpotPosition = async (spotId: string, x: number, y: number) => {
-    // Guardar posición original para revertir en caso de error
-    const originalSpot = spots.find(s => s.id === spotId);
-    
     try {
       const { error } = await supabase
         .from("parking_spots")
