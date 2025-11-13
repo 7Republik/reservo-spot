@@ -20,7 +20,8 @@ export const IncidentList = ({ onSelectIncident }: IncidentListProps) => {
   const [warningCounts, setWarningCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    loadIncidents(statusFilter);
+    // Forzar recarga al cambiar el filtro de estado
+    loadIncidents(statusFilter, true);
   }, [statusFilter]);
 
   // Load warning counts for offending users

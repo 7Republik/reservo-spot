@@ -84,7 +84,7 @@ interface ParkingGroup {
  * await handleCancel(reservationId);
  * ```
  */
-export const useParkingCalendar = (userId: string) => {
+export const useParkingCalendar = (userId: string, onReservationUpdate?: () => void) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -558,6 +558,7 @@ export const useParkingCalendar = (userId: string) => {
         toast.success(`Plaza cambiada a ${spotNumber}`);
         loadReservations();
         loadAvailableSpots();
+        if (onReservationUpdate) onReservationUpdate();
         return true;
       }
 
@@ -607,6 +608,7 @@ export const useParkingCalendar = (userId: string) => {
       toast.success(`¡Plaza ${spotNumber} reservada con éxito!`);
       loadReservations();
       loadAvailableSpots();
+      if (onReservationUpdate) onReservationUpdate();
       return true;
     } catch (error: any) {
       console.error("Error creating reservation:", error);
@@ -637,6 +639,7 @@ export const useParkingCalendar = (userId: string) => {
       toast.success("Reserva cancelada correctamente");
       loadReservations();
       loadAvailableSpots();
+      if (onReservationUpdate) onReservationUpdate();
     } catch (error: any) {
       console.error("Error cancelling reservation:", error);
       toast.error("Error al cancelar la reserva");

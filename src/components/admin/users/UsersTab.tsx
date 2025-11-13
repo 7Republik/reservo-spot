@@ -36,7 +36,8 @@ export const UsersTab = ({ parkingGroups, userGroupAssignments, onReloadAssignme
   } = useUserManagement();
 
   useEffect(() => {
-    loadUsers();
+    // Forzar recarga cada vez que se monta el componente
+    loadUsers(true);
   }, []);
 
   const [selectedUserForAction, setSelectedUserForAction] = useState<UserWithRole | null>(null);

@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import ReservationDetailsModal from "./ReservationDetailsModal";
 import GroupSelectorModal from "./GroupSelectorModal";
@@ -10,9 +10,10 @@ import { useParkingCalendar } from "@/hooks/useParkingCalendar";
 interface ParkingCalendarProps {
   userId: string;
   userRole: string;
+  onReservationUpdate?: () => void;
 }
 
-const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
+const ParkingCalendar = ({ userId, onReservationUpdate }: ParkingCalendarProps) => {
   const {
     currentMonth,
     setCurrentMonth,
@@ -21,7 +22,6 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
     loading,
     loadingSpots,
     userGroups,
-    userGroupNames,
     selectedDateForMap,
     showGroupSelector,
     setShowGroupSelector,
@@ -36,7 +36,7 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
     handleEditReservation,
     handleCancel,
     refreshData,
-  } = useParkingCalendar(userId);
+  } = useParkingCalendar(userId, onReservationUpdate);
 
   const handleDayClick = (day: Date, reservation?: any) => {
     if (reservation) {
@@ -46,21 +46,38 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
     }
   };
 
+  const handleCancelWithUpdate = async (reservationId: string) => {
+    await handleCancel(reservationId);
+    if (onReservationUpdate) {
+      onReservationUpdate();
+    }
+  };
+
+  const handleRefreshWithUpdate = async () => {
+    await refreshData();
+    if (onReservationUpdate) {
+      onReservationUpdate();
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Advertencia de sin acceso a grupos */}
       {userGroups.length === 0 && !loading && (
-        <Card className="p-6 bg-yellow-50 border-yellow-200">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-yellow-600" />
-            <div>
-              <p className="text-sm font-semibold text-yellow-900">
-                No tienes acceso a ningún grupo de parking
-              </p>
-              <p className="text-xs text-yellow-700 mt-1">
-                Contacta con el administrador para que te asigne acceso a los grupos correspondientes
-              </p>
+        <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
+                  No tienes acceso a ningún grupo de parking
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                  Contacta con el administrador para que te asigne acceso a los grupos correspondientes
+                </p>
+              </div>
             </div>
-          </div>
+          </CardContent>
         </Card>
       )}
 
@@ -92,13 +109,13 @@ const ParkingCalendar = ({ userId, userRole }: ParkingCalendarProps) => {
       <ReservationDetailsModal
         isOpen={showReservationDetails}
         reservation={selectedReservationDetails}
-        onCancel={handleCancel}
+        onCancel={handleCancelWithUpdate}
         onEdit={handleEditReservation}
         onClose={() => {
           setShowReservationDetails(false);
           setSelectedReservationDetails(null);
         }}
-        onIncidentReported={refreshData}
+        onIncidentReported={handleRefreshWithUpdate}
       />
     </div>
   );

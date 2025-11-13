@@ -67,19 +67,22 @@ const AdminPanel = () => {
       parkingGroupsHook.loadParkingGroups(true);
     }
 
-    if (value === "users" && !loadedTabs.has(value)) {
+    if (value === "users") {
       loadUserGroupAssignments();
     }
 
-    if (value === "incidents" && !loadedTabs.has(value)) {
-      loadIncidents("all");
+    // SIEMPRE recargar incidentes al cambiar a la pestaña (forzar recarga)
+    if (value === "incidents") {
+      loadIncidents("all", true); // forceReload = true
+      loadPendingIncidentsCount();
     }
 
     setLoadedTabs(prev => new Set([...prev, value]));
   };
 
   const handleIncidentUpdate = () => {
-    loadIncidents("all");
+    // Forzar recarga completa después de actualizar un incidente
+    loadIncidents("all", true);
     loadPendingIncidentsCount();
   };
 
@@ -90,6 +93,13 @@ const AdminPanel = () => {
   // Load pending incidents count on mount
   useEffect(() => {
     loadPendingIncidentsCount();
+    
+    // Actualizar contador periódicamente (cada 30 segundos)
+    const interval = setInterval(() => {
+      loadPendingIncidentsCount();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   return (

@@ -31,9 +31,10 @@ export const GroupsTab = () => {
   const [showDeactivatedGroups, setShowDeactivatedGroups] = useState(false);
 
   useEffect(() => {
-    parkingGroupsHook.loadParkingGroups();
-    settingsHook.loadSettings();
-    blockedDatesHook.loadBlockedDates();
+    // Forzar recarga cada vez que se monta el componente
+    parkingGroupsHook.loadParkingGroups(true);
+    settingsHook.loadSettings(true);
+    blockedDatesHook.loadBlockedDates(true);
   }, []);
 
   const openCreateDialog = () => {

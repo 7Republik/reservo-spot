@@ -68,9 +68,17 @@ export const useIncidentManagement = () => {
     statusFilter: IncidentStatus | 'all' = 'all',
     forceReload = false
   ) => {
+    // Si el filtro cambió, siempre recargar
+    const filterChanged = lastStatusFilter.current !== statusFilter;
+    
     // Si ya está en caché, el filtro no cambió y no se fuerza la recarga, no hacer nada
-    if (isCached.current && lastStatusFilter.current === statusFilter && !forceReload) {
+    if (isCached.current && !filterChanged && !forceReload) {
       return;
+    }
+    
+    // Si el filtro cambió, invalidar cache
+    if (filterChanged) {
+      isCached.current = false;
     }
 
     try {

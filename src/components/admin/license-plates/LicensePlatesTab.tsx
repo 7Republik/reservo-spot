@@ -23,7 +23,8 @@ export const LicensePlatesTab = () => {
   const [selectedPlateId, setSelectedPlateId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadPendingPlates();
+    // Forzar recarga cada vez que se monta el componente
+    loadPendingPlates(true);
   }, []);
 
   const handleApproveClick = (plate: LicensePlate) => {

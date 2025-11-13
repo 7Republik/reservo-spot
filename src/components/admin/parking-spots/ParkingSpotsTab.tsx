@@ -19,7 +19,8 @@ export const ParkingSpotsTab = ({ parkingGroups }: ParkingSpotsTabProps) => {
   const { spots, loading, loadSpots, addSpot, toggleSpot } = useParkingSpots();
   
   useEffect(() => {
-    loadSpots();
+    // Forzar recarga cada vez que se monta el componente
+    loadSpots(true);
   }, []);
   
   const [newSpotNumber, setNewSpotNumber] = useState("");

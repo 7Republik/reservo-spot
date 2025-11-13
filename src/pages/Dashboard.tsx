@@ -1,9 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Settings, ParkingSquare } from "lucide-react";
-import ParkingCalendar from "@/components/ParkingCalendar";
+import { Settings, ParkingSquare, Calendar } from "lucide-react";
 import LicensePlateManager from "@/components/LicensePlateManager";
 import AdminPanel from "@/components/AdminPanel";
+import { CalendarTabContent } from "@/components/dashboard/CalendarTabContent";
 import { useDashboardAuth } from "@/hooks/useDashboardAuth";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import UserStatusGuard from "@/components/dashboard/UserStatusGuard";
@@ -71,20 +71,7 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="calendar" className="space-y-3 sm:space-y-6 mt-3 sm:mt-6">
-            <Card>
-              <CardHeader className="px-3 py-4 sm:px-6 sm:py-6">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Reservar Plaza de Aparcamiento
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  Selecciona un día para reservar tu plaza de aparcamiento
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="px-3 pb-4 sm:px-6 sm:pb-6">
-                <ParkingCalendar userId={user.id} userRole={userRole} />
-              </CardContent>
-            </Card>
+            <CalendarTabContent userId={user.id} userRole={userRole} />
           </TabsContent>
 
           <TabsContent value="licenses" className="space-y-3 sm:space-y-6 mt-3 sm:mt-6">

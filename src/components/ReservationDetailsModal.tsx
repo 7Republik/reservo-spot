@@ -7,6 +7,7 @@ import { Calendar, MapPin, AlertTriangle, AlertCircle } from "lucide-react";
 import { format, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { IncidentReportFlow } from "@/components/incidents";
 
 interface ReservationDetailsModalProps {
@@ -36,6 +37,7 @@ const ReservationDetailsModal = ({
   onClose,
   onIncidentReported,
 }: ReservationDetailsModalProps) => {
+  const navigate = useNavigate();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showIncidentReport, setShowIncidentReport] = useState(false);
 
@@ -61,6 +63,21 @@ const ReservationDetailsModal = ({
 
   const handleReportIncident = () => {
     setShowIncidentReport(true);
+  };
+
+  const handleViewLocation = () => {
+    navigate("/view-spot-location", {
+      state: {
+        spotId: reservation.spotId,
+        spotNumber: reservation.spotNumber,
+        groupName: reservation.groupName,
+        date: reservation.date.toISOString(),
+        isAccessible: reservation.isAccessible,
+        hasCharger: reservation.hasCharger,
+        isCompact: reservation.isCompact,
+      }
+    });
+    onClose();
   };
 
   const handleIncidentComplete = () => {
@@ -95,14 +112,14 @@ const ReservationDetailsModal = ({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-3 py-4">
             {/* Fecha */}
-            <Card className="p-4 bg-blue-50 border-blue-200">
+            <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
               <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-xs text-blue-600 font-medium">Fecha</p>
-                  <p className="text-sm font-bold text-blue-900 capitalize">
+                <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase mb-0.5">Fecha</p>
+                  <p className="text-sm font-bold text-blue-900 dark:text-blue-100 capitalize">
                     {format(reservation.date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
                   </p>
                 </div>
@@ -110,44 +127,54 @@ const ReservationDetailsModal = ({
             </Card>
 
             {/* Plaza */}
-            <Card className="p-4 bg-emerald-50 border-emerald-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-emerald-600" />
+            <Card className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1">
+                  <MapPin className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-emerald-600 font-medium">Plaza</p>
-                    <p className="text-2xl font-bold text-emerald-900">
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium uppercase mb-0.5">Plaza</p>
+                    <p className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">
                       {reservation.spotNumber}
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  {attributes.map((attr, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {attr.icon} {attr.label}
-                    </Badge>
-                  ))}
-                </div>
+                {attributes.length > 0 && (
+                  <div className="flex flex-col gap-1 items-end">
+                    {attributes.map((attr, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {attr.icon} {attr.label}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             </Card>
 
             {/* Grupo */}
-            <Card className="p-4 bg-gray-50 border-gray-200">
-              <div>
-                <p className="text-xs text-gray-600 font-medium">Grupo de parking</p>
-                <p className="text-sm font-semibold text-gray-900 mt-1">
-                  {reservation.groupName}
-                </p>
-              </div>
+            <Card className="p-4 bg-muted/50">
+              <p className="text-xs text-muted-foreground font-medium uppercase mb-0.5">Grupo de parking</p>
+              <p className="text-sm font-semibold text-foreground">
+                {reservation.groupName}
+              </p>
             </Card>
           </div>
 
-          <DialogFooter className="flex-col sm:flex-col gap-2">
+          <div className="flex flex-col gap-2 pt-2">
+            {/* View Location Button */}
+            <Button
+              variant="outline"
+              className="w-full border-primary text-primary hover:bg-primary/10"
+              onClick={handleViewLocation}
+            >
+              <MapPin className="w-4 h-4 mr-2" />
+              Ver Ubicación en el Plano
+            </Button>
+            
             {/* Report Incident Button - Only show for today's reservations */}
             {isReservationToday && (
               <Button
                 variant="outline"
-                className="w-full border-orange-500 text-orange-700 hover:bg-orange-50"
+                className="w-full border-orange-500 text-orange-700 hover:bg-orange-50 dark:border-orange-600 dark:text-orange-400 dark:hover:bg-orange-950/20"
                 onClick={handleReportIncident}
               >
                 <AlertCircle className="w-4 h-4 mr-2" />
@@ -156,7 +183,7 @@ const ReservationDetailsModal = ({
             )}
             <Button
               variant="outline"
-              className="w-full border-yellow-500 text-yellow-700 hover:bg-yellow-50"
+              className="w-full border-yellow-500 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-600 dark:text-yellow-400 dark:hover:bg-yellow-950/20"
               onClick={handleEditClick}
             >
               Cambiar Plaza
@@ -175,7 +202,7 @@ const ReservationDetailsModal = ({
             >
               Cerrar
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
