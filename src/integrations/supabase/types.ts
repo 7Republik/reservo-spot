@@ -545,6 +545,7 @@ export type Database = {
           notes: string | null
           reason: string
           user_id: string
+          viewed_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -555,6 +556,7 @@ export type Database = {
           notes?: string | null
           reason: string
           user_id: string
+          viewed_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -565,6 +567,7 @@ export type Database = {
           notes?: string | null
           reason?: string
           user_id?: string
+          viewed_at?: string | null
         }
         Relationships: [
           {
