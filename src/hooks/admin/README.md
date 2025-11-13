@@ -31,6 +31,10 @@ Los hooks del admin panel siguen un patrón arquitectónico consistente que:
 | `useBlockedDates` | Días bloqueados | `useBlockedDates.ts` |
 | `useParkingSpots` | Gestión de plazas individuales | `useParkingSpots.ts` |
 | `useVisualEditor` | Editor visual de mapas | `useVisualEditor.ts` |
+| `useCheckinSettings` | Configuración global de check-in | `useCheckinSettings.ts` |
+| `useGroupCheckinConfig` | Configuración de check-in por grupo | `useGroupCheckinConfig.ts` |
+| `useCheckinReports` | Reporting de infracciones y estadísticas | `useCheckinReports.ts` |
+| `useIncidentManagement` | Gestión de reportes de incidentes | `useIncidentManagement.ts` |
 
 ---
 
@@ -825,3 +829,266 @@ if (loading || initialLoad) {
 **Última actualización**: 2025-01-10  
 **Versión**: 1.0.0  
 **Autor**: Equipo RESERVEO
+
+
+---
+
+## 📊 Ejemplo: Hook de Reporting (useCheckinReports)
+
+### Características Especiales
+
+El hook `useCheckinReports` es único porque:
+- **No usa caché automático** (datos de reporting deben ser siempre frescos)
+- **Soporta múltiples tipos de datos** (infracciones, histórico, estadísticas)
+- **Incluye exportación a CSV** con formato localizado
+- **Filtros avanzados** por grupo, usuario, fecha, tipo
+
+### Implementación
+
+```typescript
+// src/hooks/admin/useCheckinReports.ts
+export const useCheckinReports = () => {
+  const [todayInfractions, setTodayInfractions] = useState<CheckinReportItem[]>([]);
+  const [checkinHistory, setCheckinHistory] = useState<CheckinHistoryItem[]>([]);
+  const [stats, setStats] = useState<CheckinStats | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // ⚠️ NOTA: No usa isCached porque los reportes deben ser siempre frescos
+
+  const loadTodayInfractions = async (filters?: CheckinReportsFilters) => {
+    setLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      let query = supabase
+        .from('checkin_infractions')
+        .select(`
+          *,
+          profiles:user_id(full_name),
+          parking_spots:spot_id(spot_number),
+          parking_groups:group_id(name)
+        `)
+        .eq('infraction_date', today);
+
+      // Aplicar filtros dinámicos
+      if (filters?.groupId) query = query.eq('group_id', filters.groupId);
+      if (filters?.userId) query = query.eq('user_id', filters.userId);
+      if (filters?.infractionType) query = query.eq('infraction_type', filters.infractionType);
+
+      const { data, error } = await query.order('detected_at', { ascending: false });
+      if (error) throw error;
+
+      // Transformar datos con joins
+      const formattedData = (data || []).map(item => ({
+        user_id: item.user_id,
+        user_name: item.profiles?.full_name || 'Usuario desconocido',
+        spot_number: item.parking_spots?.spot_number || 'N/A',
+        group_name: item.parking_groups?.name || 'N/A',
+        reservation_date: item.infraction_date,
+        infraction_type: item.infraction_type,
+        detected_at: item.detected_at,
+        expected_window_end: item.expected_checkin_window_end,
+        grace_period_end: item.grace_period_end
+      }));
+
+      setTodayInfractions(formattedData);
+    } catch (err) {
+      console.error('Error loading infractions:', err);
+      toast.error('Error al cargar infracciones');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportToCSV = (data: CheckinReportItem[] | CheckinHistoryItem[], filename: string) => {
+    // Detectar tipo de datos
+    const isInfractionReport = 'infraction_type' in data[0];
+
+    let csv: string;
+    if (isInfractionReport) {
+      // CSV para infracciones
+      csv = [
+        ['Usuario', 'Plaza', 'Grupo', 'Fecha', 'Tipo', 'Detectado'],
+        ...data.map(r => [
+          r.user_name,
+          r.spot_number,
+          r.group_name,
+          r.reservation_date,
+          r.infraction_type === 'checkin' ? 'Check-in' : 'Check-out',
+          new Date(r.detected_at).toLocaleString('es-ES')
+        ])
+      ].map(row => row.join(',')).join('\n');
+    } else {
+      // CSV para histórico
+      csv = [
+        ['Usuario', 'Plaza', 'Grupo', 'Check-in', 'Check-out', 'Duración (min)'],
+        ...data.map(h => [
+          h.user_name,
+          h.spot_number,
+          h.group_name,
+          h.checkin_at ? new Date(h.checkin_at).toLocaleString('es-ES') : 'N/A',
+          h.checkout_at ? new Date(h.checkout_at).toLocaleString('es-ES') : 'N/A',
+          h.duration_minutes?.toString() || 'N/A'
+        ])
+      ].map(row => row.join(',')).join('\n');
+    }
+
+    // Descargar archivo con BOM para Excel
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success('Archivo CSV descargado');
+  };
+
+  return {
+    todayInfractions,
+    checkinHistory,
+    stats,
+    loading,
+    loadTodayInfractions,
+    loadCheckinHistory,
+    calculateStats,
+    exportToCSV
+  };
+};
+```
+
+### Uso en Componente
+
+```tsx
+// src/components/admin/reports/CheckinReportPanel.tsx
+import { useEffect, useState } from "react";
+import { useCheckinReports } from "@/hooks/admin/useCheckinReports";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+
+const CheckinReportPanel = () => {
+  const {
+    todayInfractions,
+    loading,
+    loadTodayInfractions,
+    exportToCSV
+  } = useCheckinReports();
+
+  const [filters, setFilters] = useState({
+    groupId: undefined,
+    infractionType: undefined
+  });
+
+  // ✅ Cargar datos al montar y cuando cambien filtros
+  useEffect(() => {
+    loadTodayInfractions(filters);
+  }, [filters]);
+
+  // ✅ Auto-refresh cada minuto
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadTodayInfractions(filters);
+    }, 60000); // 60 segundos
+
+    return () => clearInterval(interval);
+  }, [filters]);
+
+  const handleExport = () => {
+    exportToCSV(todayInfractions, 'infracciones-hoy');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Infracciones del Día</h2>
+        <div className="flex gap-2">
+          <Select
+            value={filters.infractionType}
+            onValueChange={(value) => 
+              setFilters(prev => ({ ...prev, infractionType: value }))
+            }
+          >
+            <option value="">Todos los tipos</option>
+            <option value="checkin">Check-in</option>
+            <option value="checkout">Check-out</option>
+          </Select>
+          
+          <Button 
+            onClick={handleExport}
+            disabled={todayInfractions.length === 0}
+          >
+            Exportar CSV
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div>Cargando...</div>
+      ) : (
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Plaza</th>
+              <th>Grupo</th>
+              <th>Tipo</th>
+              <th>Detectado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {todayInfractions.map((infraction, idx) => (
+              <tr key={idx}>
+                <td>{infraction.user_name}</td>
+                <td>{infraction.spot_number}</td>
+                <td>{infraction.group_name}</td>
+                <td>
+                  {infraction.infraction_type === 'checkin' 
+                    ? 'Check-in' 
+                    : 'Check-out'}
+                </td>
+                <td>
+                  {new Date(infraction.detected_at).toLocaleString('es-ES')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {!loading && todayInfractions.length === 0 && (
+        <div className="text-center text-muted-foreground py-8">
+          No hay infracciones registradas hoy
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CheckinReportPanel;
+```
+
+### Características Clave
+
+1. **Sin Caché**: Los datos de reporting siempre se cargan frescos
+2. **Filtros Dinámicos**: Soporta múltiples filtros combinables
+3. **Auto-refresh**: Actualización automática cada minuto
+4. **Exportación CSV**: Con formato localizado y BOM para Excel
+5. **Joins Complejos**: Combina datos de múltiples tablas
+6. **Transformación de Datos**: Formatea datos para UI
+7. **Cálculo de Estadísticas**: Métricas de cumplimiento en tiempo real
+
+### Diferencias con Otros Hooks
+
+| Característica | Hooks CRUD | useCheckinReports |
+|----------------|------------|-------------------|
+| Caché | ✅ Sí | ❌ No (datos frescos) |
+| forceReload | ✅ Necesario | ❌ No aplica |
+| Auto-refresh | ❌ No | ✅ Sí (cada minuto) |
+| Filtros | ❌ Básicos | ✅ Avanzados |
+| Exportación | ❌ No | ✅ CSV con BOM |
+| Joins | ❌ Simples | ✅ Complejos |
+| Estadísticas | ❌ No | ✅ Sí |
+

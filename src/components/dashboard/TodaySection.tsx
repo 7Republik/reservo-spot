@@ -3,6 +3,7 @@ import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { TodayReservationCard } from "./TodayReservationCard";
+import { TodayCheckinCard } from "./TodayCheckinCard";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,12 +32,15 @@ export const TodaySection = ({
   const loadTodayReservations = useCallback(async () => {
     const today = format(new Date(), "yyyy-MM-dd");
     
+    // Cargar reservas con información de check-in
     const { data, error } = await supabase
       .from("reservations")
       .select(`
         id,
         user_id,
         reservation_date,
+        status,
+        created_at,
         parking_spots (
           id,
           spot_number,
@@ -59,9 +63,17 @@ export const TodaySection = ({
     }
 
     if (data && data.length > 0) {
+      // Cargar información de check-in para cada reserva
+      const reservationIds = data.map(r => r.id);
+      const { data: checkins } = await supabase
+        .from("reservation_checkins")
+        .select("*")
+        .in("reservation_id", reservationIds);
+
       const formattedReservations = data.map(res => {
         const spot = res.parking_spots as any;
         const group = spot?.parking_groups as any;
+        const checkin = checkins?.find(c => c.reservation_id === res.id);
 
         return {
           id: res.id,
@@ -72,6 +84,19 @@ export const TodaySection = ({
           isAccessible: spot?.is_accessible || false,
           hasCharger: spot?.has_charger || false,
           isCompact: spot?.is_compact || false,
+          // Datos adicionales para check-in
+          user_id: res.user_id,
+          spot_id: spot?.id || "",
+          reservation_date: res.reservation_date,
+          status: res.status,
+          created_at: res.created_at,
+          checkin: checkin || undefined,
+          spot: {
+            spot_number: spot?.spot_number || "",
+            group: {
+              name: group?.name || ""
+            }
+          }
         };
       });
 
@@ -116,11 +141,17 @@ export const TodaySection = ({
             Cargando...
           </div>
         ) : todayReservations.length > 0 ? (
-          <TodayReservationCard
-            reservations={todayReservations}
-            onViewDetails={onViewDetails}
-            onReportIncident={onReportIncident}
-          />
+          <div className="space-y-4">
+            {/* Check-in/Check-out Card */}
+            <TodayCheckinCard reservation={todayReservations[0]} />
+            
+            {/* Información de la reserva y acciones */}
+            <TodayReservationCard
+              reservations={todayReservations}
+              onViewDetails={onViewDetails}
+              onReportIncident={onReportIncident}
+            />
+          </div>
         ) : (
           <div className="text-center py-6 text-muted-foreground">
             <p className="text-sm font-medium">No tienes reservas para hoy</p>

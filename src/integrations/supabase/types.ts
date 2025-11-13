@@ -74,6 +74,175 @@ export type Database = {
           },
         ]
       }
+      checkin_infractions: {
+        Row: {
+          created_at: string
+          detected_at: string
+          expected_checkin_window_end: string | null
+          grace_period_end: string | null
+          group_id: string
+          id: string
+          infraction_date: string
+          infraction_type: string
+          reservation_id: string
+          spot_id: string
+          user_id: string
+          warning_generated: boolean
+          warning_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detected_at?: string
+          expected_checkin_window_end?: string | null
+          grace_period_end?: string | null
+          group_id: string
+          id?: string
+          infraction_date: string
+          infraction_type: string
+          reservation_id: string
+          spot_id: string
+          user_id: string
+          warning_generated?: boolean
+          warning_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detected_at?: string
+          expected_checkin_window_end?: string | null
+          grace_period_end?: string | null
+          group_id?: string
+          id?: string
+          infraction_date?: string
+          infraction_type?: string
+          reservation_id?: string
+          spot_id?: string
+          user_id?: string
+          warning_generated?: boolean
+          warning_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkin_infractions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "parking_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkin_infractions_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkin_infractions_spot_id_fkey"
+            columns: ["spot_id"]
+            isOneToOne: false
+            referencedRelation: "parking_spots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkin_infractions_warning_id_fkey"
+            columns: ["warning_id"]
+            isOneToOne: false
+            referencedRelation: "user_warnings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checkin_notifications: {
+        Row: {
+          created_at: string | null
+          delivery_status: string | null
+          group_name: string | null
+          id: string
+          message: string
+          minutes_remaining: number | null
+          notification_type: string
+          reservation_id: string
+          sent_at: string | null
+          spot_number: string | null
+          subject: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          delivery_status?: string | null
+          group_name?: string | null
+          id?: string
+          message: string
+          minutes_remaining?: number | null
+          notification_type: string
+          reservation_id: string
+          sent_at?: string | null
+          spot_number?: string | null
+          subject: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          delivery_status?: string | null
+          group_name?: string | null
+          id?: string
+          message?: string
+          minutes_remaining?: number | null
+          notification_type?: string
+          reservation_id?: string
+          sent_at?: string | null
+          spot_number?: string | null
+          subject?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkin_notifications_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checkin_settings: {
+        Row: {
+          checkin_infraction_threshold: number
+          checkout_infraction_threshold: number
+          created_at: string
+          default_checkin_window_hours: number
+          grace_period_minutes: number
+          id: string
+          send_checkin_reminders: boolean
+          system_enabled: boolean
+          temporary_block_days: number
+          updated_at: string
+        }
+        Insert: {
+          checkin_infraction_threshold?: number
+          checkout_infraction_threshold?: number
+          created_at?: string
+          default_checkin_window_hours?: number
+          grace_period_minutes?: number
+          id?: string
+          send_checkin_reminders?: boolean
+          system_enabled?: boolean
+          temporary_block_days?: number
+          updated_at?: string
+        }
+        Update: {
+          checkin_infraction_threshold?: number
+          checkout_infraction_threshold?: number
+          created_at?: string
+          default_checkin_window_hours?: number
+          grace_period_minutes?: number
+          id?: string
+          send_checkin_reminders?: boolean
+          system_enabled?: boolean
+          temporary_block_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       incident_reports: {
         Row: {
           admin_notes: string | null
@@ -220,6 +389,44 @@ export type Database = {
         }
         Relationships: []
       }
+      parking_group_checkin_config: {
+        Row: {
+          created_at: string
+          custom_checkin_window_hours: number | null
+          enabled: boolean
+          group_id: string
+          id: string
+          updated_at: string
+          use_custom_config: boolean
+        }
+        Insert: {
+          created_at?: string
+          custom_checkin_window_hours?: number | null
+          enabled?: boolean
+          group_id: string
+          id?: string
+          updated_at?: string
+          use_custom_config?: boolean
+        }
+        Update: {
+          created_at?: string
+          custom_checkin_window_hours?: number | null
+          enabled?: boolean
+          group_id?: string
+          id?: string
+          updated_at?: string
+          use_custom_config?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parking_group_checkin_config_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "parking_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parking_groups: {
         Row: {
           button_size: number | null
@@ -335,6 +542,7 @@ export type Database = {
           blocked_at: string | null
           blocked_by: string | null
           blocked_reason: string | null
+          checkin_reminders_enabled: boolean | null
           created_at: string | null
           deactivated_at: string | null
           deactivated_by: string | null
@@ -350,6 +558,7 @@ export type Database = {
           blocked_at?: string | null
           blocked_by?: string | null
           blocked_reason?: string | null
+          checkin_reminders_enabled?: boolean | null
           created_at?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
@@ -365,6 +574,7 @@ export type Database = {
           blocked_at?: string | null
           blocked_by?: string | null
           blocked_reason?: string | null
+          checkin_reminders_enabled?: boolean | null
           created_at?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
@@ -422,6 +632,73 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reservation_checkins: {
+        Row: {
+          checkin_at: string | null
+          checkout_at: string | null
+          continuous_end_date: string | null
+          continuous_start_date: string | null
+          created_at: string
+          group_id: string
+          id: string
+          is_continuous_reservation: boolean
+          reservation_id: string
+          spot_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          checkin_at?: string | null
+          checkout_at?: string | null
+          continuous_end_date?: string | null
+          continuous_start_date?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          is_continuous_reservation?: boolean
+          reservation_id: string
+          spot_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          checkin_at?: string | null
+          checkout_at?: string | null
+          continuous_end_date?: string | null
+          continuous_start_date?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          is_continuous_reservation?: boolean
+          reservation_id?: string
+          spot_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_checkins_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "parking_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservation_checkins_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservation_checkins_spot_id_fkey"
+            columns: ["spot_id"]
+            isOneToOne: false
+            referencedRelation: "parking_spots"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reservation_settings: {
         Row: {
@@ -485,6 +762,53 @@ export type Database = {
           },
         ]
       }
+      user_blocks: {
+        Row: {
+          block_type: string
+          blocked_at: string
+          blocked_until: string
+          created_at: string
+          id: string
+          is_active: boolean
+          reason: string
+          unblocked_at: string | null
+          user_id: string
+          warning_id: string | null
+        }
+        Insert: {
+          block_type: string
+          blocked_at?: string
+          blocked_until: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          reason: string
+          unblocked_at?: string | null
+          user_id: string
+          warning_id?: string | null
+        }
+        Update: {
+          block_type?: string
+          blocked_at?: string
+          blocked_until?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          reason?: string
+          unblocked_at?: string | null
+          user_id?: string
+          warning_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_blocks_warning_id_fkey"
+            columns: ["warning_id"]
+            isOneToOne: false
+            referencedRelation: "user_warnings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_group_assignments: {
         Row: {
           created_at: string | null
@@ -537,37 +861,46 @@ export type Database = {
       }
       user_warnings: {
         Row: {
+          auto_generated: boolean
           created_at: string | null
           id: string
           incident_id: string
+          infraction_count: number | null
           issued_at: string | null
           issued_by: string
           notes: string | null
           reason: string
           user_id: string
           viewed_at: string | null
+          warning_type: string | null
         }
         Insert: {
+          auto_generated?: boolean
           created_at?: string | null
           id?: string
           incident_id: string
+          infraction_count?: number | null
           issued_at?: string | null
           issued_by: string
           notes?: string | null
           reason: string
           user_id: string
           viewed_at?: string | null
+          warning_type?: string | null
         }
         Update: {
+          auto_generated?: boolean
           created_at?: string | null
           id?: string
           incident_id?: string
+          infraction_count?: number | null
           issued_at?: string | null
           issued_by?: string
           notes?: string | null
           reason?: string
           user_id?: string
           viewed_at?: string | null
+          warning_type?: string | null
         }
         Relationships: [
           {
@@ -604,6 +937,8 @@ export type Database = {
         Args: { _admin_id: string; _user_id: string }
         Returns: undefined
       }
+      detect_checkin_infractions: { Args: never; Returns: number }
+      detect_checkout_infractions: { Args: never; Returns: number }
       extract_storage_path_from_url: { Args: { url: string }; Returns: string }
       find_available_spot_for_incident: {
         Args: { _date: string; _original_spot_id: string; _user_id: string }
@@ -621,6 +956,7 @@ export type Database = {
         Args: { _plate_number: string }
         Returns: string
       }
+      generate_automatic_warnings: { Args: never; Returns: number }
       get_available_spots_by_group: {
         Args: { _date: string; _group_id: string }
         Returns: {
@@ -633,11 +969,32 @@ export type Database = {
           spot_number: string
         }[]
       }
+      get_available_spots_with_checkout: {
+        Args: { p_date: string; p_group_id: string }
+        Returns: {
+          is_early_checkout: boolean
+          spot_id: string
+          spot_number: string
+        }[]
+      }
       get_reservable_date_range: {
         Args: never
         Returns: {
           max_date: string
           min_date: string
+        }[]
+      }
+      get_user_checkin_notifications: {
+        Args: { p_limit?: number; p_user_id?: string }
+        Returns: {
+          group_name: string
+          id: string
+          message: string
+          minutes_remaining: number
+          notification_type: string
+          sent_at: string
+          spot_number: string
+          subject: string
         }[]
       }
       get_user_role_priority: { Args: { _user_id: string }; Returns: number }
@@ -659,6 +1016,18 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      is_user_blocked_by_checkin: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      perform_checkin: {
+        Args: { p_reservation_id: string; p_user_id: string }
+        Returns: Json
+      }
+      perform_checkout: {
+        Args: { p_reservation_id: string; p_user_id: string }
+        Returns: Json
+      }
       permanently_delete_user: {
         Args: {
           _admin_id: string
@@ -670,6 +1039,20 @@ export type Database = {
       reactivate_user: {
         Args: { _admin_id: string; _user_id: string }
         Returns: undefined
+      }
+      send_checkin_reminders: {
+        Args: never
+        Returns: {
+          group_name: string
+          minutes_remaining: number
+          notification_id: string
+          notification_sent: boolean
+          reservation_date: string
+          spot_number: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }[]
       }
       validate_parking_spot_reservation: {
         Args: { _reservation_date: string; _spot_id: string; _user_id: string }

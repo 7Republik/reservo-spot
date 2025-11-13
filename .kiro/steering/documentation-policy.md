@@ -10,6 +10,10 @@ inclusion: always
 
 **❌ NO crear archivos de documentación automáticamente** después de completar tareas, a menos que el usuario lo solicite explícitamente.
 
+# La specs que te mande crear el titulo debe ser en español y tener un orden para que se ordenen segun el orden de peticion dentro del menu de specs
+
+# Cuando se finalizan todas las tareas de una spec se debe añadir al titulo de la spec que se muestra en el menu de Kiro un OK para marcarla como finalizada
+
 ## Qué NO hacer
 
 - ❌ NO crear archivos `.md` de resumen después de cada cambio

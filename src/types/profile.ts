@@ -8,6 +8,7 @@ export interface UserProfile {
   updated_at: string;
   is_blocked: boolean;
   is_deactivated: boolean;
+  checkin_reminders_enabled: boolean;
 }
 
 export interface ProfileUpdateData {
@@ -56,4 +57,33 @@ export interface WarningNotification {
   warning_id: string;
   reason: string;
   issued_at: string;
+}
+
+// User block types
+export interface UserBlock {
+  id: string;
+  user_id: string;
+  block_type: 'manual' | 'automatic_checkin' | 'automatic_checkout';
+  reason: string;
+  blocked_at: string;
+  blocked_until: string;
+  warning_id: string | null;
+  is_active: boolean;
+  unblocked_at: string | null;
+  created_at: string;
+}
+
+export interface UserBlockWithWarning extends UserBlock {
+  warning?: {
+    id: string;
+    reason: string;
+    issued_at: string;
+  };
+}
+
+// Infraction count types
+export interface InfractionCounts {
+  checkin_infractions: number;
+  checkout_infractions: number;
+  total_infractions: number;
 }

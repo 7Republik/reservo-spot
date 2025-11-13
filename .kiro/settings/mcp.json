@@ -71,6 +71,55 @@
         "check_domain_availability_and_price",
         "get_deployment"
       ]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ],
+      "disabled": false,
+      "autoApprove": [
+        "list_registry_items",
+        "search_registry_items",
+        "get_registry_item",
+        "add_registry_item"
+      ]
+    },
+    "flyonui": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@themeselection/flyonui-mcp"
+      ],
+      "env": {
+        "FLYONUI_LICENSE_KEY": "TU_LICENSE_KEY_AQUI"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "inspire_ui",
+        "create_ui",
+        "refine_ui",
+        "get_blocks",
+        "search_blocks"
+      ]
+    },
+    "figma": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@hapins/figma-mcp"
+      ],
+      "env": {
+        "FIGMA_ACCESS_TOKEN": "TU_TOKEN_FIGMA_AQUI"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "get_figma_file",
+        "get_figma_node",
+        "get_figma_image",
+        "list_figma_files"
+      ]
     }
   }
 }

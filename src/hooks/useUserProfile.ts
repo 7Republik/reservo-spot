@@ -11,6 +11,7 @@ export interface UseUserProfileReturn {
   isLoading: boolean;
   error: Error | null;
   updateProfile: (data: ProfileUpdateData) => Promise<void>;
+  updateNotificationPreferences: (checkinRemindersEnabled: boolean) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
@@ -105,6 +106,47 @@ export const useUserProfile = (): UseUserProfileReturn => {
   };
 
   /**
+   * Updates the user's notification preferences
+   * 
+   * @param checkinRemindersEnabled - Whether to enable check-in reminders
+   */
+  const updateNotificationPreferences = async (checkinRemindersEnabled: boolean) => {
+    try {
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) throw authError;
+      if (!user) {
+        throw new Error("No hay usuario autenticado");
+      }
+
+      // Update notification preferences
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          checkin_reminders_enabled: checkinRemindersEnabled,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      // Reload profile to get updated data
+      await loadProfile();
+      
+      toast.success(
+        checkinRemindersEnabled 
+          ? "Recordatorios de check-in activados" 
+          : "Recordatorios de check-in desactivados"
+      );
+    } catch (err) {
+      console.error("Error updating notification preferences:", err);
+      toast.error("Error al actualizar preferencias");
+      throw err;
+    }
+  };
+
+  /**
    * Refetch profile data (alias for loadProfile)
    */
   const refetch = async () => {
@@ -121,6 +163,7 @@ export const useUserProfile = (): UseUserProfileReturn => {
     isLoading,
     error,
     updateProfile,
+    updateNotificationPreferences,
     refetch,
   };
 };

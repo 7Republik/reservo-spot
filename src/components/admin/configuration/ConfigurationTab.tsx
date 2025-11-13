@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GroupsTab } from "@/components/admin/groups/GroupsTab";
 import { VisualEditorTab } from "@/components/admin/visual-editor/VisualEditorTab";
+import { AdminCheckinConfigTab } from "@/components/admin/configuration/AdminCheckinConfigTab";
 import type { ParkingGroup } from "@/types/admin";
 
 interface ConfigurationTabProps {
@@ -13,6 +14,7 @@ export const ConfigurationTab = ({ parkingGroups }: ConfigurationTabProps) => {
       <TabsList className="mb-4">
         <TabsTrigger value="groups-list">Grupos de Parking</TabsTrigger>
         <TabsTrigger value="visual-editor">Editor Visual</TabsTrigger>
+        <TabsTrigger value="checkin-config">Check-in/Check-out</TabsTrigger>
       </TabsList>
 
       <TabsContent value="groups-list">
@@ -21,6 +23,10 @@ export const ConfigurationTab = ({ parkingGroups }: ConfigurationTabProps) => {
 
       <TabsContent value="visual-editor">
         <VisualEditorTab parkingGroups={parkingGroups} />
+      </TabsContent>
+
+      <TabsContent value="checkin-config">
+        <AdminCheckinConfigTab />
       </TabsContent>
     </Tabs>
   );

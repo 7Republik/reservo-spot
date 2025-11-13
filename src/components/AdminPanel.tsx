@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, ParkingSquare, CreditCard, Settings, AlertTriangle } from "lucide-react";
+import { Users, ParkingSquare, CreditCard, Settings, AlertTriangle, ClipboardCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { LicensePlatesTab } from "@/components/admin/license-plates/LicensePlatesTab";
@@ -10,6 +10,8 @@ import { UsersTab } from "@/components/admin/users/UsersTab";
 import { ConfigurationTab } from "@/components/admin/configuration/ConfigurationTab";
 import { IncidentList } from "@/components/admin/incidents/IncidentList";
 import { IncidentDetails } from "@/components/admin/incidents/IncidentDetails";
+import { CheckinReportPanel } from "@/components/admin/reports/CheckinReportPanel";
+import { CheckinHistoryPanel } from "@/components/admin/reports/CheckinHistoryPanel";
 import { useParkingGroups } from "@/hooks/admin/useParkingGroups";
 import { useIncidentManagement } from "@/hooks/admin/useIncidentManagement";
 
@@ -21,6 +23,7 @@ const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState("plates");
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [pendingIncidentsCount, setPendingIncidentsCount] = useState(0);
+  const [checkinReportView, setCheckinReportView] = useState<"infractions" | "history">("infractions");
 
   const loadUserGroupAssignments = async () => {
     try {
@@ -105,7 +108,7 @@ const AdminPanel = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="plates" className="w-full" value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="plates">
             <CreditCard className="w-4 h-4 mr-2" />
             Matrículas
@@ -129,6 +132,10 @@ const AdminPanel = () => {
                 {pendingIncidentsCount}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="checkin-reports">
+            <ClipboardCheck className="w-4 h-4 mr-2" />
+            Check-in
           </TabsTrigger>
           <TabsTrigger value="groups">
             <Settings className="w-4 h-4 mr-2" />
@@ -154,6 +161,25 @@ const AdminPanel = () => {
 
         <TabsContent value="incidents" className="space-y-4">
           <IncidentList onSelectIncident={setSelectedIncidentId} />
+        </TabsContent>
+
+        <TabsContent value="checkin-reports" className="space-y-4">
+          <div className="space-y-4">
+            <Tabs value={checkinReportView} onValueChange={(v) => setCheckinReportView(v as "infractions" | "history")}>
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="infractions">Infracciones del Día</TabsTrigger>
+                <TabsTrigger value="history">Histórico</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="infractions" className="mt-4">
+                <CheckinReportPanel />
+              </TabsContent>
+
+              <TabsContent value="history" className="mt-4">
+                <CheckinHistoryPanel />
+              </TabsContent>
+            </Tabs>
+          </div>
         </TabsContent>
 
         <TabsContent value="groups" className="space-y-4">

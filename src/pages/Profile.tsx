@@ -20,14 +20,17 @@ import logoReserveo from "@/assets/logo-reserveo.png";
 
 // Import profile components
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
+import { NotificationPreferences } from "@/components/profile/NotificationPreferences";
 import { WarningsList } from "@/components/profile/WarningsList";
 import UserStats from "@/components/profile/UserStats";
 import WarningCounter from "@/components/profile/WarningCounter";
+import { ActiveBlocksCard } from "@/components/profile/ActiveBlocksCard";
 
 // Import hooks
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useUserWarnings } from "@/hooks/useUserWarnings";
 import { useUserStats } from "@/hooks/useUserStats";
+import { useUserBlocks } from "@/hooks/useUserBlocks";
 
 type ProfileTab = "personal" | "warnings" | "stats";
 
@@ -64,11 +67,12 @@ const Profile = () => {
   }, [searchParams, setSearchParams]);
 
   // Hooks
-  const { profile, isLoading: profileLoading, updateProfile } = useUserProfile();
+  const { profile, isLoading: profileLoading, updateProfile, updateNotificationPreferences } = useUserProfile();
   const { warnings, unviewedCount, isLoading: warningsLoading } = useUserWarnings({
     markAsViewed: currentTab === "warnings"
   });
   const { stats } = useUserStats();
+  const { blocks, infractionCounts, isLoading: blocksLoading } = useUserBlocks();
 
   // Get user session
   useEffect(() => {
@@ -256,23 +260,35 @@ const Profile = () => {
 
           {/* Personal Data Tab */}
           <TabsContent value="personal" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-            <Card>
-              <CardHeader className="px-4 py-4 sm:px-6 sm:py-6">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <User className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Información Personal
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-                {profile && (
-                  <ProfileEditor
-                    profile={profile}
-                    onUpdate={updateProfile}
-                    isLoading={profileLoading}
-                  />
-                )}
-              </CardContent>
-            </Card>
+            {/* Profile Editor */}
+            {profile && (
+              <ProfileEditor
+                profile={profile}
+                onUpdate={updateProfile}
+                isLoading={profileLoading}
+              />
+            )}
+
+            {/* Notification Preferences */}
+            {profile && (
+              <NotificationPreferences
+                profile={profile}
+                onUpdate={updateNotificationPreferences}
+                isLoading={profileLoading}
+              />
+            )}
+
+            {/* Active Blocks Section */}
+            <ActiveBlocksCard
+              blocks={blocks}
+              infractionCounts={infractionCounts}
+              isLoading={blocksLoading}
+              onWarningClick={(warningId) => {
+                // Navigate to warnings tab and highlight the warning
+                setSearchParams({ tab: "warnings" });
+                console.log("Navigate to warning:", warningId);
+              }}
+            />
           </TabsContent>
 
           {/* Warnings Tab */}

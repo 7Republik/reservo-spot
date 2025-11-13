@@ -579,7 +579,14 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
       if (validation && validation.length > 0) {
         const validationResult = validation[0];
         if (!validationResult.is_valid) {
-          toast.error(validationResult.error_message || "No se puede reservar esta plaza");
+          // Mostrar mensaje más prominente para usuarios bloqueados
+          if (validationResult.error_code === "USER_BLOCKED") {
+            toast.error(validationResult.error_message || "Tu cuenta está bloqueada temporalmente", {
+              duration: 8000, // 8 segundos para que el usuario pueda leer la fecha
+            });
+          } else {
+            toast.error(validationResult.error_message || "No se puede reservar esta plaza");
+          }
           dayElement?.classList.remove('animate-pulse');
           return false;
         }
