@@ -106,6 +106,15 @@ export const useUserWarnings = (
             .eq("id", w.issued_by)
             .single();
 
+          // Generar URL pública de la foto si existe
+          let photoUrl = null;
+          if (w.incident?.photo_url) {
+            const { data: publicUrlData } = supabase.storage
+              .from("incident-photos")
+              .getPublicUrl(w.incident.photo_url);
+            photoUrl = publicUrlData.publicUrl;
+          }
+
           return {
             id: w.id,
             user_id: w.user_id,
@@ -121,7 +130,7 @@ export const useUserWarnings = (
               id: w.incident?.id || "",
               description: w.incident?.description || "",
               spot_number: w.incident?.spot?.spot_number || "N/A",
-              photo_url: w.incident?.photo_url || null,
+              photo_url: photoUrl,
               created_at: w.incident?.created_at || "",
               status: w.incident?.status || "",
             },
