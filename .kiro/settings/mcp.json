@@ -113,7 +113,7 @@
       "env": {
         "FIGMA_ACCESS_TOKEN": "TU_TOKEN_FIGMA_AQUI"
       },
-      "disabled": true,
+      "disabled": false,
       "autoApprove": [
         "get_figma_file",
         "get_figma_node",
