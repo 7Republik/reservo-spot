@@ -31,6 +31,11 @@ export type {
   SpotAttributes,
   FloorPlanDimensions,
   SpotButtonSize,
+  EditorStats,
+  EditorTools,
+  GhostPreview,
+  DragState,
+  CanvasState,
 } from './parking-spots.types';
 
 // Parking Groups Domain

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
+import { clearVisualEditorSession } from "@/lib/visualEditorStorage";
 
 /**
  * User status information
@@ -177,6 +178,10 @@ export const useDashboardAuth = () => {
     setIsLoggingOut(true);
     try {
       const result = await signOutWithRetry(2);
+      
+      // Clear Visual Editor session state
+      clearVisualEditorSession();
+      
       if (result === "global") {
         toast.success("Sesión cerrada correctamente");
       } else {

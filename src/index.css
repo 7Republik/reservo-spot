@@ -195,3 +195,50 @@ body::-webkit-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
+/* ============================================
+   EDITOR VISUAL - MAGIC BORDER
+   ============================================ */
+
+/* Animación de gradiente para el borde mágico */
+@keyframes magic-border {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Clase para el indicador de modo edición activo */
+.editor-canvas-active {
+  position: relative;
+}
+
+.editor-canvas-active::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary)),
+    hsl(var(--primary-glow)),
+    hsl(var(--primary)),
+    hsl(var(--primary-glow)),
+    hsl(var(--primary))
+  );
+  background-size: 200% 100%;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: magic-border 3s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}

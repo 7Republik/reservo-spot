@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearVisualEditorSession } from "@/lib/visualEditorStorage";
 import logoReserveo from "@/assets/logo-reserveo.png";
 
 // Import profile components
@@ -101,6 +102,10 @@ const Profile = () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Clear Visual Editor session state
+      clearVisualEditorSession();
+      
       toast.success("Sesión cerrada correctamente");
       navigate("/auth");
     } catch (error: any) {

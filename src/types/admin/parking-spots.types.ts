@@ -55,3 +55,53 @@ export interface FloorPlanDimensions {
  * Spot button size configuration (16-64px)
  */
 export type SpotButtonSize = number;
+
+/**
+ * Editor tools state
+ */
+export interface EditorTools {
+  isDrawingMode: boolean;
+  isHandToolActive: boolean;
+  isCanvasLocked: boolean;
+  spotButtonSize: number;
+}
+
+/**
+ * Editor statistics
+ */
+export interface EditorStats {
+  totalSpots: number;
+  maxSpots: number;
+  accessibleCount: number;
+  chargerCount: number;
+  compactCount: number;
+  percentage: number;
+}
+
+/**
+ * Ghost preview position for drawing mode
+ */
+export interface GhostPreview {
+  x: number;
+  y: number;
+  size: number;
+}
+
+/**
+ * Drag state for moving spots
+ */
+export interface DragState {
+  isDragging: boolean;
+  spotId: string | null;
+  startPosition: { x: number; y: number } | null;
+  currentPosition: { x: number; y: number } | null;
+}
+
+/**
+ * Canvas state for zoom and pan
+ */
+export interface CanvasState {
+  isLocked: boolean;
+  zoomLevel: number;
+  panPosition: { x: number; y: number };
+}
