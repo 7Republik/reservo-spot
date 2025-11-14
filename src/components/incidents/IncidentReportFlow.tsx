@@ -233,7 +233,7 @@ export const IncidentReportFlow = ({
 
       {/* Step Content - Scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="min-h-full flex items-center justify-center py-6">
+        <div className="min-h-full flex items-start justify-center py-6">
           {currentStep === IncidentStep.VERIFICATION && (
             <LocationVerification
               spotNumber={spotNumber}

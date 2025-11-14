@@ -135,7 +135,7 @@ export const EvidenceCapture = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-4">
+    <div className="w-full max-w-md mx-auto p-2 sm:p-4">
       <Card className="bg-card border-border">
         <CardHeader className="space-y-2">
           <div className="flex items-center justify-between">
@@ -210,7 +210,7 @@ export const EvidenceCapture = ({
                   <img
                     src={photoPreview}
                     alt="Vista previa de la foto"
-                    className="w-full h-auto max-h-80 object-contain"
+                    className="w-full h-auto max-h-48 sm:max-h-64 object-contain"
                   />
                 </div>
 
