@@ -162,6 +162,8 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
 
   /**
    * Loads user's active reservations for current month
+   * Solo carga reservas con status = 'active'
+   * Las reservas completadas o canceladas no se muestran en el calendario
    * 
    * @returns {Promise<void>}
    */
@@ -174,7 +176,7 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
         .from("reservations")
         .select("*")
         .eq("user_id", userId)
-        .eq("status", "active")
+        .eq("status", "active") // Solo reservas activas
         .gte("reservation_date", format(start, "yyyy-MM-dd"))
         .lte("reservation_date", format(end, "yyyy-MM-dd"));
 
@@ -430,6 +432,7 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
           id,
           user_id,
           reservation_date,
+          status,
           parking_spots (
             id,
             spot_number,
@@ -442,6 +445,7 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
           )
         `)
         .eq("id", reservationId)
+        .eq("status", "active")
         .single();
 
       if (error) throw error;
@@ -604,7 +608,20 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
           status: "active",
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        // Detectar error de constraint único (plaza ya reservada)
+        if (insertError.code === '23505') {
+          dayElement?.classList.remove('animate-pulse');
+          toast.error(`La plaza ${spotNumber} ya fue reservada por otro usuario`, {
+            description: 'Por favor, selecciona otra plaza disponible',
+            duration: 5000,
+          });
+          // Recargar disponibilidad para actualizar el calendario
+          loadAvailableSpots();
+          return false;
+        }
+        throw insertError;
+      }
 
       dayElement?.classList.remove('animate-pulse');
       dayElement?.classList.add('animate-bounce');
@@ -619,8 +636,20 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
       return true;
     } catch (error: any) {
       console.error("Error creating reservation:", error);
-      toast.error("Error al reservar la plaza");
       dayElement?.classList.remove('animate-pulse');
+      
+      // Mensaje de error específico según el tipo
+      if (error.code === '23505') {
+        toast.error(`La plaza ${spotNumber} ya fue reservada por otro usuario`, {
+          description: 'Por favor, selecciona otra plaza disponible',
+          duration: 5000,
+        });
+        loadAvailableSpots();
+      } else {
+        toast.error("Error al reservar la plaza", {
+          description: error.message || 'Inténtalo de nuevo',
+        });
+      }
       return false;
     }
   };
@@ -663,6 +692,19 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
       loadAvailableSpots();
     }
   }, [currentMonth, userId, userGroups]);
+
+  // Recargar cuando se llama a onReservationUpdate desde el exterior
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && userGroups.length > 0) {
+        loadReservations();
+        loadAvailableSpots();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [userGroups]);
 
   useEffect(() => {
     const handleNavigationState = async () => {

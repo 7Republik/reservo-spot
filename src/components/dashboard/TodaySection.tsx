@@ -12,7 +12,11 @@ interface TodaySectionProps {
   refreshTrigger?: number;
   onViewDetails: (reservation: any) => void;
   onReportIncident: (reservation: any) => void;
+  onReservationUpdate?: () => void;
 }
+
+// Crear un contexto simple para forzar recarga
+let forceReloadCallback: (() => void) | null = null;
 
 /**
  * Sección HOY del dashboard
@@ -25,6 +29,7 @@ export const TodaySection = ({
   refreshTrigger = 0,
   onViewDetails,
   onReportIncident,
+  onReservationUpdate,
 }: TodaySectionProps) => {
   const [todayReservations, setTodayReservations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,10 +128,16 @@ export const TodaySection = ({
   useEffect(() => {
     loadTodayReservations();
     
+    // Registrar callback para recarga forzada
+    forceReloadCallback = loadTodayReservations;
+    
     // Recargar cada 30 segundos
     const interval = setInterval(loadTodayReservations, 30000);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      forceReloadCallback = null;
+    };
   }, [loadTodayReservations]);
 
   // Recargar cuando cambia refreshTrigger (cuando se crea/cancela una reserva)
@@ -155,7 +166,15 @@ export const TodaySection = ({
         ) : todayReservations.length > 0 ? (
           <div className="space-y-4">
             {/* Check-in/Check-out Card - Solo si está habilitado */}
-            {checkinEnabled && <TodayCheckinCard reservation={todayReservations[0]} />}
+            {checkinEnabled && (
+              <TodayCheckinCard 
+                reservation={todayReservations[0]} 
+                onCheckinSuccess={() => {
+                  loadTodayReservations();
+                  if (onReservationUpdate) onReservationUpdate();
+                }}
+              />
+            )}
             
             {/* Información de la reserva y acciones */}
             <TodayReservationCard

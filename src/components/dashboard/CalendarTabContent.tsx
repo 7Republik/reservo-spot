@@ -68,6 +68,7 @@ export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps
         refreshTrigger={refreshTrigger}
         onViewDetails={handleViewLocation}
         onReportIncident={handleReportIncident}
+        onReservationUpdate={handleReservationUpdate}
       />
       
       <Card>
@@ -82,6 +83,7 @@ export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps
         </CardHeader>
         <CardContent className="px-3 pb-4 sm:px-6 sm:pb-6">
           <ParkingCalendar 
+            key={refreshTrigger} 
             userId={userId} 
             userRole={userRole}
             onReservationUpdate={handleReservationUpdate}

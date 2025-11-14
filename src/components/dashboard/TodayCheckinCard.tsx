@@ -8,6 +8,7 @@ import { useState } from "react";
 
 interface TodayCheckinCardProps {
   reservation: ReservationWithCheckin;
+  onCheckinSuccess?: () => void;
 }
 
 /**
@@ -15,7 +16,7 @@ interface TodayCheckinCardProps {
  * Muestra botón "Llegué" cuando no hay check-in
  * Muestra hora de check-in y botón "Me voy" después de check-in
  */
-export const TodayCheckinCard = ({ reservation }: TodayCheckinCardProps) => {
+export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckinCardProps) => {
   const { checkin, checkout, isLoading } = useCheckin();
   const [showAnimation, setShowAnimation] = useState(false);
 
@@ -26,12 +27,20 @@ export const TodayCheckinCard = ({ reservation }: TodayCheckinCardProps) => {
     await checkin(reservation.id);
     setShowAnimation(true);
     setTimeout(() => setShowAnimation(false), 1000);
+    // Recargar datos inmediatamente
+    if (onCheckinSuccess) {
+      setTimeout(() => onCheckinSuccess(), 500);
+    }
   };
 
   const handleCheckout = async () => {
     await checkout(reservation.id);
     setShowAnimation(true);
     setTimeout(() => setShowAnimation(false), 1000);
+    // Recargar datos inmediatamente
+    if (onCheckinSuccess) {
+      setTimeout(() => onCheckinSuccess(), 500);
+    }
   };
 
   // Si ya hizo checkout, no mostrar nada
