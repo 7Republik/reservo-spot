@@ -4,6 +4,7 @@ import { LicensePlateForm } from "./license-plates/LicensePlateForm";
 import { LicensePlateCard } from "./license-plates/LicensePlateCard";
 import { DeletedPlatesHistory } from "./license-plates/DeletedPlatesHistory";
 import { DeletePlateDialog } from "./license-plates/DeletePlateDialog";
+import { CachedDataIndicator } from "./CachedDataIndicator";
 
 interface LicensePlateManagerProps {
   userId: string;
@@ -31,6 +32,7 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
     handleDeletePlate,
     openDeleteDialog,
     isOnline,
+    lastSyncTime,
   } = useLicensePlateManager(userId);
 
   if (loading) {
@@ -39,6 +41,12 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Indicador de datos cacheados */}
+      <CachedDataIndicator 
+        lastSyncTime={lastSyncTime} 
+        isOnline={isOnline}
+      />
+
       <LicensePlateForm
         activePlatesCount={activePlates.length}
         isFormOpen={isFormOpen}

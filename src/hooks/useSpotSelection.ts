@@ -123,7 +123,7 @@ interface LocationState {
  */
 export const useSpotSelection = (state: LocationState | null) => {
   const navigate = useNavigate();
-  const { isOnline } = useOfflineMode();
+  const { isOnline, lastSyncTime } = useOfflineMode();
   const [selectedGroup, setSelectedGroup] = useState<ParkingGroup | null>(null);
   const [availableGroups, setAvailableGroups] = useState<ParkingGroup[]>([]);
   const [spots, setSpots] = useState<SpotWithStatus[]>([]);
@@ -464,5 +464,6 @@ export const useSpotSelection = (state: LocationState | null) => {
     getSpotColor,
     handleSpotClick,
     isOnline,
+    lastSyncTime,
   };
 };

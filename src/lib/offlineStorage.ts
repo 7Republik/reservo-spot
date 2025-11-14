@@ -56,10 +56,17 @@ export interface CacheOptions {
 
 /**
  * Servicio de almacenamiento offline con IndexedDB
+ * 
+ * Optimizaciones de rendimiento:
+ * - Lazy loading: La DB solo se inicializa cuando se necesita
+ * - Batch operations: Soporte para escrituras múltiples en una transacción
+ * - Cache selectivo: Solo datos del mes actual + 7 días
+ * - Medición de performance: Logs de tiempos de operación
  */
 export class OfflineStorageService {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
+  private performanceMetrics: Map<string, number> = new Map();
 
   /**
    * Inicializa la base de datos IndexedDB
@@ -128,8 +135,10 @@ export class OfflineStorageService {
 
   /**
    * Guarda datos en el cache
+   * Optimizado con medición de performance
    */
   async set(key: string, data: any, options: CacheOptions = {}): Promise<void> {
+    const startTime = performance.now();
     await this.ensureInitialized();
 
     const ttl = options.ttl || DEFAULT_TTL;
@@ -150,7 +159,14 @@ export class OfflineStorageService {
       const store = transaction.objectStore(CACHED_DATA_STORE);
       const request = store.put(cachedData);
 
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        const duration = performance.now() - startTime;
+        this.recordMetric('set', duration);
+        if (duration > 100) {
+          console.warn(`[OfflineStorage] Slow write detected: ${key} took ${duration.toFixed(2)}ms`);
+        }
+        resolve();
+      };
       request.onerror = () => {
         console.error('Error saving to cache:', request.error);
         reject(request.error);
@@ -160,8 +176,10 @@ export class OfflineStorageService {
 
   /**
    * Obtiene datos del cache
+   * Optimizado con medición de performance y validación de tiempo <2s
    */
   async get<T>(key: string): Promise<T | null> {
+    const startTime = performance.now();
     await this.ensureInitialized();
 
     return new Promise((resolve, reject) => {
@@ -179,10 +197,20 @@ export class OfflineStorageService {
 
         // Verificar si ha expirado
         if (Date.now() > cachedData.expiresAt) {
-          // Eliminar dato expirado
+          // Eliminar dato expirado en background
           this.delete(key).catch(console.error);
           resolve(null);
           return;
+        }
+
+        const duration = performance.now() - startTime;
+        this.recordMetric('get', duration);
+        
+        // Requisito 1.3: Carga desde cache debe ser <2s
+        if (duration > 2000) {
+          console.error(`[OfflineStorage] SLOW READ: ${key} took ${duration.toFixed(2)}ms (>2s requirement)`);
+        } else if (duration > 500) {
+          console.warn(`[OfflineStorage] Slow read: ${key} took ${duration.toFixed(2)}ms`);
         }
 
         resolve(cachedData.data as T);
@@ -269,8 +297,9 @@ export class OfflineStorageService {
       const cachedDataStore = transaction.objectStore(CACHED_DATA_STORE);
       const syncMetadataStore = transaction.objectStore(SYNC_METADATA_STORE);
 
-      const clearCachedData = cachedDataStore.clear();
-      const clearSyncMetadata = syncMetadataStore.clear();
+      // Limpiar ambos stores
+      cachedDataStore.clear();
+      syncMetadataStore.clear();
 
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => {
@@ -423,6 +452,225 @@ export class OfflineStorageService {
         reject(request.error);
       };
     });
+  }
+
+  /**
+   * Limpia automáticamente el cache al iniciar la aplicación
+   * Elimina datos expirados y aplica límites de almacenamiento
+   */
+  async cleanupOnStartup(): Promise<void> {
+    try {
+      await this.ensureInitialized();
+      
+      console.log('[OfflineStorage] Iniciando limpieza automática al arrancar...');
+      
+      // 1. Limpiar datos expirados
+      await this.cleanup();
+      console.log('[OfflineStorage] Datos expirados eliminados');
+      
+      // 2. Verificar y aplicar límites de almacenamiento
+      const currentSize = await this.getSize();
+      console.log(`[OfflineStorage] Tamaño actual del cache: ${(currentSize / 1024 / 1024).toFixed(2)} MB`);
+      
+      if (currentSize > STORAGE_LIMITS.TOTAL) {
+        console.log('[OfflineStorage] Límite de almacenamiento excedido, aplicando FIFO...');
+        await this.enforceStorageLimit(STORAGE_LIMITS.TOTAL);
+        
+        const newSize = await this.getSize();
+        console.log(`[OfflineStorage] Nuevo tamaño del cache: ${(newSize / 1024 / 1024).toFixed(2)} MB`);
+      }
+      
+      console.log('[OfflineStorage] Limpieza automática completada');
+    } catch (error) {
+      console.error('[OfflineStorage] Error durante limpieza automática:', error);
+    }
+  }
+
+  /**
+   * Limpia completamente el cache al cerrar sesión
+   * Elimina todos los datos cacheados y metadatos de sincronización
+   */
+  async cleanupOnLogout(): Promise<void> {
+    try {
+      await this.ensureInitialized();
+      
+      console.log('[OfflineStorage] Limpiando cache al cerrar sesión...');
+      
+      await this.clear();
+      
+      console.log('[OfflineStorage] Cache limpiado completamente');
+    } catch (error) {
+      console.error('[OfflineStorage] Error al limpiar cache en logout:', error);
+    }
+  }
+
+  /**
+   * Verifica si se está acercando al límite de almacenamiento
+   * Retorna true si se ha alcanzado el umbral de advertencia (80%)
+   */
+  async isNearStorageLimit(): Promise<boolean> {
+    try {
+      await this.ensureInitialized();
+      
+      const currentSize = await this.getSize();
+      const warningThreshold = STORAGE_LIMITS.TOTAL * STORAGE_LIMITS.WARNING_THRESHOLD;
+      
+      return currentSize >= warningThreshold;
+    } catch (error) {
+      console.error('[OfflineStorage] Error verificando límite de almacenamiento:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Guarda múltiples entradas en el cache en una sola transacción (batch operation)
+   * Optimización: Reduce overhead de múltiples transacciones
+   * 
+   * @param entries Array de entradas a guardar
+   * @returns Promise que se resuelve cuando todas las entradas se han guardado
+   */
+  async setBatch(entries: Array<{ key: string; data: any; options?: CacheOptions }>): Promise<void> {
+    const startTime = performance.now();
+    await this.ensureInitialized();
+
+    const now = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([CACHED_DATA_STORE], 'readwrite');
+      const store = transaction.objectStore(CACHED_DATA_STORE);
+
+      // Preparar todas las entradas
+      const cachedEntries: CachedData[] = entries.map(entry => {
+        const ttl = entry.options?.ttl || DEFAULT_TTL;
+        return {
+          key: entry.key,
+          data: entry.data,
+          timestamp: now,
+          expiresAt: now + ttl,
+          dataType: entry.options?.dataType || 'unknown',
+          userId: entry.options?.userId || 'unknown',
+          metadata: entry.options?.metadata,
+        };
+      });
+
+      // Guardar todas las entradas en la misma transacción
+      let completed = 0;
+      let hasError = false;
+
+      cachedEntries.forEach(cachedData => {
+        const request = store.put(cachedData);
+
+        request.onsuccess = () => {
+          completed++;
+          if (completed === cachedEntries.length && !hasError) {
+            const duration = performance.now() - startTime;
+            console.log(`[OfflineStorage] Batch write completed: ${entries.length} items in ${duration.toFixed(2)}ms`);
+            resolve();
+          }
+        };
+
+        request.onerror = () => {
+          if (!hasError) {
+            hasError = true;
+            console.error('Error in batch write:', request.error);
+            reject(request.error);
+          }
+        };
+      });
+    });
+  }
+
+  /**
+   * Obtiene múltiples entradas del cache en una sola transacción (batch operation)
+   * Optimización: Reduce overhead de múltiples transacciones
+   * 
+   * @param keys Array de claves a obtener
+   * @returns Promise con un Map de clave -> dato (null si no existe o expiró)
+   */
+  async getBatch<T>(keys: string[]): Promise<Map<string, T | null>> {
+    const startTime = performance.now();
+    await this.ensureInitialized();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([CACHED_DATA_STORE], 'readonly');
+      const store = transaction.objectStore(CACHED_DATA_STORE);
+      const results = new Map<string, T | null>();
+      const now = Date.now();
+
+      let completed = 0;
+      let hasError = false;
+
+      keys.forEach(key => {
+        const request = store.get(key);
+
+        request.onsuccess = () => {
+          const cachedData = request.result as CachedData | undefined;
+
+          if (!cachedData || now > cachedData.expiresAt) {
+            results.set(key, null);
+            // Eliminar dato expirado en background
+            if (cachedData && now > cachedData.expiresAt) {
+              this.delete(key).catch(console.error);
+            }
+          } else {
+            results.set(key, cachedData.data as T);
+          }
+
+          completed++;
+          if (completed === keys.length && !hasError) {
+            const duration = performance.now() - startTime;
+            console.log(`[OfflineStorage] Batch read completed: ${keys.length} items in ${duration.toFixed(2)}ms`);
+            resolve(results);
+          }
+        };
+
+        request.onerror = () => {
+          if (!hasError) {
+            hasError = true;
+            console.error('Error in batch read:', request.error);
+            reject(request.error);
+          }
+        };
+      });
+    });
+  }
+
+  /**
+   * Verifica si los datos están dentro del rango de cache selectivo
+   * Solo cachea datos del mes actual + 7 días hacia adelante
+   * 
+   * @param date Fecha a verificar
+   * @returns true si la fecha está dentro del rango cacheable
+   */
+  isDateInCacheRange(date: Date): boolean {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfRange = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // +7 días
+
+    return date >= startOfMonth && date <= endOfRange;
+  }
+
+  /**
+   * Obtiene métricas de rendimiento del cache
+   * Útil para debugging y optimización
+   */
+  getPerformanceMetrics(): Record<string, number> {
+    return Object.fromEntries(this.performanceMetrics);
+  }
+
+  /**
+   * Limpia métricas de rendimiento
+   */
+  clearPerformanceMetrics(): void {
+    this.performanceMetrics.clear();
+  }
+
+  /**
+   * Registra una métrica de rendimiento
+   */
+  private recordMetric(operation: string, duration: number): void {
+    const existing = this.performanceMetrics.get(operation) || 0;
+    this.performanceMetrics.set(operation, existing + duration);
   }
 
   /**

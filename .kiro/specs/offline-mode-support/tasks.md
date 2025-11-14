@@ -108,19 +108,19 @@
   - Sincronizar datos críticos automáticamente al reconectar (dentro de 3s)
   - _Requisitos: 3.3, 5.5_
 
-- [-] 14. Agregar indicadores de última sincronización
+- [x] 14. Agregar indicadores de última sincronización
   - Mostrar timestamp de última sincronización exitosa en vistas de datos cacheados
   - Implementar formato de fecha relativo ("hace 5 minutos")
   - Agregar indicador visual cuando se muestran datos desde cache
   - _Requisitos: 1.5, 2.5_
 
-- [ ] 15. Implementar limpieza automática de cache
+- [x] 15. Implementar limpieza automática de cache
   - Configurar limpieza de datos expirados al iniciar la aplicación
   - Implementar limpieza cuando se alcanza el límite de almacenamiento (FIFO)
   - Limpiar cache completamente al cerrar sesión del usuario
   - _Requisitos: 6.5_
 
-- [ ] 16. Adaptar componentes de check-in para modo offline
+- [x] 16. Adaptar componentes de check-in para modo offline
   - Modificar `TodayCheckinCard` para detectar estado offline
   - Deshabilitar botones de check-in/check-out cuando offline
   - Mostrar mensaje explicativo: "Requiere conexión para validar horarios"
@@ -148,7 +148,7 @@
   - Test: Admin offline tiene funcionalidad limitada
   - _Requisitos: 1.1, 1.2, 2.1, 5.1, 9.4_
 
-- [ ] 20. Optimizar rendimiento del sistema de cache
+- [x] 20. Optimizar rendimiento del sistema de cache
   - Implementar lazy loading de IndexedDB
   - Configurar batch operations para escrituras múltiples
   - Optimizar selectividad de cache (solo mes actual + 7 días)

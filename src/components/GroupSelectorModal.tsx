@@ -4,6 +4,7 @@ import { es } from "date-fns/locale";
 import { Building2 } from "lucide-react";
 import { useGroupSelection } from "@/hooks/useGroupSelection";
 import GroupCard from "@/components/group-selector/GroupCard";
+import { CachedDataIndicator } from "./CachedDataIndicator";
 
 interface GroupSelectorModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ const GroupSelectorModal = ({
   onQuickReserve,
   onCancel,
 }: GroupSelectorModalProps) => {
-  const { groups, loading, getOccupancyColor } = useGroupSelection(
+  const { groups, loading, getOccupancyColor, isOnline, lastSyncTime } = useGroupSelection(
     isOpen,
     selectedDate,
     userGroups,
@@ -55,6 +56,13 @@ const GroupSelectorModal = ({
             </span>
           </DialogDescription>
         </DialogHeader>
+
+        {/* Indicador de datos cacheados */}
+        <CachedDataIndicator 
+          lastSyncTime={lastSyncTime} 
+          isOnline={isOnline}
+          className="mb-2"
+        />
 
         {loading ? (
           <div className="flex items-center justify-center py-12">

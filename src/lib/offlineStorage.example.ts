@@ -1,165 +1,251 @@
 /**
- * Ejemplos de uso de OfflineStorageService
+ * Ejemplos de uso del sistema de limpieza automática de cache
  * 
- * Este archivo muestra cómo usar el servicio de almacenamiento offline
- * en diferentes escenarios de la aplicación.
+ * Este archivo documenta cómo funciona la limpieza automática del cache offline
+ * y proporciona ejemplos de uso avanzado.
  */
 
-import { getOfflineStorage } from './offlineStorage';
+import { getOfflineStorage, STORAGE_LIMITS } from './offlineStorage';
 
 // ============================================================================
-// Ejemplo 1: Cachear reservas de usuario
+// EJEMPLO 1: Limpieza automática al iniciar la aplicación
 // ============================================================================
-export async function cacheUserReservations(userId: string, reservations: any[]) {
+
+/**
+ * La limpieza automática se ejecuta al iniciar la aplicación mediante
+ * el hook useOfflineCleanup en App.tsx
+ * 
+ * Proceso:
+ * 1. Elimina datos expirados (TTL vencido)
+ * 2. Verifica el tamaño total del cache
+ * 3. Si excede el límite, aplica estrategia FIFO
+ */
+async function exampleStartupCleanup() {
   const storage = getOfflineStorage();
   
-  const cacheKey = `reservations_${userId}_${new Date().toISOString().slice(0, 7)}`;
+  // Esto se ejecuta automáticamente al iniciar la app
+  await storage.cleanupOnStartup();
   
-  await storage.set(cacheKey, reservations, {
-    dataType: 'reservations',
-    userId: userId,
-    ttl: 7 * 24 * 60 * 60 * 1000, // 7 días
-  });
-  
-  // Registrar sincronización exitosa
-  await storage.recordSync(cacheKey);
+  // Logs esperados en consola:
+  // [OfflineStorage] Iniciando limpieza automática al arrancar...
+  // [OfflineStorage] Datos expirados eliminados
+  // [OfflineStorage] Tamaño actual del cache: 8.45 MB
+  // [OfflineStorage] Limpieza automática completada
 }
 
 // ============================================================================
-// Ejemplo 2: Recuperar reservas desde cache
+// EJEMPLO 2: Limpieza al cerrar sesión
 // ============================================================================
-export async function loadCachedReservations(userId: string): Promise<any[] | null> {
+
+/**
+ * Al cerrar sesión, todo el cache se limpia automáticamente
+ * para proteger la privacidad del usuario
+ * 
+ * Esto se maneja automáticamente mediante el listener de auth
+ * en useOfflineCleanup
+ */
+async function exampleLogoutCleanup() {
   const storage = getOfflineStorage();
   
-  const cacheKey = `reservations_${userId}_${new Date().toISOString().slice(0, 7)}`;
+  // Esto se ejecuta automáticamente al hacer logout
+  await storage.cleanupOnLogout();
   
-  const cached = await storage.get<any[]>(cacheKey);
+  // Logs esperados en consola:
+  // [useOfflineCleanup] Usuario cerró sesión, limpiando cache...
+  // [OfflineStorage] Limpiando cache al cerrar sesión...
+  // [OfflineStorage] Cache limpiado completamente
+}
+
+// ============================================================================
+// EJEMPLO 3: Verificar si se está cerca del límite de almacenamiento
+// ============================================================================
+
+/**
+ * Puedes verificar si el cache está cerca del límite (80%)
+ * para mostrar advertencias al usuario
+ */
+async function exampleCheckStorageLimit() {
+  const storage = getOfflineStorage();
   
-  if (cached) {
-    // Obtener última sincronización para mostrar al usuario
-    const lastSync = await storage.getLastSync(cacheKey);
-    console.log('Datos cargados desde cache. Última sincronización:', lastSync);
+  const isNearLimit = await storage.isNearStorageLimit();
+  
+  if (isNearLimit) {
+    console.warn('⚠️ El cache está cerca del límite de almacenamiento');
+    // Mostrar toast al usuario
+    // toast.warning('Cache casi lleno', {
+    //   description: 'Algunos datos antiguos serán eliminados automáticamente'
+    // });
   }
-  
-  return cached;
 }
 
 // ============================================================================
-// Ejemplo 3: Cachear plazas de parking
+// EJEMPLO 4: Limpieza manual de datos expirados
 // ============================================================================
-export async function cacheParkingSpots(groupId: string, date: string, spots: any[]) {
-  const storage = getOfflineStorage();
-  
-  const cacheKey = `spots_${groupId}_${date}`;
-  
-  await storage.set(cacheKey, spots, {
-    dataType: 'spots',
-    metadata: { groupId, date },
-  });
-}
 
-// ============================================================================
-// Ejemplo 4: Verificar si hay datos en cache
-// ============================================================================
-export async function hasCachedData(key: string): Promise<boolean> {
-  const storage = getOfflineStorage();
-  return await storage.has(key);
-}
-
-// ============================================================================
-// Ejemplo 5: Limpiar cache al cerrar sesión
-// ============================================================================
-export async function clearCacheOnLogout() {
-  const storage = getOfflineStorage();
-  await storage.clear();
-  console.log('Cache limpiado completamente');
-}
-
-// ============================================================================
-// Ejemplo 6: Limpieza automática al iniciar la app
-// ============================================================================
-export async function initializeApp() {
+/**
+ * Aunque la limpieza es automática, puedes ejecutarla manualmente
+ * si necesitas liberar espacio inmediatamente
+ */
+async function exampleManualCleanup() {
   const storage = getOfflineStorage();
   
-  // Inicializar base de datos
-  await storage.init();
-  
-  // Limpiar datos expirados
+  // Limpiar solo datos expirados
   await storage.cleanup();
   
-  console.log('App inicializada y cache limpiado');
+  console.log('✅ Datos expirados eliminados');
 }
 
 // ============================================================================
-// Ejemplo 7: Verificar tamaño del cache
+// EJEMPLO 5: Aplicar límite de almacenamiento manualmente
 // ============================================================================
-export async function checkCacheSize() {
+
+/**
+ * Puedes aplicar el límite de almacenamiento manualmente
+ * si detectas que el cache está creciendo demasiado
+ */
+async function exampleEnforceLimit() {
   const storage = getOfflineStorage();
   
-  const sizeInBytes = await storage.getSize();
-  const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+  // Obtener tamaño actual
+  const currentSize = await storage.getSize();
+  console.log(`Tamaño actual: ${(currentSize / 1024 / 1024).toFixed(2)} MB`);
   
-  console.log(`Tamaño del cache: ${sizeInMB} MB`);
-  
-  return sizeInBytes;
+  // Aplicar límite (elimina datos más antiguos primero - FIFO)
+  if (currentSize > STORAGE_LIMITS.TOTAL) {
+    await storage.enforceStorageLimit(STORAGE_LIMITS.TOTAL);
+    
+    const newSize = await storage.getSize();
+    console.log(`Nuevo tamaño: ${(newSize / 1024 / 1024).toFixed(2)} MB`);
+  }
 }
 
 // ============================================================================
-// Ejemplo 8: Cachear datos de admin (con límite diferente)
+// EJEMPLO 6: Limpiar cache completo manualmente
 // ============================================================================
-export async function cacheAdminData(dataType: string, data: any) {
+
+/**
+ * En casos excepcionales, puedes limpiar todo el cache manualmente
+ * (por ejemplo, si el usuario reporta problemas con datos corruptos)
+ */
+async function exampleClearAll() {
   const storage = getOfflineStorage();
   
-  const cacheKey = `admin_${dataType}`;
+  // Advertencia: esto elimina TODOS los datos cacheados
+  await storage.clear();
   
-  await storage.set(cacheKey, data, {
-    dataType: `admin_${dataType}`,
-    userId: 'admin',
-    ttl: 7 * 24 * 60 * 60 * 1000,
+  console.log('🗑️ Cache completamente limpiado');
+}
+
+// ============================================================================
+// EJEMPLO 7: Monitorear el tamaño del cache
+// ============================================================================
+
+/**
+ * Puedes monitorear el tamaño del cache para debugging
+ * o para mostrar información al usuario
+ */
+async function exampleMonitorSize() {
+  const storage = getOfflineStorage();
+  
+  const size = await storage.getSize();
+  const sizeMB = (size / 1024 / 1024).toFixed(2);
+  const limitMB = (STORAGE_LIMITS.TOTAL / 1024 / 1024).toFixed(2);
+  const percentage = ((size / STORAGE_LIMITS.TOTAL) * 100).toFixed(1);
+  
+  console.log(`📊 Cache: ${sizeMB} MB / ${limitMB} MB (${percentage}%)`);
+  
+  if (size > STORAGE_LIMITS.TOTAL * STORAGE_LIMITS.WARNING_THRESHOLD) {
+    console.warn('⚠️ Cache cerca del límite');
+  }
+}
+
+// ============================================================================
+// EJEMPLO 8: Estrategia de cache con TTL personalizado
+// ============================================================================
+
+/**
+ * Puedes guardar datos con diferentes TTL según su importancia
+ * Los datos con TTL más corto se limpiarán antes
+ */
+async function exampleCustomTTL() {
+  const storage = getOfflineStorage();
+  
+  // Datos críticos: 7 días (default)
+  await storage.set('reservations_user123', { /* ... */ }, {
+    dataType: 'reservations',
+    userId: 'user123'
+    // ttl no especificado = 7 días
   });
   
-  // Verificar que no excedemos el límite de 5 MB para admin
-  const size = await storage.getSize();
-  const adminLimit = 5 * 1024 * 1024; // 5 MB
+  // Datos temporales: 1 día
+  await storage.set('temp_spots_groupA', { /* ... */ }, {
+    dataType: 'spots',
+    userId: 'user123',
+    ttl: 24 * 60 * 60 * 1000 // 1 día en milisegundos
+  });
   
-  if (size > adminLimit) {
-    console.warn('Cache de admin excede el límite de 5 MB');
-    await storage.enforceStorageLimit(adminLimit);
-  }
+  // Datos muy temporales: 1 hora
+  await storage.set('temp_search_results', { /* ... */ }, {
+    dataType: 'search',
+    userId: 'user123',
+    ttl: 60 * 60 * 1000 // 1 hora en milisegundos
+  });
 }
 
 // ============================================================================
-// Ejemplo 9: Patrón de uso en un hook
+// LÍMITES DE ALMACENAMIENTO
 // ============================================================================
-export async function loadDataWithCache<T>(
-  cacheKey: string,
-  fetchFn: () => Promise<T>,
-  isOnline: boolean
-): Promise<T | null> {
-  const storage = getOfflineStorage();
-  
-  if (!isOnline) {
-    // Modo offline: solo cache
-    const cached = await storage.get<T>(cacheKey);
-    if (!cached) {
-      throw new Error('No hay datos disponibles offline');
-    }
-    return cached;
-  }
-  
-  try {
-    // Modo online: intentar servidor
-    const data = await fetchFn();
-    
-    // Cachear datos
-    await storage.set(cacheKey, data);
-    await storage.recordSync(cacheKey);
-    
-    return data;
-  } catch (error) {
-    // Error en servidor: fallback a cache
-    console.error('Error cargando desde servidor, usando cache:', error);
-    const cached = await storage.get<T>(cacheKey);
-    return cached;
-  }
-}
+
+/**
+ * Límites configurados en el sistema:
+ * 
+ * - USER_DATA: 10 MB (datos de usuario normal)
+ * - ADMIN_DATA: 5 MB (datos de panel admin)
+ * - TOTAL: 15 MB (límite total del cache)
+ * - WARNING_THRESHOLD: 80% (umbral de advertencia)
+ * 
+ * Cuando se alcanza el límite total, se aplica estrategia FIFO:
+ * - Los datos más antiguos se eliminan primero
+ * - Se elimina hasta volver al límite configurado
+ * - Los datos con TTL más corto se priorizan para eliminación
+ */
+
+// ============================================================================
+// FLUJO DE LIMPIEZA AUTOMÁTICA
+// ============================================================================
+
+/**
+ * Flujo completo de limpieza automática:
+ * 
+ * 1. AL INICIAR LA APP (useOfflineCleanup):
+ *    - Se ejecuta cleanupOnStartup()
+ *    - Elimina datos expirados
+ *    - Verifica límites de almacenamiento
+ *    - Aplica FIFO si es necesario
+ * 
+ * 2. AL CERRAR SESIÓN (listener de auth):
+ *    - Se ejecuta cleanupOnLogout()
+ *    - Elimina TODO el cache
+ *    - Protege privacidad del usuario
+ * 
+ * 3. AL GUARDAR DATOS (automático):
+ *    - Si se alcanza el límite durante set()
+ *    - Se puede aplicar enforceStorageLimit()
+ *    - Elimina datos antiguos (FIFO)
+ * 
+ * 4. AL LEER DATOS (automático):
+ *    - Si el dato ha expirado (TTL)
+ *    - Se elimina automáticamente
+ *    - Retorna null
+ */
+
+export {
+  exampleStartupCleanup,
+  exampleLogoutCleanup,
+  exampleCheckStorageLimit,
+  exampleManualCleanup,
+  exampleEnforceLimit,
+  exampleClearAll,
+  exampleMonitorSize,
+  exampleCustomTTL,
+};

@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Clock, CheckCircle2, LogOut, Loader2 } from "lucide-react";
+import { Clock, CheckCircle2, LogOut, Loader2, WifiOff } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ReservationWithCheckin } from "@/types/checkin.types";
 import { useCheckin } from "@/hooks/useCheckin";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
+import { DisabledControlTooltip } from "@/components/DisabledControlTooltip";
 import { useState } from "react";
 
 interface TodayCheckinCardProps {
@@ -15,9 +17,15 @@ interface TodayCheckinCardProps {
  * Componente para check-in/check-out en la sección "Hoy"
  * Muestra botón "Llegué" cuando no hay check-in
  * Muestra hora de check-in y botón "Me voy" después de check-in
+ * 
+ * Soporte Offline:
+ * - Detecta estado offline y deshabilita botones de check-in/check-out
+ * - Muestra tooltips explicativos cuando está offline
+ * - Mantiene visualización de estado actual desde cache (solo lectura)
  */
 export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckinCardProps) => {
   const { checkin, checkout, isLoading } = useCheckin();
+  const { isOnline, isOffline } = useOfflineMode();
   const [showAnimation, setShowAnimation] = useState(false);
 
   const hasCheckin = reservation.checkin?.checkin_at;
@@ -50,6 +58,18 @@ export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckin
 
   return (
     <div className="space-y-3">
+      {/* Mensaje de modo offline */}
+      {isOffline && (
+        <div className="rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 p-3">
+          <div className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+            <WifiOff className="w-4 h-4 flex-shrink-0" />
+            <p className="text-xs">
+              <span className="font-medium">Modo offline:</span> El check-in/check-out requiere conexión para validar horarios
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Estado de check-in */}
       <div
         className={`
@@ -59,6 +79,7 @@ export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckin
             ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800" 
             : "bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800"
           }
+          ${isOffline ? "opacity-75" : ""}
         `}
       >
         {hasCheckin ? (
@@ -79,25 +100,31 @@ export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckin
               </div>
             </div>
 
-            {/* Botón de checkout */}
-            <Button
-              onClick={handleCheckout}
-              disabled={isLoading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
-              size="lg"
+            {/* Botón de checkout con tooltip offline */}
+            <DisabledControlTooltip
+              isDisabled={isOffline}
+              message="Requiere conexión para validar horarios"
+              side="bottom"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <LogOut className="w-5 h-5 mr-2" />
-                  Me voy
-                </>
-              )}
-            </Button>
+              <Button
+                onClick={handleCheckout}
+                disabled={isLoading || isOffline}
+                className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                size="lg"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="w-5 h-5 mr-2" />
+                    Me voy
+                  </>
+                )}
+              </Button>
+            </DisabledControlTooltip>
           </div>
         ) : (
           <div className="space-y-3">
@@ -111,25 +138,31 @@ export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckin
               </p>
             </div>
 
-            {/* Botón de checkin */}
-            <Button
-              onClick={handleCheckin}
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              size="lg"
+            {/* Botón de checkin con tooltip offline */}
+            <DisabledControlTooltip
+              isDisabled={isOffline}
+              message="Requiere conexión para validar horarios"
+              side="bottom"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-5 h-5 mr-2" />
-                  Llegué
-                </>
-              )}
-            </Button>
+              <Button
+                onClick={handleCheckin}
+                disabled={isLoading || isOffline}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                size="lg"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-5 h-5 mr-2" />
+                    Llegué
+                  </>
+                )}
+              </Button>
+            </DisabledControlTooltip>
           </div>
         )}
       </div>

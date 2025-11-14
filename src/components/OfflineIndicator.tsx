@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { WifiOff, Wifi, ChevronDown, ChevronUp } from 'lucide-react';
 import { useOfflineMode } from '@/hooks/useOfflineMode';
 import { cn } from '@/lib/utils';
+import { formatRelativeTime } from '@/lib/dateUtils';
 
 interface OfflineIndicatorProps {
   position?: 'top' | 'bottom';
@@ -42,21 +43,7 @@ export const OfflineIndicator = ({
     }
   }, [isOnline, isOffline, autoHide, autoHideDelay]);
 
-  // Formatear última sincronización
-  const formatLastSync = (date: Date | null): string => {
-    if (!date) return 'Nunca';
 
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Hace menos de 1 minuto';
-    if (diffMins < 60) return `Hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-    if (diffHours < 24) return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
-    return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
-  };
 
   if (!isVisible) return null;
 
@@ -95,7 +82,7 @@ export const OfflineIndicator = ({
               </p>
               {isOffline && lastSyncTime && (
                 <p className="text-sm opacity-90">
-                  Última sincronización: {formatLastSync(lastSyncTime)}
+                  Última sincronización: {formatRelativeTime(lastSyncTime)}
                 </p>
               )}
               {isSyncing && (
@@ -160,7 +147,7 @@ export const OfflineIndicator = ({
                       <span className="text-muted-foreground">
                         Última sincronización:
                       </span>{' '}
-                      {formatLastSync(lastSyncTime)}
+                      {formatRelativeTime(lastSyncTime)}
                     </p>
                   )}
                 </div>

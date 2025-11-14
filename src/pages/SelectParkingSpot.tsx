@@ -11,6 +11,7 @@ import { InteractiveMap } from "@/components/spot-selection/InteractiveMap";
 import { SpotsList } from "@/components/spot-selection/SpotsList";
 import { MapLegend } from "@/components/spot-selection/MapLegend";
 import { DisabledControlTooltip } from "@/components/DisabledControlTooltip";
+import { CachedDataIndicator } from "@/components/CachedDataIndicator";
 
 interface LocationState {
   userId: string;
@@ -39,6 +40,7 @@ const SelectParkingSpot = () => {
     getSpotColor,
     handleSpotClick,
     isOnline,
+    lastSyncTime,
   } = useSpotSelection(state);
 
   return (
@@ -84,6 +86,12 @@ const SelectParkingSpot = () => {
 
       {/* MAIN CONTENT */}
       <main className="container mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6 space-y-3 sm:space-y-4">
+        {/* Indicador de datos cacheados */}
+        <CachedDataIndicator 
+          lastSyncTime={lastSyncTime} 
+          isOnline={isOnline}
+        />
+
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
