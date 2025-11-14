@@ -30,7 +30,9 @@ export const TodaySection = ({
   const [loading, setLoading] = useState(true);
 
   const loadTodayReservations = useCallback(async () => {
-    const today = format(new Date(), "yyyy-MM-dd");
+    // Usar fecha UTC para coincidir con CURRENT_DATE de Supabase
+    const now = new Date();
+    const today = format(new Date(now.getTime() + now.getTimezoneOffset() * 60000), "yyyy-MM-dd");
     
     // Cargar reservas con información de check-in
     const { data, error } = await supabase
