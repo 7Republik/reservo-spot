@@ -2,6 +2,9 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { BlockedDate } from "@/types/admin";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { OfflineStorageService } from "@/lib/offlineStorage";
 
 /**
  * Custom hook for managing blocked dates (reservation blackouts)
@@ -49,6 +52,8 @@ export const useBlockedDates = () => {
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
+  const { isOnline } = useOfflineMode();
+  const storage = new OfflineStorageService();
 
   const loadBlockedDates = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
@@ -56,8 +61,27 @@ export const useBlockedDates = () => {
       return;
     }
 
+    const cacheKey = 'admin_blocked_dates';
+
     try {
       setLoading(true);
+
+      // Si estamos offline, cargar desde cache
+      if (!isOnline) {
+        const cached = await storage.get<BlockedDate[]>(cacheKey);
+        if (cached) {
+          setBlockedDates(cached);
+          toast.warning("Funcionalidad limitada sin conexión", {
+            description: "Solo puedes ver datos. Conéctate para realizar cambios."
+          });
+          isCached.current = true;
+          return;
+        }
+        toast.error("No hay datos de fechas bloqueadas en caché");
+        return;
+      }
+
+      // Modo online: cargar desde Supabase
       const { data, error } = await supabase
         .from("blocked_dates")
         .select(`
@@ -68,9 +92,27 @@ export const useBlockedDates = () => {
 
       if (error) throw error;
       setBlockedDates(data || []);
+      
+      // Cachear datos
+      await storage.set(cacheKey, data, {
+        dataType: 'admin_blocked_dates',
+        userId: 'admin'
+      });
+      await storage.recordSync(cacheKey);
+      
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading blocked dates:", error);
+      
+      // Si falla online, intentar cache
+      const cached = await storage.get<BlockedDate[]>(cacheKey);
+      if (cached) {
+        setBlockedDates(cached);
+        toast.warning("Mostrando datos en caché", {
+          description: "No se pudo conectar al servidor"
+        });
+        isCached.current = true;
+      }
     } finally {
       setLoading(false);
     }
@@ -81,6 +123,13 @@ export const useBlockedDates = () => {
     reason: string,
     groupId: string | null
   ) => {
+    if (!isOnline) {
+      toast.error("No puedes bloquear fechas sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       const dateString = date.toISOString().split('T')[0];
       
@@ -132,6 +181,13 @@ export const useBlockedDates = () => {
   };
 
   const unblockDate = async (dateId: string) => {
+    if (!isOnline) {
+      toast.error("No puedes desbloquear fechas sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("blocked_dates")
@@ -147,11 +203,26 @@ export const useBlockedDates = () => {
     }
   };
 
+  // Sincronizar datos cuando se recupera la conexión
+  useOfflineSync(
+    () => {
+      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
+      console.log('[useBlockedDates] Controles re-habilitados');
+    },
+    () => {
+      // Sincronizar datos después de 3s (Requisito 3.3)
+      console.log('[useBlockedDates] Sincronizando fechas bloqueadas...');
+      loadBlockedDates(true); // forceReload = true
+    }
+  );
+
   return {
     blockedDates,
     loading,
     loadBlockedDates,
     blockDate,
     unblockDate,
+    isOnline,
+    canModify: isOnline,
   };
 };

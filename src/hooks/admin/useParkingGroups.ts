@@ -2,6 +2,9 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ParkingGroup } from "@/types/admin";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { OfflineStorageService } from "@/lib/offlineStorage";
 
 /**
  * Custom hook for managing parking groups in the admin panel
@@ -56,6 +59,8 @@ export const useParkingGroups = () => {
   const [parkingGroups, setParkingGroups] = useState<ParkingGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
+  const { isOnline } = useOfflineMode();
+  const storage = new OfflineStorageService();
 
   /**
    * Loads all parking groups from database with caching
@@ -69,8 +74,27 @@ export const useParkingGroups = () => {
       return;
     }
 
+    const cacheKey = 'admin_parking_groups';
+
     try {
       setLoading(true);
+
+      // Si estamos offline, cargar desde cache
+      if (!isOnline) {
+        const cached = await storage.get<ParkingGroup[]>(cacheKey);
+        if (cached) {
+          setParkingGroups(cached);
+          toast.warning("Funcionalidad limitada sin conexión", {
+            description: "Solo puedes ver datos. Conéctate para realizar cambios."
+          });
+          isCached.current = true;
+          return;
+        }
+        toast.error("No hay datos de grupos en caché");
+        return;
+      }
+
+      // Modo online: cargar desde Supabase
       const { data, error } = await supabase
         .from("parking_groups")
         .select("*")
@@ -78,10 +102,29 @@ export const useParkingGroups = () => {
 
       if (error) throw error;
       setParkingGroups(data || []);
+      
+      // Cachear datos
+      await storage.set(cacheKey, data, {
+        dataType: 'admin_parking_groups',
+        userId: 'admin'
+      });
+      await storage.recordSync(cacheKey);
+      
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading parking groups:", error);
-      toast.error("Error al cargar grupos de parking");
+      
+      // Si falla online, intentar cache
+      const cached = await storage.get<ParkingGroup[]>(cacheKey);
+      if (cached) {
+        setParkingGroups(cached);
+        toast.warning("Mostrando datos en caché", {
+          description: "No se pudo conectar al servidor"
+        });
+        isCached.current = true;
+      } else {
+        toast.error("Error al cargar grupos de parking");
+      }
     } finally {
       setLoading(false);
     }
@@ -104,6 +147,13 @@ export const useParkingGroups = () => {
     floorPlanFile: File | null,
     isIncidentReserve: boolean
   ) => {
+    if (!isOnline) {
+      toast.error("No puedes crear grupos sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       let floorPlanUrl: string | null = null;
 
@@ -163,6 +213,13 @@ export const useParkingGroups = () => {
     currentFloorPlanUrl: string | null,
     isIncidentReserve: boolean
   ) => {
+    if (!isOnline) {
+      toast.error("No puedes actualizar grupos sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       let floorPlanUrl = currentFloorPlanUrl;
 
@@ -210,6 +267,13 @@ export const useParkingGroups = () => {
    * @returns {Promise<void>}
    */
   const toggleGroupActive = async (groupId: string, isActive: boolean) => {
+    if (!isOnline) {
+      toast.error("No puedes cambiar el estado de grupos sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("parking_groups")
@@ -238,6 +302,13 @@ export const useParkingGroups = () => {
    * @returns {Promise<boolean>} True if successful, false otherwise
    */
   const deactivateGroup = async (groupId: string, reason: string) => {
+    if (!isOnline) {
+      toast.error("No puedes dar de baja grupos sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -274,6 +345,13 @@ export const useParkingGroups = () => {
    * @returns {Promise<boolean>} True if successful, false otherwise
    */
   const scheduleDeactivation = async (groupId: string, scheduledDate: Date) => {
+    if (!isOnline) {
+      toast.error("No puedes programar desactivaciones sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       const { error } = await supabase
         .from("parking_groups")
@@ -305,6 +383,13 @@ export const useParkingGroups = () => {
    * @returns {Promise<void>}
    */
   const cancelScheduledDeactivation = async (groupId: string) => {
+    if (!isOnline) {
+      toast.error("No puedes cancelar desactivaciones sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("parking_groups")
@@ -320,6 +405,19 @@ export const useParkingGroups = () => {
     }
   };
 
+  // Sincronizar datos cuando se recupera la conexión
+  useOfflineSync(
+    () => {
+      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
+      console.log('[useParkingGroups] Controles re-habilitados');
+    },
+    () => {
+      // Sincronizar datos después de 3s (Requisito 3.3)
+      console.log('[useParkingGroups] Sincronizando grupos...');
+      loadParkingGroups(true); // forceReload = true
+    }
+  );
+
   return {
     parkingGroups,
     loading,
@@ -330,5 +428,7 @@ export const useParkingGroups = () => {
     deactivateGroup,
     scheduleDeactivation,
     cancelScheduledDeactivation,
+    isOnline,
+    canModify: isOnline,
   };
 };

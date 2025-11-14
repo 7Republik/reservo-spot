@@ -5,6 +5,7 @@ import GroupSelectorModal from "./GroupSelectorModal";
 import { MonthNavigation } from "./calendar/MonthNavigation";
 import { CalendarGrid } from "./calendar/CalendarGrid";
 import { CalendarLegend } from "./calendar/CalendarLegend";
+import { CachedDataIndicator } from "./CachedDataIndicator";
 import { useParkingCalendar } from "@/hooks/useParkingCalendar";
 
 interface ParkingCalendarProps {
@@ -36,6 +37,8 @@ const ParkingCalendar = ({ userId, onReservationUpdate }: ParkingCalendarProps) 
     handleEditReservation,
     handleCancel,
     refreshData,
+    isOnline,
+    lastSyncTime,
   } = useParkingCalendar(userId, onReservationUpdate);
 
   const handleDayClick = (day: Date, reservation?: any) => {
@@ -62,6 +65,12 @@ const ParkingCalendar = ({ userId, onReservationUpdate }: ParkingCalendarProps) 
 
   return (
     <div className="space-y-4">
+      {/* Indicador de datos cacheados */}
+      <CachedDataIndicator 
+        lastSyncTime={lastSyncTime} 
+        isOnline={isOnline}
+      />
+
       {/* Advertencia de sin acceso a grupos */}
       {userGroups.length === 0 && !loading && (
         <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800">

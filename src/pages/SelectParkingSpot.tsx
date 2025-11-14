@@ -10,6 +10,7 @@ import { useSpotSelection } from "@/hooks/useSpotSelection";
 import { InteractiveMap } from "@/components/spot-selection/InteractiveMap";
 import { SpotsList } from "@/components/spot-selection/SpotsList";
 import { MapLegend } from "@/components/spot-selection/MapLegend";
+import { DisabledControlTooltip } from "@/components/DisabledControlTooltip";
 
 interface LocationState {
   userId: string;
@@ -37,6 +38,7 @@ const SelectParkingSpot = () => {
     availableCount,
     getSpotColor,
     handleSpotClick,
+    isOnline,
   } = useSpotSelection(state);
 
   return (
@@ -136,12 +138,14 @@ const SelectParkingSpot = () => {
                 spots={spots}
                 onSpotClick={handleSpotClick}
                 getSpotColor={getSpotColor}
+                isOnline={isOnline}
               />
             ) : (
               <SpotsList
                 spots={spots}
                 onSpotClick={handleSpotClick}
                 getSpotColor={getSpotColor}
+                isOnline={isOnline}
               />
             )}
           </>

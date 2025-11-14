@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Plus, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DisabledControlTooltip } from "@/components/DisabledControlTooltip";
 
 interface LicensePlateFormProps {
   activePlatesCount: number;
@@ -19,6 +20,7 @@ interface LicensePlateFormProps {
   requestedDisability: boolean;
   setRequestedDisability: (requested: boolean) => void;
   onAddPlate: () => void;
+  isOnline: boolean;
 }
 
 export const LicensePlateForm = ({
@@ -32,6 +34,7 @@ export const LicensePlateForm = ({
   requestedDisability,
   setRequestedDisability,
   onAddPlate,
+  isOnline,
 }: LicensePlateFormProps) => {
   return (
     <Collapsible open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -63,15 +66,21 @@ export const LicensePlateForm = ({
                   onChange={(e) => setNewPlate(e.target.value.toUpperCase())}
                   maxLength={10}
                   className="flex-1"
+                  disabled={!isOnline}
                 />
-                <Button 
-                  onClick={onAddPlate} 
-                  disabled={!newPlate.trim()}
-                  className="w-full sm:w-auto"
+                <DisabledControlTooltip
+                  isDisabled={!isOnline}
+                  message="Requiere conexión a internet"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Añadir
-                </Button>
+                  <Button 
+                    onClick={onAddPlate} 
+                    disabled={!newPlate.trim() || !isOnline}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Añadir
+                  </Button>
+                </DisabledControlTooltip>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
                 La matrícula debe ser aprobada por un administrador antes de poder usarse

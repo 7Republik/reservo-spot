@@ -2,6 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useOfflineMode } from "./useOfflineMode";
+import { useOfflineSync } from "./useOfflineSync";
+import { OfflineStorageService } from "@/lib/offlineStorage";
+import { format } from "date-fns";
 
 export interface LicensePlate {
   id: string;
@@ -102,6 +106,7 @@ export const plateSchema = z.object({
  * ```
  */
 export const useLicensePlateManager = (userId: string) => {
+  const { isOnline, lastSyncTime } = useOfflineMode();
   const [activePlates, setActivePlates] = useState<LicensePlate[]>([]);
   const [deletedPlates, setDeletedPlates] = useState<LicensePlate[]>([]);
   const [newPlate, setNewPlate] = useState("");
@@ -112,6 +117,7 @@ export const useLicensePlateManager = (userId: string) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [plateToDelete, setPlateToDelete] = useState<LicensePlate | null>(null);
+  const storage = new OfflineStorageService();
 
   /**
    * Loads all license plates for user (active and deleted)
@@ -119,10 +125,38 @@ export const useLicensePlateManager = (userId: string) => {
    * Separates into `activePlates` (deleted_at IS NULL) and
    * `deletedPlates` (deleted_at IS NOT NULL) for display.
    * 
+   * **Offline Support**:
+   * - When offline: Loads from cache
+   * - When online: Loads from server and caches
+   * - Fallback to cache if server fails
+   * 
    * @returns {Promise<void>}
    */
   const loadPlates = async () => {
+    const cacheKey = `plates_${userId}`;
+    
     try {
+      if (!isOnline) {
+        // Modo offline: cargar desde cache
+        await storage.init();
+        const cached = await storage.get<LicensePlate[]>(cacheKey);
+        
+        if (cached) {
+          const active = cached.filter(p => !p.deleted_at);
+          const deleted = cached.filter(p => p.deleted_at);
+          
+          setActivePlates(active);
+          setDeletedPlates(deleted);
+          setLoading(false);
+          return;
+        }
+        
+        toast.error("No hay datos de matrículas en caché");
+        setLoading(false);
+        return;
+      }
+
+      // Modo online: cargar desde Supabase
       const { data, error } = await supabase
         .from("license_plates")
         .select("*")
@@ -136,9 +170,34 @@ export const useLicensePlateManager = (userId: string) => {
       
       setActivePlates(active);
       setDeletedPlates(deleted);
+      
+      // Cachear datos
+      await storage.init();
+      await storage.set(cacheKey, data || [], {
+        dataType: 'license_plates',
+        userId
+      });
+      await storage.recordSync(cacheKey);
+      
     } catch (error: any) {
       console.error("Error loading plates:", error);
-      toast.error("Error al cargar las matrículas");
+      
+      // Fallback a cache si falla online
+      if (isOnline) {
+        await storage.init();
+        const cached = await storage.get<LicensePlate[]>(cacheKey);
+        
+        if (cached) {
+          const active = cached.filter(p => !p.deleted_at);
+          const deleted = cached.filter(p => p.deleted_at);
+          
+          setActivePlates(active);
+          setDeletedPlates(deleted);
+          toast.warning("Mostrando datos en caché");
+        } else {
+          toast.error("Error al cargar las matrículas");
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -156,11 +215,21 @@ export const useLicensePlateManager = (userId: string) => {
    * 
    * **Permits**: Can optionally request electric and/or disability permits.
    * 
+   * **Offline Support**: Blocked when offline with clear error message.
+   * 
    * Resets form and reloads plates on success.
    * 
    * @returns {Promise<void>}
    */
   const handleAddPlate = async () => {
+    // Bloquear cuando offline
+    if (!isOnline) {
+      toast.error("No puedes registrar matrículas sin conexión", {
+        description: "Conéctate a internet para añadir nuevas matrículas"
+      });
+      return;
+    }
+
     try {
       const upperPlate = newPlate.toUpperCase();
       const validated = plateSchema.parse({ plateNumber: upperPlate });
@@ -223,10 +292,20 @@ export const useLicensePlateManager = (userId: string) => {
    * 
    * If plate was approved, shows message that it's now available for others.
    * 
+   * **Offline Support**: Blocked when offline with clear error message.
+   * 
    * @param {LicensePlate} plate - Plate to delete
    * @returns {Promise<void>}
    */
   const handleDeletePlate = async (plate: LicensePlate) => {
+    // Bloquear cuando offline
+    if (!isOnline) {
+      toast.error("No puedes eliminar matrículas sin conexión", {
+        description: "Conéctate a internet para eliminar matrículas"
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("license_plates")
@@ -277,6 +356,19 @@ export const useLicensePlateManager = (userId: string) => {
     loadPlates();
   }, [userId]);
 
+  // Sincronizar datos cuando se recupera la conexión
+  useOfflineSync(
+    () => {
+      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
+      console.log('[useLicensePlateManager] Controles re-habilitados');
+    },
+    () => {
+      // Sincronizar datos después de 3s (Requisito 3.3)
+      console.log('[useLicensePlateManager] Sincronizando placas...');
+      loadPlates();
+    }
+  );
+
   return {
     activePlates,
     deletedPlates,
@@ -298,5 +390,7 @@ export const useLicensePlateManager = (userId: string) => {
     handleAddPlate,
     handleDeletePlate,
     openDeleteDialog,
+    isOnline,
+    lastSyncTime,
   };
 };

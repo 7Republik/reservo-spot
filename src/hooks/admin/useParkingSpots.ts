@@ -2,6 +2,9 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ParkingSpot } from "@/types/admin";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { OfflineStorageService } from "@/lib/offlineStorage";
 
 /**
  * Custom hook for managing individual parking spots
@@ -52,6 +55,8 @@ export const useParkingSpots = () => {
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
+  const { isOnline } = useOfflineMode();
+  const storage = new OfflineStorageService();
 
   const loadSpots = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
@@ -59,8 +64,27 @@ export const useParkingSpots = () => {
       return;
     }
 
+    const cacheKey = 'admin_parking_spots';
+
     try {
       setLoading(true);
+
+      // Si estamos offline, cargar desde cache
+      if (!isOnline) {
+        const cached = await storage.get<ParkingSpot[]>(cacheKey);
+        if (cached) {
+          setSpots(cached);
+          toast.warning("Funcionalidad limitada sin conexión", {
+            description: "Solo puedes ver datos. Conéctate para realizar cambios."
+          });
+          isCached.current = true;
+          return;
+        }
+        toast.error("No hay datos de plazas en caché");
+        return;
+      }
+
+      // Modo online: cargar desde Supabase
       const { data, error } = await supabase
         .from("parking_spots")
         .select(`
@@ -71,10 +95,29 @@ export const useParkingSpots = () => {
 
       if (error) throw error;
       setSpots(data || []);
+      
+      // Cachear datos
+      await storage.set(cacheKey, data, {
+        dataType: 'admin_parking_spots',
+        userId: 'admin'
+      });
+      await storage.recordSync(cacheKey);
+      
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading spots:", error);
-      toast.error("Error al cargar las plazas");
+      
+      // Si falla online, intentar cache
+      const cached = await storage.get<ParkingSpot[]>(cacheKey);
+      if (cached) {
+        setSpots(cached);
+        toast.warning("Mostrando datos en caché", {
+          description: "No se pudo conectar al servidor"
+        });
+        isCached.current = true;
+      } else {
+        toast.error("Error al cargar las plazas");
+      }
     } finally {
       setLoading(false);
     }
@@ -87,6 +130,13 @@ export const useParkingSpots = () => {
     hasCharger: boolean;
     isCompact: boolean;
   }) => {
+    if (!isOnline) {
+      toast.error("No puedes añadir plazas sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     if (!spotData.spotNumber.trim()) {
       toast.error("El número de plaza es obligatorio");
       return false;
@@ -130,6 +180,13 @@ export const useParkingSpots = () => {
   };
 
   const toggleSpot = async (spotId: string, currentStatus: boolean) => {
+    if (!isOnline) {
+      toast.error("No puedes cambiar el estado de plazas sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       const { error } = await supabase
         .from("parking_spots")
@@ -148,11 +205,26 @@ export const useParkingSpots = () => {
     }
   };
 
+  // Sincronizar datos cuando se recupera la conexión
+  useOfflineSync(
+    () => {
+      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
+      console.log('[useParkingSpots] Controles re-habilitados');
+    },
+    () => {
+      // Sincronizar datos después de 3s (Requisito 3.3)
+      console.log('[useParkingSpots] Sincronizando plazas...');
+      loadSpots(true); // forceReload = true
+    }
+  );
+
   return {
     spots,
     loading,
     loadSpots,
     addSpot,
     toggleSpot,
+    isOnline,
+    canModify: isOnline,
   };
 };

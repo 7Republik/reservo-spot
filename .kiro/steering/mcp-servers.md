@@ -1450,12 +1450,289 @@ mcp_shadcn_get_add_command_for_items({
 mcp_shadcn_get_audit_checklist()
 ```
 
+## 10. 21st.dev Magic MCP Server
+
+**Servidor:** `mcp_21st_devmagic`  
+**Propósito:** Generación de componentes UI con IA usando la biblioteca de 21st.dev  
+**Estado:** ✅ Configurado y listo para usar  
+**Licencia:** Requiere API Key (configurada)
+
+### Herramientas Disponibles
+
+#### `21st_magic_component_builder`
+Genera componentes UI personalizados basados en tu solicitud.
+
+**Uso:**
+```typescript
+mcp_21st_devmagic_21st_magic_component_builder({
+  message: "Create a parking spot card with number, availability status and reserve button",
+  searchQuery: "parking card component",
+  absolutePathToCurrentFile: "/Users/rubenmarques/reserveokiro/reservo-spot/src/components/ParkingCard.tsx",
+  absolutePathToProjectDirectory: "/Users/rubenmarques/reserveokiro/reservo-spot",
+  standaloneRequestQuery: "Create a card component for parking spots showing spot number, availability indicator (green/red), and a reserve button. Should be responsive and use Tailwind CSS."
+})
+```
+
+**Parámetros:**
+- `message` (requerido) - Mensaje completo del usuario
+- `searchQuery` (requerido) - Query de búsqueda (2-4 palabras max)
+- `absolutePathToCurrentFile` (requerido) - Ruta absoluta del archivo actual
+- `absolutePathToProjectDirectory` (requerido) - Ruta absoluta del proyecto
+- `standaloneRequestQuery` (requerido) - Descripción detallada del componente a crear
+
+**Retorna:**
+- Código del componente generado
+- Instrucciones de implementación
+- Dependencias necesarias
+
+**Uso recomendado:**
+- Crear componentes UI nuevos rápidamente
+- Generar variantes de componentes existentes
+- Prototipar interfaces
+
+#### `logo_search`
+Busca y retorna logos de empresas en formato JSX, TSX o SVG.
+
+**Uso:**
+```typescript
+mcp_21st_devmagic_logo_search({
+  queries: ["discord", "github", "slack"],
+  format: "TSX"
+})
+```
+
+**Parámetros:**
+- `queries` (requerido) - Array de nombres de empresas
+- `format` (requerido) - "JSX", "TSX" o "SVG"
+
+**Retorna:**
+- Componente de icono (ej: `DiscordIcon`)
+- Código completo del componente
+- Instrucciones de importación
+
+**Uso recomendado:**
+- Añadir logos de empresas sin buscar SVGs manualmente
+- Integrar iconos de marcas conocidas
+- Crear secciones de "partners" o "integrations"
+
+**Ejemplos:**
+```typescript
+// Buscar un logo
+mcp_21st_devmagic_logo_search({
+  queries: ["microsoft"],
+  format: "TSX"
+})
+
+// Buscar múltiples logos
+mcp_21st_devmagic_logo_search({
+  queries: ["discord", "github", "slack", "notion"],
+  format: "TSX"
+})
+```
+
+#### `21st_magic_component_inspiration`
+Busca componentes existentes en 21st.dev para inspiración (sin generar código).
+
+**Uso:**
+```typescript
+mcp_21st_devmagic_21st_magic_component_inspiration({
+  message: "Show me examples of pricing tables",
+  searchQuery: "pricing table"
+})
+```
+
+**Parámetros:**
+- `message` (requerido) - Mensaje completo del usuario
+- `searchQuery` (requerido) - Query de búsqueda (2-4 palabras)
+
+**Retorna:**
+- JSON con componentes encontrados
+- Previews y metadata
+- NO genera código nuevo
+
+**Uso recomendado:**
+- Ver ejemplos antes de crear
+- Explorar patrones de diseño
+- Obtener inspiración
+
+#### `21st_magic_component_refiner`
+Mejora y refina componentes UI existentes.
+
+**Uso:**
+```typescript
+mcp_21st_devmagic_21st_magic_component_refiner({
+  userMessage: "Make the button larger and add a hover effect",
+  absolutePathToRefiningFile: "/Users/rubenmarques/reserveokiro/reservo-spot/src/components/Button.tsx",
+  context: "User wants to improve the button component by making it larger and adding a smooth hover effect with scale transformation"
+})
+```
+
+**Parámetros:**
+- `userMessage` (requerido) - Mensaje del usuario sobre mejoras
+- `absolutePathToRefiningFile` (requerido) - Ruta absoluta del archivo a refinar
+- `context` (requerido) - Contexto detallado de qué mejorar
+
+**Retorna:**
+- Versión mejorada del componente
+- Instrucciones de implementación
+- Cambios aplicados
+
+**Uso recomendado:**
+- Mejorar diseño de componentes existentes
+- Añadir interactividad
+- Refinar estilos y layout
+
+### Configuración
+
+**Archivo:** `~/.kiro/settings/mcp.json`
+
+```json
+{
+  "@21st-dev/magic": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "@21st-dev/magic@latest",
+      "API_KEY=\"bba1fc0b4dbe8e8969ebf3cec680dfd8ae4a68e5115c1ecbf1f1e063d68b7633\""
+    ],
+    "disabled": false,
+    "autoApprove": []
+  }
+}
+```
+
+### Comandos Especiales
+
+Puedes usar comandos especiales en el chat:
+
+- `/ui` - Generar componente UI
+- `/21` o `/21st` - Usar herramientas de 21st.dev
+- `/logo` - Buscar logos de empresas
+
+**Ejemplos:**
+```
+/ui Create a card for parking spots with availability indicator
+/21 Show me pricing table examples
+/logo GitHub Discord Slack
+```
+
+### Mejores Prácticas
+
+1. **Prompts específicos y detallados**
+   ```
+   ✅ "Create a parking spot card with spot number (large text), 
+       availability badge (green/red), spot type icons (accessible, 
+       charger, compact), and a reserve button"
+   ❌ "Create a card"
+   ```
+
+2. **Usar rutas absolutas correctas**
+   - Siempre proporcionar rutas absolutas completas
+   - Verificar que el directorio del proyecto es correcto
+
+3. **Search queries concisos**
+   ```
+   ✅ "parking card"
+   ✅ "pricing table"
+   ❌ "create a component that shows parking information"
+   ```
+
+4. **Context detallado para refiner**
+   - Especificar exactamente qué elementos mejorar
+   - Mencionar aspectos específicos (colores, layout, interactividad)
+
+### Ejemplos para RESERVEO
+
+**Crear Card de Plaza:**
+```
+/ui Create a parking spot card component showing:
+- Spot number (large, bold)
+- Availability status badge (green for available, red for occupied)
+- Icons for spot features (wheelchair accessible, EV charger, compact)
+- Reserve button (primary color, disabled when occupied)
+Use Tailwind CSS and make it responsive
+```
+
+**Buscar Logos:**
+```
+/logo Tesla BMW Mercedes Volkswagen
+```
+
+**Refinar Componente:**
+```
+/21 Refine the ParkingCard component to add:
+- Smooth hover effect with slight scale
+- Shadow on hover
+- Better spacing between elements
+- Rounded corners
+```
+
+**Ver Inspiración:**
+```
+/21 Show me examples of dashboard stat cards
+/21 Find calendar component examples
+```
+
+### Características
+
+- ✅ Genera componentes React + TypeScript
+- ✅ Usa Tailwind CSS automáticamente
+- ✅ Respeta el estilo del proyecto
+- ✅ Biblioteca de 1000+ componentes
+- ✅ Logos de empresas populares
+- ✅ Refinamiento de componentes existentes
+- ✅ Búsqueda de inspiración
+
+### Cuándo Usar 21st.dev Magic
+
+**Usa 21st.dev cuando:**
+- ✅ Necesitas crear componentes UI rápidamente
+- ✅ Quieres prototipar interfaces
+- ✅ Necesitas logos de empresas
+- ✅ Quieres mejorar componentes existentes
+- ✅ Buscas inspiración de diseño
+
+**Usa shadcn/ui cuando:**
+- ✅ Necesitas componentes base del design system
+- ✅ Quieres componentes con accesibilidad garantizada
+- ✅ Prefieres componentes probados y estables
+
+**Usa FlyonUI cuando:**
+- ✅ Necesitas componentes con clases semánticas
+- ✅ Quieres menos código boilerplate
+
+**Todos pueden coexistir** - usa cada uno según la necesidad.
+
+### Limitaciones
+
+- Requiere API Key (ya configurada)
+- Genera un componente a la vez
+- Mejor para componentes pequeños/medianos
+- No reemplaza el diseño manual para casos complejos
+
+### Referencias
+
+- **Sitio oficial:** https://21st.dev/
+- **Documentación MCP:** https://github.com/21st-dev/magic-mcp
+- **Biblioteca de componentes:** https://21st.dev/components
+
+---
+
+## Cuándo Usar Cada MCP - Resumen
+
+**21st.dev Magic:**
+- ✅ Generar componentes UI con IA
+- ✅ Buscar logos de empresas
+- ✅ Refinar componentes existentes
+- ✅ Obtener inspiración de diseño
+- ❌ NO para componentes base del design system
+
 ## Limitaciones y Consideraciones
 
 1. **Rate Limits:** Algunos MCPs tienen límites de uso
 2. **Autenticación:** Requieren configuración previa
 3. **Permisos:** Respetan permisos del usuario
-4. **Costo:** Algunos servicios pueden tener costo (Brave Search)
+4. **Costo:** Algunos servicios pueden tener costo (Brave Search, 21st.dev)
 5. **Disponibilidad:** Dependen de servicios externos
 
 ## Referencias
@@ -1463,3 +1740,4 @@ mcp_shadcn_get_audit_checklist()
 - [MCP Protocol](https://modelcontextprotocol.io/)
 - [Supabase MCP](https://github.com/supabase-community/mcp-server-supabase)
 - [Vercel MCP](https://github.com/vercel/mcp-server-vercel)
+- [21st.dev Magic MCP](https://github.com/21st-dev/magic-mcp)

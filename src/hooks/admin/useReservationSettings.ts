@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ReservationSettings } from "@/types/admin";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
+import { OfflineStorageService } from "@/lib/offlineStorage";
 
 /**
  * Custom hook for managing global reservation settings
@@ -48,6 +50,8 @@ export const useReservationSettings = () => {
   });
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
+  const { isOnline } = useOfflineMode();
+  const storage = new OfflineStorageService();
 
   const loadSettings = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
@@ -55,8 +59,27 @@ export const useReservationSettings = () => {
       return;
     }
 
+    const cacheKey = 'admin_reservation_settings';
+
     try {
       setLoading(true);
+
+      // Si estamos offline, cargar desde cache
+      if (!isOnline) {
+        const cached = await storage.get<ReservationSettings>(cacheKey);
+        if (cached) {
+          setSettings(cached);
+          toast.warning("Funcionalidad limitada sin conexión", {
+            description: "Solo puedes ver datos. Conéctate para realizar cambios."
+          });
+          isCached.current = true;
+          return;
+        }
+        toast.error("No hay configuración en caché");
+        return;
+      }
+
+      // Modo online: cargar desde Supabase
       const { data, error } = await supabase
         .from("reservation_settings")
         .select("*")
@@ -64,20 +87,45 @@ export const useReservationSettings = () => {
 
       if (error) throw error;
       if (data) {
-        setSettings({
+        const settingsData = {
           advance_reservation_days: data.advance_reservation_days,
           daily_refresh_hour: data.daily_refresh_hour
+        };
+        setSettings(settingsData);
+        
+        // Cachear datos
+        await storage.set(cacheKey, settingsData, {
+          dataType: 'admin_reservation_settings',
+          userId: 'admin'
         });
+        await storage.recordSync(cacheKey);
       }
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading settings:", error);
+      
+      // Si falla online, intentar cache
+      const cached = await storage.get<ReservationSettings>(cacheKey);
+      if (cached) {
+        setSettings(cached);
+        toast.warning("Mostrando datos en caché", {
+          description: "No se pudo conectar al servidor"
+        });
+        isCached.current = true;
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const saveSettings = async (newSettings: ReservationSettings) => {
+    if (!isOnline) {
+      toast.error("No puedes guardar configuración sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       const { error } = await supabase
         .from("reservation_settings")
@@ -108,5 +156,7 @@ export const useReservationSettings = () => {
     loadSettings,
     saveSettings,
     updateSettings,
+    isOnline,
+    canModify: isOnline,
   };
 };

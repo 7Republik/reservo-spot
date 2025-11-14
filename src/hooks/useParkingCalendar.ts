@@ -3,6 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
+import { useOfflineMode } from "./useOfflineMode";
+import { useOfflineSync } from "./useOfflineSync";
+import { OfflineStorageService } from "@/lib/offlineStorage";
 
 interface Reservation {
   id: string;
@@ -87,6 +90,8 @@ interface ParkingGroup {
 export const useParkingCalendar = (userId: string, onReservationUpdate?: () => void) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isOnline, lastSyncTime } = useOfflineMode();
+  const [storage] = useState(() => new OfflineStorageService());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [availableSpots, setAvailableSpots] = useState<Record<string, number>>({});
@@ -706,6 +711,22 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [userGroups]);
 
+  // Sincronizar datos cuando se recupera la conexión
+  useOfflineSync(
+    () => {
+      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
+      console.log('[useParkingCalendar] Controles re-habilitados');
+    },
+    () => {
+      // Sincronizar datos después de 3s (Requisito 3.3)
+      if (userGroups.length > 0) {
+        console.log('[useParkingCalendar] Sincronizando reservas y disponibilidad...');
+        loadReservations();
+        loadAvailableSpots();
+      }
+    }
+  );
+
   useEffect(() => {
     const handleNavigationState = async () => {
       const navigationState = location.state as any;
@@ -766,5 +787,7 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
     handleEditReservation,
     handleCancel,
     refreshData,
+    isOnline,
+    lastSyncTime,
   };
 };

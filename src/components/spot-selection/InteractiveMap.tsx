@@ -3,19 +3,22 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { ZoomControls } from "./ZoomControls";
 import { cn } from "@/lib/utils";
 import { ParkingGroup, SpotWithStatus } from "@/hooks/useSpotSelection";
+import { DisabledControlTooltip } from "@/components/DisabledControlTooltip";
 
 interface InteractiveMapProps {
   selectedGroup: ParkingGroup | null;
   spots: SpotWithStatus[];
   onSpotClick: (spot: SpotWithStatus) => void;
   getSpotColor: (spot: SpotWithStatus) => string;
+  isOnline?: boolean;
 }
 
 export const InteractiveMap = ({ 
   selectedGroup, 
   spots, 
   onSpotClick, 
-  getSpotColor 
+  getSpotColor,
+  isOnline = true
 }: InteractiveMapProps) => {
   const buttonSize = selectedGroup?.button_size || 32;
 
@@ -59,36 +62,41 @@ export const InteractiveMap = ({
                     />
 
                     {spots.map(spot => (
-                      <div
+                      <DisabledControlTooltip
                         key={spot.id}
-                        className={cn(
-                          "absolute transform -translate-x-1/2 -translate-y-1/2",
-                          "rounded-lg flex items-center justify-center",
-                          "text-white font-bold shadow-lg border-2 border-white",
-                          "transition-all duration-200",
-                          getSpotColor(spot),
-                          spot.status === 'available'
-                            ? "cursor-pointer hover:scale-125 hover:shadow-xl hover:z-50"
-                            : "cursor-not-allowed opacity-70"
-                        )}
-                        style={{
-                          left: `${spot.position_x}%`,
-                          top: `${spot.position_y}%`,
-                          width: `${buttonSize}px`,
-                          height: `${buttonSize}px`,
-                          fontSize: `${Math.max(buttonSize * 0.35, 10)}px`,
-                        }}
-                        onClick={() => onSpotClick(spot)}
-                        title={`Plaza ${spot.spot_number} - ${spot.status === 'available' ? 'Disponible' :
-                          spot.status === 'occupied' ? 'Ocupada' :
-                            spot.status === 'user_reserved' ? 'Tu reserva' :
-                              'No disponible'
-                          }`}
+                        isDisabled={!isOnline && spot.status === 'available'}
+                        message="Requiere conexión a internet"
                       >
-                        <span className="drop-shadow-md">
-                          {spot.spot_number.split('-')[1] || spot.spot_number}
-                        </span>
-                      </div>
+                        <div
+                          className={cn(
+                            "absolute transform -translate-x-1/2 -translate-y-1/2",
+                            "rounded-lg flex items-center justify-center",
+                            "text-white font-bold shadow-lg border-2 border-white",
+                            "transition-all duration-200",
+                            getSpotColor(spot),
+                            spot.status === 'available' && isOnline
+                              ? "cursor-pointer hover:scale-125 hover:shadow-xl hover:z-50"
+                              : "cursor-not-allowed opacity-70"
+                          )}
+                          style={{
+                            left: `${spot.position_x}%`,
+                            top: `${spot.position_y}%`,
+                            width: `${buttonSize}px`,
+                            height: `${buttonSize}px`,
+                            fontSize: `${Math.max(buttonSize * 0.35, 10)}px`,
+                          }}
+                          onClick={() => onSpotClick(spot)}
+                          title={`Plaza ${spot.spot_number} - ${spot.status === 'available' ? 'Disponible' :
+                            spot.status === 'occupied' ? 'Ocupada' :
+                              spot.status === 'user_reserved' ? 'Tu reserva' :
+                                'No disponible'
+                            }`}
+                        >
+                          <span className="drop-shadow-md">
+                            {spot.spot_number.split('-')[1] || spot.spot_number}
+                          </span>
+                        </div>
+                      </DisabledControlTooltip>
                     ))}
                   </>
                 ) : (

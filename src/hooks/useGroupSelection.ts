@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useOfflineMode } from "./useOfflineMode";
+import { useOfflineSync } from "./useOfflineSync";
+import { OfflineStorageService } from "@/lib/offlineStorage";
 
 /**
  * Group with calculated availability metrics
@@ -45,12 +48,29 @@ export const useGroupSelection = (
 ) => {
   const [groups, setGroups] = useState<GroupWithAvailability[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isOnline, lastSyncTime } = useOfflineMode();
+  const storage = new OfflineStorageService();
 
   useEffect(() => {
     if (isOpen && selectedDate && userGroups.length > 0) {
       loadGroupsWithAvailability();
     }
   }, [isOpen, selectedDate, userGroups]);
+
+  // Sincronizar datos cuando se recupera la conexión
+  useOfflineSync(
+    () => {
+      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
+      console.log('[useGroupSelection] Controles re-habilitados');
+    },
+    () => {
+      // Sincronizar datos después de 3s (Requisito 3.3)
+      if (isOpen && selectedDate && userGroups.length > 0) {
+        console.log('[useGroupSelection] Sincronizando grupos...');
+        loadGroupsWithAvailability();
+      }
+    }
+  );
 
   /**
    * Loads all groups with availability metrics for the selected date
@@ -59,7 +79,22 @@ export const useGroupSelection = (
     try {
       setLoading(true);
       const dateStr = format(selectedDate!, "yyyy-MM-dd");
+      const cacheKey = `groups_${userId}_${dateStr}`;
 
+      // Modo offline: cargar desde cache
+      if (!isOnline) {
+        const cached = await storage.get<GroupWithAvailability[]>(cacheKey);
+        if (cached) {
+          setGroups(cached);
+          setLoading(false);
+          return;
+        }
+        toast.error("No hay datos de grupos en caché");
+        setLoading(false);
+        return;
+      }
+
+      // Modo online: cargar desde servidor
       const groupsData: GroupWithAvailability[] = [];
 
       for (const groupId of userGroups) {
@@ -170,9 +205,27 @@ export const useGroupSelection = (
       }
 
       setGroups(groupsData);
+
+      // Cachear datos cargados
+      await storage.set(cacheKey, groupsData, {
+        dataType: 'groups',
+        userId
+      });
+      await storage.recordSync(cacheKey);
     } catch (error) {
       console.error("Error loading groups:", error);
-      toast.error("Error al cargar los grupos");
+      
+      // Si falla online, intentar cache como fallback
+      const dateStr = format(selectedDate!, "yyyy-MM-dd");
+      const cacheKey = `groups_${userId}_${dateStr}`;
+      const cached = await storage.get<GroupWithAvailability[]>(cacheKey);
+      
+      if (cached) {
+        setGroups(cached);
+        toast.warning("Mostrando datos en caché");
+      } else {
+        toast.error("Error al cargar los grupos");
+      }
     } finally {
       setLoading(false);
     }
@@ -201,5 +254,7 @@ export const useGroupSelection = (
     loading,
     getOccupancyColor,
     getProgressColor,
+    isOnline,
+    lastSyncTime,
   };
 };

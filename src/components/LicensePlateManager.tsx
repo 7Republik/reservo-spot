@@ -30,6 +30,7 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
     handleAddPlate,
     handleDeletePlate,
     openDeleteDialog,
+    isOnline,
   } = useLicensePlateManager(userId);
 
   if (loading) {
@@ -49,6 +50,7 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
         requestedDisability={requestedDisability}
         setRequestedDisability={setRequestedDisability}
         onAddPlate={handleAddPlate}
+        isOnline={isOnline}
       />
 
       <div className="space-y-3">
@@ -68,6 +70,7 @@ const LicensePlateManager = ({ userId }: LicensePlateManagerProps) => {
                 key={plate.id}
                 plate={plate}
                 onDelete={openDeleteDialog}
+                isOnline={isOnline}
               />
             ))}
           </div>

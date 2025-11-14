@@ -4,13 +4,15 @@ import { Card } from "@/components/ui/card";
 import { Check, Clock, Trash2, X, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LicensePlate } from "@/hooks/useLicensePlateManager";
+import { DisabledControlTooltip } from "@/components/DisabledControlTooltip";
 
 interface LicensePlateCardProps {
   plate: LicensePlate;
   onDelete: (plate: LicensePlate) => void;
+  isOnline: boolean;
 }
 
-export const LicensePlateCard = ({ plate, onDelete }: LicensePlateCardProps) => {
+export const LicensePlateCard = ({ plate, onDelete, isOnline }: LicensePlateCardProps) => {
   return (
     <Card className="p-3 sm:p-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -113,15 +115,21 @@ export const LicensePlateCard = ({ plate, onDelete }: LicensePlateCardProps) => 
         </div>
         
         {/* Botón eliminar */}
-        <Button
-          size="sm"
-          variant={plate.is_approved ? "destructive" : "outline"}
-          onClick={() => onDelete(plate)}
-          className="w-full sm:w-auto"
+        <DisabledControlTooltip
+          isDisabled={!isOnline}
+          message="Requiere conexión a internet"
         >
-          <Trash2 className="h-4 w-4 sm:mr-2" />
-          <span className="sm:inline">Eliminar</span>
-        </Button>
+          <Button
+            size="sm"
+            variant={plate.is_approved ? "destructive" : "outline"}
+            onClick={() => onDelete(plate)}
+            disabled={!isOnline}
+            className="w-full sm:w-auto"
+          >
+            <Trash2 className="h-4 w-4 sm:mr-2" />
+            <span className="sm:inline">Eliminar</span>
+          </Button>
+        </DisabledControlTooltip>
       </div>
       
       {/* Mensaje de rechazo */}

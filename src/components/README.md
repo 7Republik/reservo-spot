@@ -884,6 +884,37 @@ export const MiFeature = () => {
 };
 ```
 
+### Ejemplo 4: Componente Wrapper con Tooltip (Modo Offline)
+
+**DisabledControlTooltip.tsx**
+```tsx
+import { DisabledControlTooltip } from "@/components/DisabledControlTooltip";
+import { Button } from "@/components/ui/button";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
+
+export const ReserveButton = () => {
+  const { isOnline } = useOfflineMode();
+
+  return (
+    <DisabledControlTooltip isDisabled={!isOnline}>
+      <Button 
+        disabled={!isOnline}
+        onClick={handleReserve}
+      >
+        Reservar Plaza
+      </Button>
+    </DisabledControlTooltip>
+  );
+};
+```
+
+**Características:**
+- Muestra tooltip automáticamente cuando el control está deshabilitado
+- Incluye icono de WiFi desconectado
+- Mensaje personalizable
+- Posición del tooltip configurable
+- No renderiza tooltip si el control está habilitado (optimización)
+
 ---
 
 ## Recursos Adicionales

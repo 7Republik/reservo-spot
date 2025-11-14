@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { UserWithRole } from "@/types/admin";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { OfflineStorageService } from "@/lib/offlineStorage";
 
 /**
  * Custom hook for comprehensive user management in the admin panel
@@ -67,6 +70,8 @@ export const useUserManagement = () => {
   const [activeTab, setActiveTab] = useState<Record<string, string>>({});
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const isCached = useRef(false);
+  const { isOnline } = useOfflineMode();
+  const storage = new OfflineStorageService();
 
   const loadUsers = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
@@ -74,8 +79,27 @@ export const useUserManagement = () => {
       return;
     }
 
+    const cacheKey = 'admin_users';
+
     try {
       setLoading(true);
+
+      // Si estamos offline, cargar desde cache
+      if (!isOnline) {
+        const cached = await storage.get<UserWithRole[]>(cacheKey);
+        if (cached) {
+          setUsers(cached);
+          toast.warning("Funcionalidad limitada sin conexión", {
+            description: "Solo puedes ver datos. Conéctate para realizar cambios."
+          });
+          isCached.current = true;
+          return;
+        }
+        toast.error("No hay datos de usuarios en caché");
+        return;
+      }
+
+      // Modo online: cargar desde Supabase
       const { data: profiles, error } = await supabase
         .from("profiles")
         .select("id, email, full_name, is_blocked, is_deactivated, blocked_reason, blocked_at, deactivated_at")
@@ -106,16 +130,42 @@ export const useUserManagement = () => {
       );
       
       setUsers(usersWithData as any);
+      
+      // Cachear datos
+      await storage.set(cacheKey, usersWithData, {
+        dataType: 'admin_users',
+        userId: 'admin'
+      });
+      await storage.recordSync(cacheKey);
+      
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading users:", error);
-      toast.error("Error al cargar usuarios");
+      
+      // Si falla online, intentar cache
+      const cached = await storage.get<UserWithRole[]>(cacheKey);
+      if (cached) {
+        setUsers(cached);
+        toast.warning("Mostrando datos en caché", {
+          description: "No se pudo conectar al servidor"
+        });
+        isCached.current = true;
+      } else {
+        toast.error("Error al cargar usuarios");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleBlockUser = async (userId: string, reason: string) => {
+    if (!isOnline) {
+      toast.error("No puedes bloquear usuarios sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase
@@ -140,6 +190,13 @@ export const useUserManagement = () => {
   };
 
   const handleUnblockUser = async (userId: string) => {
+    if (!isOnline) {
+      toast.error("No puedes desbloquear usuarios sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       const { error } = await supabase
         .from("profiles")
@@ -163,6 +220,13 @@ export const useUserManagement = () => {
   };
 
   const handleDeactivateUser = async (userId: string) => {
+    if (!isOnline) {
+      toast.error("No puedes dar de baja usuarios sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.rpc("deactivate_user", {
@@ -182,6 +246,13 @@ export const useUserManagement = () => {
   };
 
   const handleReactivateUser = async (userId: string) => {
+    if (!isOnline) {
+      toast.error("No puedes reactivar usuarios sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.rpc("reactivate_user", {
@@ -201,6 +272,13 @@ export const useUserManagement = () => {
   };
 
   const handlePermanentlyDeleteUser = async (userId: string, password: string) => {
+    if (!isOnline) {
+      toast.error("No puedes eliminar usuarios sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return false;
+    }
+
     if (password !== "12345678") {
       toast.error("Contraseña incorrecta");
       return false;
@@ -226,6 +304,13 @@ export const useUserManagement = () => {
   };
 
   const handleUpdateUserRoles = async (userId: string, roles: string[], isAdmin: boolean) => {
+    if (!isOnline) {
+      toast.error("No puedes actualizar roles sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return;
+    }
+
     try {
       setSavingUserId(userId);
       
@@ -299,6 +384,13 @@ export const useUserManagement = () => {
   );
 
   const handleApprovePlateFromUser = async (plateId: string) => {
+    if (!isOnline) {
+      toast.error("No puedes aprobar matrículas sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return;
+    }
+
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       
@@ -324,6 +416,13 @@ export const useUserManagement = () => {
   };
 
   const handleRejectPlateFromUser = async (plateId: string, reason: string) => {
+    if (!isOnline) {
+      toast.error("No puedes rechazar matrículas sin conexión", {
+        description: "Conéctate a internet para realizar esta acción"
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("license_plates")
@@ -360,6 +459,19 @@ export const useUserManagement = () => {
     setActiveTab(prev => ({ ...prev, [userId]: tab }));
   };
 
+  // Sincronizar datos cuando se recupera la conexión
+  useOfflineSync(
+    () => {
+      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
+      console.log('[useUserManagement] Controles re-habilitados');
+    },
+    () => {
+      // Sincronizar datos después de 3s (Requisito 3.3)
+      console.log('[useUserManagement] Sincronizando usuarios...');
+      loadUsers(true); // forceReload = true
+    }
+  );
+
   return {
     users,
     loading,
@@ -378,5 +490,7 @@ export const useUserManagement = () => {
     handleRejectPlateFromUser,
     toggleUserExpanded,
     setUserTab,
+    isOnline,
+    canModify: isOnline,
   };
 };
