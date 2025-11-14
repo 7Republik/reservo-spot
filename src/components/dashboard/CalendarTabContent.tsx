@@ -61,6 +61,15 @@ export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps
     setSelectedReservation(null);
   }, []);
 
+  // Ver ubicación desde el reporte de incidente
+  const handleViewLocationFromIncident = useCallback(() => {
+    if (selectedReservation) {
+      setIncidentDialogOpen(false);
+      handleViewLocation(selectedReservation);
+      setSelectedReservation(null);
+    }
+  }, [selectedReservation, handleViewLocation]);
+
   return (
     <>
       <TodaySection
@@ -104,6 +113,7 @@ export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps
               userId={userId}
               onComplete={handleIncidentComplete}
               onCancel={handleIncidentCancel}
+              onViewLocation={handleViewLocationFromIncident}
             />
           )}
         </DialogContent>

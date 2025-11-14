@@ -7,6 +7,7 @@ interface LocationVerificationProps {
   groupName: string;
   onConfirm: () => void;
   onCancel: () => void;
+  onViewLocation: () => void;
 }
 
 export const LocationVerification = ({
@@ -14,6 +15,7 @@ export const LocationVerification = ({
   groupName,
   onConfirm,
   onCancel,
+  onViewLocation,
 }: LocationVerificationProps) => {
   return (
     <div className="w-full max-w-md mx-auto p-4">
@@ -73,7 +75,7 @@ export const LocationVerification = ({
               </Button>
 
               <Button
-                onClick={onCancel}
+                onClick={onViewLocation}
                 variant="outline"
                 className="w-full h-12 text-base"
                 size="lg"

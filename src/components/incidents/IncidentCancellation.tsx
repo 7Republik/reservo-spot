@@ -15,6 +15,7 @@ interface IncidentCancellationProps {
   onOpenChange: (open: boolean) => void;
   hasUploadedPhoto: boolean;
   onConfirmDiscard: () => void;
+  isViewLocationAction?: boolean;
 }
 
 /**
@@ -27,6 +28,7 @@ export const IncidentCancellation = ({
   onOpenChange,
   hasUploadedPhoto,
   onConfirmDiscard,
+  isViewLocationAction = false,
 }: IncidentCancellationProps) => {
   /**
    * Handles the discard confirmation
@@ -50,10 +52,13 @@ export const IncidentCancellation = ({
         <DialogHeader>
           <DialogTitle className="text-foreground flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            Cancelar Reporte de Incidente
+            {isViewLocationAction ? 'Ver Ubicación de Plaza' : 'Cancelar Reporte de Incidente'}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            ¿Estás seguro de que quieres cancelar este reporte?
+            {isViewLocationAction 
+              ? '¿Quieres abandonar el reporte y ver la ubicación de tu plaza?'
+              : '¿Estás seguro de que quieres cancelar este reporte?'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -83,8 +88,10 @@ export const IncidentCancellation = ({
 
           {/* Confirmation message */}
           <p className="text-sm text-muted-foreground">
-            Si cancelas ahora, no se creará ningún reporte de incidente y no se te
-            asignará una plaza alternativa.
+            {isViewLocationAction
+              ? 'Si continúas, se cancelará el reporte de incidente y se te mostrará la ubicación de tu plaza reservada en el mapa.'
+              : 'Si cancelas ahora, no se creará ningún reporte de incidente y no se te asignará una plaza alternativa.'
+            }
           </p>
         </div>
 
@@ -94,14 +101,14 @@ export const IncidentCancellation = ({
             onClick={handleCancel}
             className="w-full sm:w-auto"
           >
-            Continuar con el reporte
+            {isViewLocationAction ? 'Volver al reporte' : 'Continuar con el reporte'}
           </Button>
           <Button
             variant="destructive"
             onClick={handleConfirmDiscard}
             className="w-full sm:w-auto"
           >
-            Sí, cancelar reporte
+            {isViewLocationAction ? 'Sí, ver ubicación' : 'Sí, cancelar reporte'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -25,6 +25,7 @@ interface IncidentReportFlowProps {
   userId: string;
   onComplete: () => void;
   onCancel: () => void;
+  onViewLocation: () => void;
 }
 
 /**
@@ -44,6 +45,7 @@ export const IncidentReportFlow = ({
   userId,
   onComplete,
   onCancel,
+  onViewLocation,
 }: IncidentReportFlowProps) => {
   // Step management
   const [currentStep, setCurrentStep] = useState<IncidentStep>(
@@ -58,6 +60,7 @@ export const IncidentReportFlow = ({
 
   // Cancellation dialog state
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelAction, setCancelAction] = useState<'cancel' | 'viewLocation'>('cancel');
 
   // Hook for business logic
   const { isLoading, createIncidentReport, cancelIncidentReport } =
@@ -105,20 +108,35 @@ export const IncidentReportFlow = ({
   };
 
   /**
-   * Handles cancellation request
-   * Shows confirmation dialog if photo has been captured
+   * Handles cancellation request (X button)
+   * Shows confirmation dialog
    */
   const handleCancelRequest = () => {
+    setCancelAction('cancel');
     setShowCancelDialog(true);
   };
 
   /**
-   * Handles confirmed cancellation
-   * Cleans up uploaded photos and calls parent onCancel
+   * Handles "No, mostrar indicaciones" request
+   * Shows confirmation dialog and redirects to location view
+   */
+  const handleViewLocationRequest = () => {
+    setCancelAction('viewLocation');
+    setShowCancelDialog(true);
+  };
+
+  /**
+   * Handles confirmed cancellation or view location
+   * Cleans up uploaded photos and calls appropriate callback
    */
   const handleConfirmCancel = async () => {
     await cancelIncidentReport();
-    onCancel();
+    
+    if (cancelAction === 'viewLocation') {
+      onViewLocation();
+    } else {
+      onCancel();
+    }
   };
 
   /**
@@ -240,6 +258,7 @@ export const IncidentReportFlow = ({
               groupName={groupName}
               onConfirm={handleLocationConfirmed}
               onCancel={handleCancelRequest}
+              onViewLocation={handleViewLocationRequest}
             />
           )}
 
@@ -275,6 +294,7 @@ export const IncidentReportFlow = ({
         onOpenChange={setShowCancelDialog}
         hasUploadedPhoto={photoFile !== null}
         onConfirmDiscard={handleConfirmCancel}
+        isViewLocationAction={cancelAction === 'viewLocation'}
       />
     </div>
   );
