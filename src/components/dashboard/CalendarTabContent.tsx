@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Calendar } from "lucide-react";
 import { TodaySection } from "./TodaySection";
 import ParkingCalendar from "@/components/ParkingCalendar";
+import { IncidentReportFlow } from "@/components/incidents/IncidentReportFlow";
 
 interface CalendarTabContentProps {
   userId: string;
@@ -17,6 +19,8 @@ interface CalendarTabContentProps {
 export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps) => {
   const navigate = useNavigate();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState<any>(null);
 
   // Función para forzar actualización de la sección HOY
   const handleReservationUpdate = useCallback(() => {
@@ -38,16 +42,32 @@ export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps
     });
   }, [navigate]);
 
+  // Abrir modal de reporte de incidencia
+  const handleReportIncident = useCallback((reservation: any) => {
+    setSelectedReservation(reservation);
+    setIncidentDialogOpen(true);
+  }, []);
+
+  // Cerrar modal y refrescar
+  const handleIncidentComplete = useCallback(() => {
+    setIncidentDialogOpen(false);
+    setSelectedReservation(null);
+    handleReservationUpdate();
+  }, [handleReservationUpdate]);
+
+  // Cancelar reporte
+  const handleIncidentCancel = useCallback(() => {
+    setIncidentDialogOpen(false);
+    setSelectedReservation(null);
+  }, []);
+
   return (
     <>
       <TodaySection
         userId={userId}
         refreshTrigger={refreshTrigger}
         onViewDetails={handleViewLocation}
-        onReportIncident={(reservation) => {
-          // Mismo comportamiento que ver ubicación - abre el modal de detalles
-          handleViewLocation(reservation);
-        }}
+        onReportIncident={handleReportIncident}
       />
       
       <Card>
@@ -68,6 +88,24 @@ export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps
           />
         </CardContent>
       </Card>
+
+      {/* Modal de Reporte de Incidencia */}
+      <Dialog open={incidentDialogOpen} onOpenChange={setIncidentDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] p-0">
+          {selectedReservation && (
+            <IncidentReportFlow
+              reservationId={selectedReservation.id}
+              spotId={selectedReservation.spotId}
+              spotNumber={selectedReservation.spotNumber}
+              groupName={selectedReservation.groupName}
+              reservationDate={selectedReservation.reservation_date}
+              userId={userId}
+              onComplete={handleIncidentComplete}
+              onCancel={handleIncidentCancel}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

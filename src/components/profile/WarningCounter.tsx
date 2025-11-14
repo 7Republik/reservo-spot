@@ -7,7 +7,7 @@ interface WarningCounterProps {
 }
 
 /**
- * WarningCounter component
+ * WarningCounter component - Diseño moderno y minimalista
  * 
  * Displays the total number of warnings with color-coded visual indicators.
  * Features:
@@ -24,23 +24,23 @@ const WarningCounter = ({ count, size = 'md' }: WarningCounterProps) => {
   const getColorClasses = () => {
     if (count === 0) {
       return {
-        bg: "bg-green-100 dark:bg-green-950",
-        text: "text-green-700 dark:text-green-300",
-        border: "border-green-300 dark:border-green-700",
+        bg: "bg-green-100 dark:bg-green-900/40",
+        text: "text-green-800 dark:text-green-200",
+        border: "border-green-200 dark:border-green-700",
         icon: CheckCircle,
       };
     } else if (count <= 2) {
       return {
-        bg: "bg-yellow-100 dark:bg-yellow-950",
-        text: "text-yellow-700 dark:text-yellow-300",
-        border: "border-yellow-300 dark:border-yellow-700",
+        bg: "bg-yellow-100 dark:bg-yellow-900/40",
+        text: "text-yellow-800 dark:text-yellow-200",
+        border: "border-yellow-200 dark:border-yellow-700",
         icon: AlertCircle,
       };
     } else {
       return {
-        bg: "bg-red-100 dark:bg-red-950",
-        text: "text-red-700 dark:text-red-300",
-        border: "border-red-300 dark:border-red-700",
+        bg: "bg-red-100 dark:bg-red-900/40",
+        text: "text-red-800 dark:text-red-200",
+        border: "border-red-200 dark:border-red-700",
         icon: AlertTriangle,
       };
     }
@@ -49,22 +49,22 @@ const WarningCounter = ({ count, size = 'md' }: WarningCounterProps) => {
   // Size variants
   const sizeClasses = {
     sm: {
-      container: "p-3",
-      number: "text-2xl",
+      container: "px-3 py-2 gap-2",
+      number: "text-lg",
       label: "text-xs",
-      icon: "h-5 w-5",
+      icon: "h-4 w-4",
     },
     md: {
-      container: "p-4",
-      number: "text-3xl",
+      container: "px-4 py-2.5 gap-2.5",
+      number: "text-xl",
       label: "text-sm",
-      icon: "h-6 w-6",
+      icon: "h-5 w-5",
     },
     lg: {
-      container: "p-6",
-      number: "text-4xl",
+      container: "px-5 py-3 gap-3",
+      number: "text-2xl",
       label: "text-base",
-      icon: "h-8 w-8",
+      icon: "h-6 w-6",
     },
   };
 
@@ -82,33 +82,58 @@ const WarningCounter = ({ count, size = 'md' }: WarningCounterProps) => {
     }
   };
 
+  // Size variants para diseño circular
+  const circleSizes = {
+    sm: {
+      container: "w-20 h-20",
+      number: "text-2xl",
+      label: "text-xs",
+      icon: "h-5 w-5",
+    },
+    md: {
+      container: "w-24 h-24",
+      number: "text-3xl",
+      label: "text-sm",
+      icon: "h-6 w-6",
+    },
+    lg: {
+      container: "w-32 h-32",
+      number: "text-4xl",
+      label: "text-base",
+      icon: "h-8 w-8",
+    },
+  };
+
+  const circleSize = circleSizes[size];
+
   return (
     <div
       className={cn(
-        "rounded-lg border-2",
-        "flex flex-col items-center justify-center gap-2",
-        "transition-colors",
+        "rounded-full",
+        "flex flex-col items-center justify-center gap-1",
+        "transition-all duration-200",
+        "shadow-md border-2",
         bg,
         border,
-        sizes.container
+        circleSize.container
       )}
       role="status"
       aria-label={getStatusMessage()}
     >
       {/* Icon */}
       <Icon 
-        className={cn(sizes.icon, text)} 
+        className={cn(circleSize.icon, text, "mb-0.5")} 
         aria-hidden="true"
       />
       
       {/* Count */}
-      <div className={cn("font-bold tabular-nums", sizes.number, text)}>
+      <div className={cn("font-bold tabular-nums leading-none", circleSize.number, text)}>
         {count}
       </div>
       
       {/* Label */}
-      <div className={cn("font-medium text-center", sizes.label, text)}>
-        Amonestaciones totales
+      <div className={cn("font-medium leading-none", circleSize.label, text)}>
+        Avisos
       </div>
     </div>
   );

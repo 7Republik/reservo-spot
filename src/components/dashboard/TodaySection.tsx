@@ -28,11 +28,21 @@ export const TodaySection = ({
 }: TodaySectionProps) => {
   const [todayReservations, setTodayReservations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkinEnabled, setCheckinEnabled] = useState(false);
 
   const loadTodayReservations = useCallback(async () => {
     // Usar fecha UTC para coincidir con CURRENT_DATE de Supabase
     const now = new Date();
     const today = format(new Date(now.getTime() + now.getTimezoneOffset() * 60000), "yyyy-MM-dd");
+    
+    // Cargar configuración de check-in
+    const { data: settings } = await supabase
+      .from("checkin_settings")
+      .select("system_enabled")
+      .eq("id", "00000000-0000-0000-0000-000000000001")
+      .single();
+    
+    setCheckinEnabled(settings?.system_enabled || false);
     
     // Cargar reservas con información de check-in
     const { data, error } = await supabase
@@ -144,8 +154,8 @@ export const TodaySection = ({
           </div>
         ) : todayReservations.length > 0 ? (
           <div className="space-y-4">
-            {/* Check-in/Check-out Card */}
-            <TodayCheckinCard reservation={todayReservations[0]} />
+            {/* Check-in/Check-out Card - Solo si está habilitado */}
+            {checkinEnabled && <TodayCheckinCard reservation={todayReservations[0]} />}
             
             {/* Información de la reserva y acciones */}
             <TodayReservationCard

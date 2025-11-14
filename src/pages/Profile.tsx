@@ -198,8 +198,8 @@ const Profile = () => {
 
         {/* Profile Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
               <h2 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3">
                 <User className="h-6 w-6 sm:h-8 sm:w-8" />
                 {userName}
@@ -210,7 +210,7 @@ const Profile = () => {
             </div>
             
             {/* Warning Counter */}
-            <div className="flex justify-start sm:justify-end">
+            <div className="flex-shrink-0">
               <WarningCounter 
                 count={stats?.total_warnings || 0} 
                 size="md"
