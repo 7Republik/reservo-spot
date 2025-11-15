@@ -11,6 +11,7 @@
 export interface ReservationSettings {
   advance_reservation_days: number;
   daily_refresh_hour: number;
+  fast_reservation_threshold_minutes?: number;
 }
 
 /**

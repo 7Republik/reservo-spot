@@ -76,6 +76,26 @@ export const ReservationSettingsCard = ({
               La ventana de reserva se actualiza a las {settings.daily_refresh_hour}:00
             </p>
           </div>
+
+          <div className="space-y-2">
+            <Label>Umbral de reserva rápida</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="1"
+                max="60"
+                value={settings.fast_reservation_threshold_minutes || 5}
+                onChange={(e) => onUpdateSettings({
+                  fast_reservation_threshold_minutes: parseInt(e.target.value) || 5
+                })}
+                className="w-24"
+              />
+              <span className="text-sm text-muted-foreground">minutos</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Para estadísticas: usuarios que reservan en los primeros {settings.fast_reservation_threshold_minutes || 5} minutos
+            </p>
+          </div>
         </div>
 
         <Button onClick={() => onSave(settings)}>

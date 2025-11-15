@@ -13,6 +13,7 @@ import { IncidentDetails } from "@/components/admin/incidents/IncidentDetails";
 import { CheckinReportPanel } from "@/components/admin/reports/CheckinReportPanel";
 import { CheckinHistoryPanel } from "@/components/admin/reports/CheckinHistoryPanel";
 import { AdminWaitlistPanel } from "@/components/admin/waitlist/AdminWaitlistPanel";
+import { CheckInStats } from "@/components/admin/check-in-stats";
 import { useParkingGroups } from "@/hooks/admin/useParkingGroups";
 import { useIncidentManagement } from "@/hooks/admin/useIncidentManagement";
 
@@ -24,7 +25,7 @@ const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState("plates");
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [pendingIncidentsCount, setPendingIncidentsCount] = useState(0);
-  const [checkinReportView, setCheckinReportView] = useState<"infractions" | "history">("infractions");
+  const [checkinReportView, setCheckinReportView] = useState<"infractions" | "history" | "stats">("infractions");
 
   const loadUserGroupAssignments = async () => {
     try {
@@ -174,10 +175,11 @@ const AdminPanel = () => {
 
         <TabsContent value="checkin-reports" className="space-y-4">
           <div className="space-y-4">
-            <Tabs value={checkinReportView} onValueChange={(v) => setCheckinReportView(v as "infractions" | "history")}>
-              <TabsList className="grid w-full max-w-md grid-cols-2">
+            <Tabs value={checkinReportView} onValueChange={(v) => setCheckinReportView(v as "infractions" | "history" | "stats")}>
+              <TabsList className="grid w-full max-w-2xl grid-cols-3">
                 <TabsTrigger value="infractions">Infracciones del Día</TabsTrigger>
                 <TabsTrigger value="history">Histórico</TabsTrigger>
+                <TabsTrigger value="stats">Estadísticas</TabsTrigger>
               </TabsList>
 
               <TabsContent value="infractions" className="mt-4">
@@ -186,6 +188,10 @@ const AdminPanel = () => {
 
               <TabsContent value="history" className="mt-4">
                 <CheckinHistoryPanel />
+              </TabsContent>
+
+              <TabsContent value="stats" className="mt-4">
+                <CheckInStats />
               </TabsContent>
             </Tabs>
           </div>

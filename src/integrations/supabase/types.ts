@@ -741,6 +741,7 @@ export type Database = {
           advance_reservation_days: number
           created_at: string | null
           daily_refresh_hour: number
+          fast_reservation_threshold_minutes: number | null
           id: string
           updated_at: string | null
           waitlist_acceptance_time_minutes: number
@@ -755,6 +756,7 @@ export type Database = {
           advance_reservation_days?: number
           created_at?: string | null
           daily_refresh_hour?: number
+          fast_reservation_threshold_minutes?: number | null
           id?: string
           updated_at?: string | null
           waitlist_acceptance_time_minutes?: number
@@ -769,6 +771,7 @@ export type Database = {
           advance_reservation_days?: number
           created_at?: string | null
           daily_refresh_hour?: number
+          fast_reservation_threshold_minutes?: number | null
           id?: string
           updated_at?: string | null
           waitlist_acceptance_time_minutes?: number
@@ -1263,6 +1266,13 @@ export type Database = {
         Returns: string
       }
       generate_automatic_warnings: { Args: never; Returns: number }
+      get_activity_by_hour: {
+        Args: { p_end_date: string; p_group_id?: string; p_start_date: string }
+        Returns: {
+          hour: number
+          reservations: number
+        }[]
+      }
       get_available_spots_by_group: {
         Args: { _date: string; _group_id: string }
         Returns: {
@@ -1283,6 +1293,38 @@ export type Database = {
           spot_number: string
         }[]
       }
+      get_avg_reservation_time: {
+        Args: {
+          p_end_date: string
+          p_group_id?: string
+          p_start_date: string
+          p_unlock_hour?: number
+        }
+        Returns: {
+          avg_minutes: number
+        }[]
+      }
+      get_fastest_user: {
+        Args: {
+          p_end_date: string
+          p_group_id?: string
+          p_start_date: string
+          p_unlock_hour?: number
+        }
+        Returns: {
+          fastest_minutes: number
+          full_name: string
+          user_id: string
+        }[]
+      }
+      get_heatmap_data: {
+        Args: { p_end_date: string; p_group_id?: string; p_start_date: string }
+        Returns: {
+          count: number
+          day_of_week: number
+          hour: number
+        }[]
+      }
       get_next_in_waitlist: {
         Args: { p_date: string; p_group_id: string }
         Returns: {
@@ -1293,11 +1335,37 @@ export type Database = {
           user_name: string
         }[]
       }
+      get_peak_hour: {
+        Args: { p_end_date: string; p_group_id?: string; p_start_date: string }
+        Returns: {
+          count: number
+          hour: number
+        }[]
+      }
       get_reservable_date_range: {
         Args: never
         Returns: {
           max_date: string
           min_date: string
+        }[]
+      }
+      get_top_fast_users: {
+        Args: {
+          p_end_date: string
+          p_fast_threshold?: number
+          p_group_id?: string
+          p_limit?: number
+          p_start_date: string
+          p_unlock_hour?: number
+        }
+        Returns: {
+          avg_minutes: number
+          email: string
+          fast_reservations: number
+          full_name: string
+          percentage: number
+          total_reservations: number
+          user_id: string
         }[]
       }
       get_user_checkin_notifications: {
