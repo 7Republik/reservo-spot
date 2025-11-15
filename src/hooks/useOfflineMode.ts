@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { connectionMonitor } from '@/lib/connectionMonitor';
+import { connectionMonitor } from '@/lib/ConnectionMonitorService';
 
 /**
  * Interface para el retorno del hook useOfflineMode

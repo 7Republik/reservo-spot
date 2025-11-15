@@ -121,11 +121,40 @@ export default {
             transform: "translate(-50%, -50%) scale(1)",
           },
         },
+        "float": {
+          "0%, 100%": {
+            transform: "translateY(0)",
+          },
+          "50%": {
+            transform: "translateY(-4px)",
+          },
+        },
+        "draw": {
+          "0%": {
+            strokeDashoffset: "100",
+          },
+          "100%": {
+            strokeDashoffset: "0",
+          },
+        },
+        "ping": {
+          "0%": {
+            transform: "scale(1)",
+            opacity: "1",
+          },
+          "75%, 100%": {
+            transform: "scale(1.5)",
+            opacity: "0",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "spot-pop": "spot-pop 0.3s ease-out",
+        "float": "float 3s ease-in-out infinite",
+        "draw": "draw 0.4s ease-out forwards",
+        "ping": "ping 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
     },
   },

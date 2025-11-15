@@ -1,6 +1,6 @@
 # Implementation Plan - Sistema de Lista de Espera
 
-- [ ] 1. Configurar estructura base de base de datos
+- [x] 1. Configurar estructura base de base de datos
   - Crear migración para tablas nuevas (waitlist_entries, waitlist_offers, waitlist_logs, waitlist_penalties, notifications)
   - Extender tabla reservation_settings con campos de lista de espera
   - Crear índices para optimización de queries
@@ -15,7 +15,7 @@
   - Crear función `get_next_in_waitlist()` para obtener siguiente usuario (con/sin prioridad por roles)
   - _Requirements: 2.2, 2.3, 2.4, 3.3, 3.4, 11.1, 11.2_
 
-- [ ] 3. Implementar función de registro en lista de espera
+- [x] 3. Implementar función de registro en lista de espera
   - Crear función SQL `register_in_waitlist(user_id, group_id, date)` con validaciones completas
   - Validar que lista de espera está habilitada globalmente
   - Validar que usuario tiene matrícula aprobada
@@ -26,7 +26,7 @@
   - Registrar acción en waitlist_logs
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 14.1_
 
-- [ ] 4. Implementar función de procesamiento de lista de espera
+- [x] 4. Implementar función de procesamiento de lista de espera
   - Crear función SQL `process_waitlist_for_spot(spot_id, date)` como SECURITY DEFINER
   - Obtener grupo del spot
   - Buscar usuarios en lista de espera para ese grupo y fecha
@@ -36,7 +36,7 @@
   - Llamar a create_waitlist_offer() si encuentra usuario válido
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 5. Implementar función de creación de oferta
+- [x] 5. Implementar función de creación de oferta
   - Crear función SQL `create_waitlist_offer(entry_id, spot_id)` como SECURITY DEFINER
   - Obtener configuración de tiempo de aceptación
   - Calcular expires_at = NOW() + acceptance_time_minutes
@@ -46,14 +46,14 @@
   - Retornar offer_id para notificaciones
   - _Requirements: 5.5, 5.6, 14.2_
 
-- [ ] 6. Implementar trigger de cancelación de reserva
+- [x] 6. Implementar trigger de cancelación de reserva
   - Crear trigger `on_reservation_cancelled` en tabla reservations
   - Detectar cuando status cambia a 'cancelled'
   - Llamar a process_waitlist_for_spot() con spot_id y date
   - Manejar errores y registrar en logs
   - _Requirements: 5.1_
 
-- [ ] 7. Implementar función de aceptación de oferta
+- [x] 7. Implementar función de aceptación de oferta
   - Crear función SQL `accept_waitlist_offer(offer_id, user_id)` como SECURITY DEFINER
   - Validar que oferta existe y no ha expirado
   - Validar que usuario es el destinatario
@@ -65,7 +65,7 @@
   - Retornar reservation_id
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 14.3_
 
-- [ ] 8. Implementar función de rechazo de oferta
+- [x] 8. Implementar función de rechazo de oferta
   - Crear función SQL `reject_waitlist_offer(offer_id, user_id)` como SECURITY DEFINER
   - Validar que oferta existe y usuario es destinatario
   - Actualizar waitlist_offer status a 'rejected' y responded_at
@@ -75,7 +75,7 @@
   - Registrar en waitlist_logs (offer_rejected)
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 14.3_
 
-- [ ] 9. Implementar función de expiración de ofertas
+- [x] 9. Implementar función de expiración de ofertas
   - Crear función SQL `expire_waitlist_offers()` para llamar desde cron
   - Buscar ofertas con expires_at < NOW() y status = 'pending'
   - Para cada oferta expirada:
@@ -89,7 +89,7 @@
   - Retornar número de ofertas expiradas
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.6, 11.2, 11.3, 14.3_
 
-- [ ] 10. Implementar función de limpieza automática
+- [x] 10. Implementar función de limpieza automática
   - Crear función SQL `cleanup_expired_waitlist_entries()` para llamar desde cron
   - Eliminar entradas con reservation_date < CURRENT_DATE
   - Eliminar entradas de usuarios bloqueados o desactivados
@@ -99,7 +99,7 @@
   - Retornar número total de entradas eliminadas
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 14.4_
 
-- [ ] 11. Configurar cron jobs en Supabase
+- [x] 11. Configurar cron jobs en Supabase
   - Configurar cron job para expire_waitlist_offers() cada 5 minutos
   - Configurar cron job para cleanup_expired_waitlist_entries() diario a las 00:00
   - Configurar cron job para send_waitlist_reminders() cada 15 minutos
@@ -127,7 +127,7 @@
   - Actualizar notificación in-app con urgencia
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 14. Crear tipos TypeScript para lista de espera
+- [x] 14. Crear tipos TypeScript para lista de espera
   - Regenerar tipos de Supabase con nuevas tablas
   - Crear interfaces para WaitlistEntry, WaitlistOffer, WaitlistLog, WaitlistPenalty
   - Crear tipos para configuración de lista de espera
@@ -135,7 +135,7 @@
   - Exportar desde `src/types/waitlist.ts`
   - _Requirements: Todos_
 
-- [ ] 15. Implementar hook useWaitlistSettings
+- [x] 15. Implementar hook useWaitlistSettings
   - Crear hook `useWaitlistSettings()` en `src/hooks/useWaitlistSettings.ts`
   - Obtener configuración de reservation_settings
   - Cachear configuración con React Query
@@ -143,7 +143,7 @@
   - Invalidar cache al actualizar
   - _Requirements: 1.1, 2.1_
 
-- [ ] 16. Implementar hook useWaitlist para usuarios
+- [x] 16. Implementar hook useWaitlist para usuarios
   - Crear hook `useWaitlist()` en `src/hooks/useWaitlist.ts`
   - Función `registerInWaitlist(groupIds, date)` para registrarse
   - Función `cancelWaitlistEntry(entryId)` para cancelar registro
@@ -154,7 +154,7 @@
   - Invalidar queries después de mutaciones
   - _Requirements: 3.1, 3.2, 4.6, 6.1, 7.1_
 
-- [ ] 17. Implementar hook useWaitlistOffers
+- [x] 17. Implementar hook useWaitlistOffers
   - Crear hook `useWaitlistOffers()` en `src/hooks/useWaitlistOffers.ts`
   - Función `getPendingOffers()` para obtener ofertas pendientes del usuario
   - Suscripción real-time a cambios en waitlist_offers
@@ -162,7 +162,7 @@
   - Función `getOfferDetails(offerId)` para detalles completos
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 18. Implementar hook useNotifications
+- [x] 18. Implementar hook useNotifications
   - Crear hook `useNotifications()` en `src/hooks/useNotifications.ts`
   - Función `getUnreadNotifications()` para obtener no leídas
   - Función `markAsRead(notificationId)` para marcar como leída
@@ -171,7 +171,7 @@
   - Contador de notificaciones no leídas
   - _Requirements: 13.1, 13.5_
 
-- [ ] 19. Crear componente WaitlistRegistration
+- [x] 19. Crear componente WaitlistRegistration
   - Crear componente en `src/components/waitlist/WaitlistRegistration.tsx`
   - Mostrar cuando no hay plazas disponibles y waitlist está habilitada
   - Permitir seleccionar grupos específicos o "todos mis grupos"
@@ -181,7 +181,7 @@
   - Mostrar mensaje si usuario está bloqueado
   - _Requirements: 3.1, 3.2, 3.3, 3.8_
 
-- [ ] 20. Crear componente WaitlistDashboard
+- [x] 20. Crear componente WaitlistDashboard
   - Crear componente en `src/components/waitlist/WaitlistDashboard.tsx`
   - Listar todas las entradas activas del usuario
   - Mostrar posición en cola para cada entrada
@@ -191,7 +191,7 @@
   - Mostrar mensaje si no hay entradas activas
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 21. Crear componente WaitlistOfferNotification
+- [x] 21. Crear componente WaitlistOfferNotification
   - Crear componente en `src/components/waitlist/WaitlistOfferNotification.tsx`
   - Mostrar detalles de la plaza ofrecida (número, grupo, fecha)
   - Countdown visual del tiempo restante
@@ -202,7 +202,7 @@
   - Cerrar automáticamente después de acción
   - _Requirements: 6.1, 6.2, 6.3, 7.1, 7.2, 8.8_
 
-- [ ] 22. Crear componente NotificationBell
+- [x] 22. Crear componente NotificationBell
   - Crear componente en `src/components/notifications/NotificationBell.tsx`
   - Icono de campana con badge de contador
   - Dropdown con lista de notificaciones
@@ -212,7 +212,7 @@
   - Integrar en header de la aplicación
   - _Requirements: 13.1, 13.5_
 
-- [ ] 23. Integrar lista de espera en flujo de reserva
+- [x] 23. Integrar lista de espera en flujo de reserva
   - Modificar componente de reserva existente
   - Detectar cuando no hay plazas disponibles
   - Mostrar WaitlistRegistration en lugar de mensaje de error
@@ -220,7 +220,7 @@
   - Mantener flujo normal si lista de espera deshabilitada
   - _Requirements: 3.1, 15.1_
 
-- [ ] 24. Crear página de gestión de lista de espera de usuario
+- [x] 24. Crear página de gestión de lista de espera de usuario
   - Crear página en `src/pages/WaitlistPage.tsx`
   - Mostrar WaitlistDashboard
   - Mostrar ofertas pendientes destacadas
@@ -229,7 +229,7 @@
   - Añadir enlace en menú de navegación
   - _Requirements: 4.1, 6.1_
 
-- [ ] 25. Implementar hook useAdminWaitlist
+- [x] 25. Implementar hook useAdminWaitlist
   - Crear hook `useAdminWaitlist()` en `src/hooks/admin/useAdminWaitlist.ts`
   - Función `getWaitlistStats()` para estadísticas globales
   - Función `getWaitlistByGroup(groupId, date)` para ver lista específica
@@ -239,7 +239,7 @@
   - Cachear datos con patrón useRef
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 14.5_
 
-- [ ] 26. Crear componente AdminWaitlistStats
+- [x] 26. Crear componente AdminWaitlistStats
   - Crear componente en `src/components/admin/waitlist/AdminWaitlistStats.tsx`
   - Mostrar número total de usuarios en listas activas
   - Mostrar número de ofertas pendientes
@@ -249,7 +249,7 @@
   - Actualizar cada 30 segundos
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.7_
 
-- [ ] 27. Crear componente AdminWaitlistTable
+- [x] 27. Crear componente AdminWaitlistTable
   - Crear componente en `src/components/admin/waitlist/AdminWaitlistTable.tsx`
   - Tabla con lista de espera filtrable por grupo y fecha
   - Mostrar usuario, posición, tiempo en espera
@@ -259,7 +259,7 @@
   - Exportar a CSV
   - _Requirements: 10.5, 10.6_
 
-- [ ] 28. Crear componente AdminWaitlistConfig
+- [x] 28. Crear componente AdminWaitlistConfig
   - Crear componente en `src/components/admin/waitlist/AdminWaitlistConfig.tsx`
   - Toggle para habilitar/deshabilitar lista de espera globalmente
   - Input para tiempo de aceptación (30-1440 minutos)
@@ -272,7 +272,7 @@
   - Guardar configuración con confirmación
   - _Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
 
-- [ ] 29. Crear página de admin de lista de espera
+- [x] 29. Crear página de admin de lista de espera
   - Crear página en `src/pages/admin/AdminWaitlistPage.tsx`
   - Tabs para: Estadísticas, Listas Activas, Configuración, Logs
   - Tab de Estadísticas: AdminWaitlistStats

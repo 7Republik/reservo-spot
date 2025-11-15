@@ -389,6 +389,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean
+          message: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       parking_group_checkin_config: {
         Row: {
           created_at: string
@@ -707,6 +743,13 @@ export type Database = {
           daily_refresh_hour: number
           id: string
           updated_at: string | null
+          waitlist_acceptance_time_minutes: number
+          waitlist_enabled: boolean
+          waitlist_max_simultaneous: number
+          waitlist_penalty_duration_days: number
+          waitlist_penalty_enabled: boolean
+          waitlist_penalty_threshold: number
+          waitlist_priority_by_role: boolean
         }
         Insert: {
           advance_reservation_days?: number
@@ -714,6 +757,13 @@ export type Database = {
           daily_refresh_hour?: number
           id?: string
           updated_at?: string | null
+          waitlist_acceptance_time_minutes?: number
+          waitlist_enabled?: boolean
+          waitlist_max_simultaneous?: number
+          waitlist_penalty_duration_days?: number
+          waitlist_penalty_enabled?: boolean
+          waitlist_penalty_threshold?: number
+          waitlist_priority_by_role?: boolean
         }
         Update: {
           advance_reservation_days?: number
@@ -721,6 +771,13 @@ export type Database = {
           daily_refresh_hour?: number
           id?: string
           updated_at?: string | null
+          waitlist_acceptance_time_minutes?: number
+          waitlist_enabled?: boolean
+          waitlist_max_simultaneous?: number
+          waitlist_penalty_duration_days?: number
+          waitlist_penalty_enabled?: boolean
+          waitlist_penalty_threshold?: number
+          waitlist_priority_by_role?: boolean
         }
         Relationships: []
       }
@@ -912,11 +969,222 @@ export type Database = {
           },
         ]
       }
+      waitlist_cron_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          execution_status: string
+          execution_time_ms: number | null
+          id: string
+          job_name: string
+          records_affected: number | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          execution_status: string
+          execution_time_ms?: number | null
+          id?: string
+          job_name: string
+          records_affected?: number | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          execution_status?: string
+          execution_time_ms?: number | null
+          id?: string
+          job_name?: string
+          records_affected?: number | null
+        }
+        Relationships: []
+      }
+      waitlist_entries: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          position: number | null
+          reservation_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          position?: number | null
+          reservation_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          position?: number | null
+          reservation_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_entries_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "parking_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waitlist_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          entry_id: string | null
+          id: string
+          offer_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          entry_id?: string | null
+          id?: string
+          offer_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          entry_id?: string | null
+          id?: string
+          offer_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_logs_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_logs_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waitlist_offers: {
+        Row: {
+          created_at: string
+          entry_id: string
+          expires_at: string
+          id: string
+          reservation_date: string
+          responded_at: string | null
+          spot_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_id: string
+          expires_at: string
+          id?: string
+          reservation_date: string
+          responded_at?: string | null
+          spot_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_id?: string
+          expires_at?: string
+          id?: string
+          reservation_date?: string
+          responded_at?: string | null
+          spot_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_offers_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_offers_spot_id_fkey"
+            columns: ["spot_id"]
+            isOneToOne: false
+            referencedRelation: "parking_spots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waitlist_penalties: {
+        Row: {
+          blocked_until: string | null
+          created_at: string
+          id: string
+          is_blocked: boolean
+          last_reset_at: string
+          no_response_count: number
+          rejection_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          is_blocked?: boolean
+          last_reset_at?: string
+          no_response_count?: number
+          rejection_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          is_blocked?: boolean
+          last_reset_at?: string
+          no_response_count?: number
+          rejection_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      accept_waitlist_offer: {
+        Args: { p_offer_id: string; p_user_id: string }
+        Returns: string
+      }
+      calculate_waitlist_position: {
+        Args: { p_entry_id: string }
+        Returns: number
+      }
       cancel_all_user_future_reservations: {
         Args: { _user_id: string }
         Returns: number
@@ -929,6 +1197,43 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: number
       }
+      cancel_waitlist_entry: {
+        Args: { p_entry_id: string; p_user_id: string }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
+      }
+      check_user_penalty_status: {
+        Args: { p_user_id: string }
+        Returns: {
+          blocked_until: string
+          can_register: boolean
+          is_blocked: boolean
+          no_response_count: number
+          rejection_count: number
+        }[]
+      }
+      check_user_waitlist_limit: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      cleanup_expired_waitlist_entries: {
+        Args: never
+        Returns: {
+          blocked_users_deleted: number
+          expired_dates_deleted: number
+          no_access_deleted: number
+          no_plate_deleted: number
+          total_deleted: number
+        }[]
+      }
+      create_waitlist_offer: {
+        Args: { p_entry_id: string; p_spot_id: string }
+        Returns: string
+      }
+      cron_cleanup_expired_waitlist_entries: { Args: never; Returns: undefined }
+      cron_expire_waitlist_offers: { Args: never; Returns: undefined }
       deactivate_parking_group: {
         Args: { _admin_id: string; _group_id: string; _reason: string }
         Returns: undefined
@@ -939,6 +1244,7 @@ export type Database = {
       }
       detect_checkin_infractions: { Args: never; Returns: number }
       detect_checkout_infractions: { Args: never; Returns: number }
+      expire_waitlist_offers: { Args: never; Returns: number }
       extract_storage_path_from_url: { Args: { url: string }; Returns: string }
       find_available_spot_for_incident: {
         Args: { _date: string; _original_spot_id: string; _user_id: string }
@@ -977,6 +1283,16 @@ export type Database = {
           spot_number: string
         }[]
       }
+      get_next_in_waitlist: {
+        Args: { p_date: string; p_group_id: string }
+        Returns: {
+          entry_id: string
+          queue_position: number
+          user_email: string
+          user_id: string
+          user_name: string
+        }[]
+      }
       get_reservable_date_range: {
         Args: never
         Returns: {
@@ -999,6 +1315,18 @@ export type Database = {
       }
       get_user_role_priority: { Args: { _user_id: string }; Returns: number }
       get_user_warning_count: { Args: { _user_id: string }; Returns: number }
+      get_waitlist_settings: {
+        Args: never
+        Returns: {
+          acceptance_time_minutes: number
+          max_simultaneous: number
+          penalty_duration_days: number
+          penalty_enabled: boolean
+          penalty_threshold: number
+          priority_by_role: boolean
+          waitlist_enabled: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1036,8 +1364,25 @@ export type Database = {
         }
         Returns: undefined
       }
+      process_waitlist_for_spot: {
+        Args: { p_date: string; p_spot_id: string }
+        Returns: string
+      }
       reactivate_user: {
         Args: { _admin_id: string; _user_id: string }
+        Returns: undefined
+      }
+      register_in_waitlist: {
+        Args: { p_date: string; p_group_id: string; p_user_id: string }
+        Returns: {
+          entry_id: string
+          message: string
+          queue_position: number
+          success: boolean
+        }[]
+      }
+      reject_waitlist_offer: {
+        Args: { p_offer_id: string; p_user_id: string }
         Returns: undefined
       }
       send_checkin_reminders: {

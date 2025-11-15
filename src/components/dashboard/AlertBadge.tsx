@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getIconProps } from "@/lib/iconConfig";
 
 interface AlertBadgeProps {
   count: number;
@@ -45,7 +46,7 @@ const AlertBadge = ({ count, onClick }: AlertBadgeProps) => {
       type="button"
     >
       {/* Bell icon */}
-      <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
+      <Bell {...getIconProps("responsive", "foreground")} className="sm:h-5 sm:w-5" />
       
       {/* Badge with count */}
       <Badge

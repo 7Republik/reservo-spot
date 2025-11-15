@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import SelectParkingSpot from "./pages/SelectParkingSpot";
 import ViewSpotLocation from "./pages/ViewSpotLocation";
+import WaitlistPage from "./pages/WaitlistPage";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/select-parking-spot" element={<SelectParkingSpot />} />
             <Route path="/view-spot-location" element={<ViewSpotLocation />} />
+            <Route path="/waitlist" element={<WaitlistPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

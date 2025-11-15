@@ -12,6 +12,8 @@ import { SpotsList } from "@/components/spot-selection/SpotsList";
 import { MapLegend } from "@/components/spot-selection/MapLegend";
 import { DisabledControlTooltip } from "@/components/DisabledControlTooltip";
 import { CachedDataIndicator } from "@/components/CachedDataIndicator";
+import { WaitlistRegistration } from "@/components/waitlist/WaitlistRegistration";
+import { useWaitlistSettings } from "@/hooks/useWaitlistSettings";
 
 interface LocationState {
   userId: string;
@@ -42,6 +44,15 @@ const SelectParkingSpot = () => {
     isOnline,
     lastSyncTime,
   } = useSpotSelection(state);
+
+  const { settings, loading: settingsLoading } = useWaitlistSettings();
+
+  // Determinar si mostrar lista de espera
+  const showWaitlist = !loading && 
+                       !settingsLoading && 
+                       settings?.waitlist_enabled && 
+                       availableCount === 0 && 
+                       availableGroups.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background">
@@ -92,10 +103,17 @@ const SelectParkingSpot = () => {
           isOnline={isOnline}
         />
 
-        {loading ? (
+        {loading || settingsLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
+        ) : showWaitlist ? (
+          <WaitlistRegistration
+            date={selectedDate}
+            availableGroups={availableGroups}
+            onSuccess={() => navigate("/dashboard")}
+            onCancel={() => navigate("/dashboard")}
+          />
         ) : (
           <>
             {availableGroups.length > 1 && !state.selectedGroupId && (

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Loader2, User, Bell } from "lucide-react";
+import { LogOut, Loader2, User, Clock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import AlertBadge from "@/components/dashboard/AlertBadge";
-import { useUserWarnings } from "@/hooks/useUserWarnings";
+import { NotificationBell } from "@/components/notifications";
 import { useNavigate } from "react-router-dom";
 import logoReserveo from "@/assets/logo-reserveo.png";
+import { getIconProps } from "@/lib/iconConfig";
 
 interface DashboardHeaderProps {
   userEmail: string;
@@ -33,7 +34,6 @@ interface DashboardHeaderProps {
  */
 const DashboardHeader = ({ userEmail, userRole, isLoggingOut, onLogout }: DashboardHeaderProps) => {
   const navigate = useNavigate();
-  const { unviewedCount } = useUserWarnings();
 
   const getRoleLabel = (role: string) => {
     switch (role) {
@@ -55,8 +55,8 @@ const DashboardHeader = ({ userEmail, userRole, isLoggingOut, onLogout }: Dashbo
     navigate('/profile?tab=personal');
   };
 
-  const handleNavigateToWarnings = () => {
-    navigate('/profile?tab=warnings');
+  const handleNavigateToWaitlist = () => {
+    navigate('/waitlist');
   };
 
   return (
@@ -78,29 +78,24 @@ const DashboardHeader = ({ userEmail, userRole, isLoggingOut, onLogout }: Dashbo
           </div>
           
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Alert Badge for unviewed warnings */}
-            <AlertBadge 
-              count={unviewedCount} 
-              onClick={handleNavigateToWarnings}
-            />
+            {/* Notifications Bell - Shows waitlist notifications */}
+            <NotificationBell />
 
             {/* User Avatar Dropdown Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full"
-                  aria-label="Menú de usuario"
+                  className="relative h-11 w-11 sm:h-11 sm:w-11 rounded-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  aria-label={`Menú de usuario - ${userEmail}`}
+                  aria-haspopup="menu"
+                  aria-expanded="false"
                 >
                   <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs sm:text-sm font-semibold">
                       {getUserInitials(userEmail)}
                     </AvatarFallback>
                   </Avatar>
-                  {/* Badge indicator on avatar if there are unviewed warnings */}
-                  {unviewedCount > 0 && (
-                    <span className="absolute top-0 right-0 h-3 w-3 rounded-full bg-destructive border-2 border-background" />
-                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -114,17 +109,12 @@ const DashboardHeader = ({ userEmail, userRole, isLoggingOut, onLogout }: Dashbo
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleNavigateToProfile}>
-                  <User className="mr-2 h-4 w-4" />
+                  <User {...getIconProps("sm", "foreground")} className="mr-2" />
                   <span>Mi Perfil</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleNavigateToWarnings}>
-                  <Bell className="mr-2 h-4 w-4" />
-                  <span>Amonestaciones</span>
-                  {unviewedCount > 0 && (
-                    <Badge variant="destructive" className="ml-auto text-xs">
-                      {unviewedCount}
-                    </Badge>
-                  )}
+                <DropdownMenuItem onClick={handleNavigateToWaitlist}>
+                  <Clock {...getIconProps("sm", "foreground")} className="mr-2" />
+                  <span>Lista de Espera</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
@@ -132,9 +122,9 @@ const DashboardHeader = ({ userEmail, userRole, isLoggingOut, onLogout }: Dashbo
                   disabled={isLoggingOut}
                 >
                   {isLoggingOut ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 {...getIconProps("sm", "foreground")} className="mr-2 animate-spin" />
                   ) : (
-                    <LogOut className="mr-2 h-4 w-4" />
+                    <LogOut {...getIconProps("sm", "foreground")} className="mr-2" />
                   )}
                   <span>Cerrar Sesión</span>
                 </DropdownMenuItem>

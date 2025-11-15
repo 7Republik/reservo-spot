@@ -6,6 +6,9 @@ import { TodayReservationCard } from "./TodayReservationCard";
 import { TodayCheckinCard } from "./TodayCheckinCard";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { GradientText } from "@/components/ui/gradient-text";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { getIconProps } from "@/lib/iconConfig";
 
 interface TodaySectionProps {
   userId: string;
@@ -36,9 +39,8 @@ export const TodaySection = ({
   const [checkinEnabled, setCheckinEnabled] = useState(false);
 
   const loadTodayReservations = useCallback(async () => {
-    // Usar fecha UTC para coincidir con CURRENT_DATE de Supabase
-    const now = new Date();
-    const today = format(new Date(now.getTime() + now.getTimezoneOffset() * 60000), "yyyy-MM-dd");
+    // Usar fecha local del usuario (España: UTC+1)
+    const today = format(new Date(), "yyyy-MM-dd");
     
     // Cargar configuración de check-in
     const { data: settings } = await supabase
@@ -148,48 +150,57 @@ export const TodaySection = ({
   }, [refreshTrigger, loadTodayReservations]);
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Calendar className="w-5 h-5 text-primary" />
-          Hoy
-        </CardTitle>
-        <CardDescription className="text-sm capitalize">
-          {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="text-center py-4 text-muted-foreground text-sm">
-            Cargando...
-          </div>
-        ) : todayReservations.length > 0 ? (
-          <div className="space-y-4">
-            {/* Check-in/Check-out Card - Solo si está habilitado */}
-            {checkinEnabled && (
-              <TodayCheckinCard 
-                reservation={todayReservations[0]} 
-                onCheckinSuccess={() => {
-                  loadTodayReservations();
-                  if (onReservationUpdate) onReservationUpdate();
-                }}
-              />
-            )}
-            
-            {/* Información de la reserva y acciones */}
-            <TodayReservationCard
-              reservations={todayReservations}
-              onViewDetails={onViewDetails}
-              onReportIncident={onReportIncident}
+    <div className="today-section-container">
+      <Card className="today-section-card">
+        <CardHeader className="pb-3 px-4 md:px-6 pt-2 md:pt-4">
+          <div className="flex items-center gap-2 md:gap-2.5">
+            <AnimatedIcon 
+              animation="float" 
+              duration={3000}
+              icon={<Calendar {...getIconProps("responsive", "primary")} />}
             />
+            <p className="text-base md:text-lg capitalize font-semibold text-foreground">
+              {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
+            </p>
           </div>
-        ) : (
-          <div className="text-center py-6 text-muted-foreground">
-            <p className="text-sm font-medium">No tienes reservas para hoy</p>
-            <p className="text-xs mt-1">Selecciona un día en el calendario para reservar</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              Cargando...
+            </div>
+          ) : todayReservations.length > 0 ? (
+            <div className="space-y-3 md:space-y-4">
+              {/* Check-in/Check-out Card - Solo si está habilitado */}
+              {checkinEnabled && (
+                <div className="today-card-animated" style={{ animationDelay: '0ms' }}>
+                  <TodayCheckinCard 
+                    reservation={todayReservations[0]} 
+                    onCheckinSuccess={() => {
+                      loadTodayReservations();
+                      if (onReservationUpdate) onReservationUpdate();
+                    }}
+                  />
+                </div>
+              )}
+              
+              {/* Información de la reserva y acciones */}
+              <div className="today-card-animated" style={{ animationDelay: checkinEnabled ? '100ms' : '0ms' }}>
+                <TodayReservationCard
+                  reservations={todayReservations}
+                  onViewDetails={onViewDetails}
+                  onReportIncident={onReportIncident}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-muted-foreground">
+              <p className="text-sm font-medium">No tienes reservas para hoy</p>
+              <p className="text-xs mt-1">Selecciona un día en el calendario para reservar</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };

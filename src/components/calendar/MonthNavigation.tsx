@@ -10,18 +10,18 @@ interface MonthNavigationProps {
 
 export const MonthNavigation = ({ currentMonth, onMonthChange }: MonthNavigationProps) => {
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-4">
+    <div className="flex items-center justify-center gap-2 sm:gap-3">
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full hover:bg-gray-100 transition-colors duration-200"
+        className="h-7 w-7 sm:h-9 sm:w-9 rounded-full hover:bg-gray-100 transition-colors duration-200"
         onClick={() => onMonthChange(subMonths(currentMonth, 1))}
       >
-        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+        <ChevronLeft className="w-4 h-4" />
       </Button>
       
-      <div className="px-3 py-2 sm:px-6 sm:py-3 rounded-full bg-gray-100">
-        <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-900 tracking-tight capitalize">
+      <div className="px-3 py-1.5 sm:px-5 sm:py-2 rounded-full bg-gray-100">
+        <h2 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 tracking-tight capitalize">
           {format(currentMonth, "MMM yyyy", { locale: es })}
         </h2>
       </div>
@@ -29,10 +29,10 @@ export const MonthNavigation = ({ currentMonth, onMonthChange }: MonthNavigation
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full hover:bg-gray-100 transition-colors duration-200"
+        className="h-7 w-7 sm:h-9 sm:w-9 rounded-full hover:bg-gray-100 transition-colors duration-200"
         onClick={() => onMonthChange(addMonths(currentMonth, 1))}
       >
-        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+        <ChevronRight className="w-4 h-4" />
       </Button>
     </div>
   );

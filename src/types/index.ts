@@ -16,3 +16,6 @@ export * from './incidents';
 
 // Profile Types
 export * from './profile';
+
+// Waitlist Types
+export * from './waitlist';

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, ParkingSquare, CreditCard, Settings, AlertTriangle, ClipboardCheck } from "lucide-react";
+import { Users, ParkingSquare, CreditCard, Settings, AlertTriangle, ClipboardCheck, ListOrdered } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { LicensePlatesTab } from "@/components/admin/license-plates/LicensePlatesTab";
@@ -12,6 +12,7 @@ import { IncidentList } from "@/components/admin/incidents/IncidentList";
 import { IncidentDetails } from "@/components/admin/incidents/IncidentDetails";
 import { CheckinReportPanel } from "@/components/admin/reports/CheckinReportPanel";
 import { CheckinHistoryPanel } from "@/components/admin/reports/CheckinHistoryPanel";
+import { AdminWaitlistPanel } from "@/components/admin/waitlist/AdminWaitlistPanel";
 import { useParkingGroups } from "@/hooks/admin/useParkingGroups";
 import { useIncidentManagement } from "@/hooks/admin/useIncidentManagement";
 
@@ -108,7 +109,7 @@ const AdminPanel = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="plates" className="w-full" value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="plates">
             <CreditCard className="w-4 h-4 mr-2" />
             Matrículas
@@ -132,6 +133,10 @@ const AdminPanel = () => {
                 {pendingIncidentsCount}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="waitlist">
+            <ListOrdered className="w-4 h-4 mr-2" />
+            Lista Espera
           </TabsTrigger>
           <TabsTrigger value="checkin-reports">
             <ClipboardCheck className="w-4 h-4 mr-2" />
@@ -161,6 +166,10 @@ const AdminPanel = () => {
 
         <TabsContent value="incidents" className="space-y-4">
           <IncidentList onSelectIncident={setSelectedIncidentId} />
+        </TabsContent>
+
+        <TabsContent value="waitlist" className="space-y-4">
+          <AdminWaitlistPanel />
         </TabsContent>
 
         <TabsContent value="checkin-reports" className="space-y-4">

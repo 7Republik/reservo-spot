@@ -57,9 +57,9 @@ export const CalendarGrid = ({
   };
 
   return (
-    <div className="grid grid-cols-7 gap-0.5 sm:gap-2 md:gap-3" data-calendar-grid>
+    <div className="grid grid-cols-7 gap-0.5 sm:gap-1.5 md:gap-2" data-calendar-grid>
       {["L", "M", "X", "J", "V", "S", "D"].map((day) => (
-        <div key={day} className="text-center font-bold text-[0.65rem] sm:text-sm text-gray-700 py-0.5 sm:py-2">
+        <div key={day} className="text-center font-bold text-[0.65rem] sm:text-xs text-gray-700 py-0.5 sm:py-1">
           {day}
         </div>
       ))}

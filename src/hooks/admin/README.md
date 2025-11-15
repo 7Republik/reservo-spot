@@ -35,6 +35,7 @@ Los hooks del admin panel siguen un patrón arquitectónico consistente que:
 | `useGroupCheckinConfig` | Configuración de check-in por grupo | `useGroupCheckinConfig.ts` |
 | `useCheckinReports` | Reporting de infracciones y estadísticas | `useCheckinReports.ts` |
 | `useIncidentManagement` | Gestión de reportes de incidentes | `useIncidentManagement.ts` |
+| `useAdminWaitlist` | Gestión administrativa de lista de espera | `useAdminWaitlist.ts` |
 
 ---
 
