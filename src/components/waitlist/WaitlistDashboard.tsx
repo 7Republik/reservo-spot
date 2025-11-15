@@ -64,10 +64,10 @@ export const WaitlistDashboard = () => {
         .from('waitlist_entries')
         .select(`
           *,
-          parking_group:parking_groups(
+          parking_groups(
             id,
             name,
-            location
+            description
           )
         `)
         .eq('user_id', user.id)
@@ -94,9 +94,7 @@ export const WaitlistDashboard = () => {
 
             return {
               ...entry,
-              parking_group: Array.isArray(entry.parking_group) 
-                ? entry.parking_group[0] 
-                : entry.parking_group,
+              parking_groups: entry.parking_groups,
               queue_position: position,
               people_ahead: peopleAhead
             };
@@ -104,9 +102,7 @@ export const WaitlistDashboard = () => {
             console.error('Error calculating position:', error);
             return {
               ...entry,
-              parking_group: Array.isArray(entry.parking_group) 
-                ? entry.parking_group[0] 
-                : entry.parking_group,
+              parking_groups: entry.parking_groups,
               queue_position: undefined,
               people_ahead: undefined
             };
@@ -254,14 +250,14 @@ export const WaitlistDashboard = () => {
                   <div className="flex items-start justify-between gap-4">
                     {/* Entry info */}
                     <div className="flex-1 space-y-3">
-                      {/* Group name and location */}
+                      {/* Group name and description */}
                       <div>
                         <h4 className="font-semibold text-lg">
-                          {entry.parking_group?.name || 'Grupo desconocido'}
+                          {entry.parking_groups?.name || 'Grupo desconocido'}
                         </h4>
-                        {entry.parking_group?.location && (
+                        {entry.parking_groups?.description && (
                           <p className="text-sm text-muted-foreground">
-                            {entry.parking_group.location}
+                            {entry.parking_groups.description}
                           </p>
                         )}
                       </div>
@@ -356,7 +352,7 @@ export const WaitlistDashboard = () => {
               Estás a punto de cancelar tu registro en la lista de espera para:
               <div className="mt-3 p-3 bg-muted rounded-md">
                 <p className="font-semibold">
-                  {entryToCancel?.parking_group?.name}
+                  {entryToCancel?.parking_groups?.name}
                 </p>
                 <p className="text-sm capitalize">
                   {entryToCancel && format(new Date(entryToCancel.reservation_date), "EEEE, d 'de' MMMM", { locale: es })}

@@ -98,10 +98,10 @@ export interface WaitlistSettingsUpdate {
 // ============================================================================
 
 export interface WaitlistEntryWithDetails extends WaitlistEntry {
-  parking_group?: {
+  parking_groups?: {
     id: string;
     name: string;
-    location?: string;
+    description?: string;
   };
   user?: {
     id: string;
@@ -119,7 +119,7 @@ export interface WaitlistOfferWithDetails extends WaitlistOffer {
   parking_group?: {
     id: string;
     name: string;
-    location?: string;
+    description?: string;
   };
   user?: {
     id: string;

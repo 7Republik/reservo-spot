@@ -227,10 +227,10 @@ export const useWaitlist = () => {
         .from('waitlist_entries')
         .select(`
           *,
-          parking_group:parking_groups(
+          parking_groups(
             id,
             name,
-            location
+            description
           )
         `)
         .eq('user_id', user.id)

@@ -70,23 +70,20 @@ export const useWaitlistOffers = () => {
           .from('waitlist_offers')
           .select(`
             *,
-            parking_spot:parking_spots(
+            parking_spots(
               id,
               spot_number,
               group_id,
               is_accessible,
               has_charger,
-              is_compact
-            ),
-            parking_group:parking_spots!inner(
-              group_id,
+              is_compact,
               parking_groups(
                 id,
                 name,
                 description
               )
             ),
-            waitlist_entry:waitlist_entries(
+            waitlist_entries(
               id,
               group_id,
               reservation_date,
@@ -104,15 +101,22 @@ export const useWaitlistOffers = () => {
 
         // Transform data to match WaitlistOfferWithDetails type
         const transformedData = (data || []).map(offer => {
-          // Extract parking_group from nested structure
-          const spotData = offer.parking_spot as any;
-          const groupData = (offer as any).parking_group?.[0]?.parking_groups;
+          const spotData = (offer as any).parking_spots;
+          const groupData = spotData?.parking_groups;
+          const entryData = (offer as any).waitlist_entries;
 
           return {
             ...offer,
-            parking_spot: spotData,
+            parking_spot: {
+              id: spotData?.id,
+              spot_number: spotData?.spot_number,
+              group_id: spotData?.group_id,
+              is_accessible: spotData?.is_accessible,
+              has_charger: spotData?.has_charger,
+              is_compact: spotData?.is_compact
+            },
             parking_group: groupData,
-            waitlist_entry: offer.waitlist_entry as any
+            waitlist_entry: entryData
           } as WaitlistOfferWithDetails;
         });
 
@@ -203,17 +207,14 @@ export const useWaitlistOffers = () => {
         .from('waitlist_offers')
         .select(`
           *,
-          parking_spot:parking_spots(
+          parking_spots(
             id,
             spot_number,
             group_id,
             is_accessible,
             has_charger,
             is_compact,
-            notes
-          ),
-          parking_group:parking_spots!inner(
-            group_id,
+            notes,
             parking_groups(
               id,
               name,
@@ -221,7 +222,7 @@ export const useWaitlistOffers = () => {
               capacity
             )
           ),
-          waitlist_entry:waitlist_entries(
+          waitlist_entries(
             id,
             group_id,
             reservation_date,
@@ -229,7 +230,7 @@ export const useWaitlistOffers = () => {
             created_at,
             status
           ),
-          user:profiles(
+          profiles(
             id,
             full_name,
             email
@@ -247,15 +248,25 @@ export const useWaitlistOffers = () => {
       }
 
       // Transform data to match WaitlistOfferWithDetails type
-      const spotData = data.parking_spot as any;
-      const groupData = (data as any).parking_group?.[0]?.parking_groups;
+      const spotData = (data as any).parking_spots;
+      const groupData = spotData?.parking_groups;
+      const entryData = (data as any).waitlist_entries;
+      const userData = (data as any).profiles;
 
       return {
         ...data,
-        parking_spot: spotData,
+        parking_spot: {
+          id: spotData?.id,
+          spot_number: spotData?.spot_number,
+          group_id: spotData?.group_id,
+          is_accessible: spotData?.is_accessible,
+          has_charger: spotData?.has_charger,
+          is_compact: spotData?.is_compact,
+          notes: spotData?.notes
+        },
         parking_group: groupData,
-        waitlist_entry: data.waitlist_entry as any,
-        user: data.user as any
+        waitlist_entry: entryData,
+        user: userData
       } as WaitlistOfferWithDetails;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Error al obtener detalles de la oferta');
