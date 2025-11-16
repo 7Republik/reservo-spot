@@ -16,7 +16,10 @@
     "test:k6:spike": "./scripts/run-k6-tests.sh spike",
     "test:k6:checkin": "./scripts/run-k6-tests.sh checkin",
     "test:k6:waitlist": "./scripts/run-k6-tests.sh waitlist",
-    "test:k6:checkin-stats": "./scripts/run-k6-tests.sh checkin-stats"
+    "test:k6:checkin-stats": "./scripts/run-k6-tests.sh checkin-stats",
+    "test:k6:cloud:smoke": "k6 cloud tests/k6/smoke-test.js",
+    "test:k6:cloud:load": "k6 cloud tests/k6/load-test.js",
+    "test:k6:cloud:stress": "k6 cloud tests/k6/stress-test.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

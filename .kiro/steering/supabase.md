@@ -944,3 +944,59 @@ mcp_supabase_reserveo_supabase_cli_status()
 10. **Invalidate React Query cache** after mutations with `queryClient.invalidateQueries()`
 11. **Use transactions** for multi-step operations that must succeed/fail together
 12. **Use MCP query tool** for read-only database inspection (safe, no modifications)
+
+## Security Best Practices
+
+### Function Security (CRÍTICO)
+
+**SIEMPRE añadir `SET search_path = public` a TODAS las funciones:**
+
+```sql
+-- ✅ CORRECTO
+CREATE OR REPLACE FUNCTION public.my_function()
+RETURNS ...
+LANGUAGE plpgsql
+SECURITY DEFINER  -- Si aplica
+SET search_path = public  -- ✅ CRÍTICO: Previene ataques
+AS $$
+BEGIN
+  -- Código
+END;
+$$;
+
+-- ❌ INCORRECTO
+CREATE OR REPLACE FUNCTION public.my_function()
+RETURNS ...
+LANGUAGE plpgsql
+SECURITY DEFINER
+-- ❌ Falta SET search_path = public
+AS $$
+BEGIN
+  -- Código vulnerable
+END;
+$$;
+```
+
+**¿Por qué?** Previene ataques de escalación de privilegios donde un atacante podría:
+1. Crear un schema malicioso
+2. Crear funciones con nombres del sistema (ej: `now()`, `current_user()`)
+3. Modificar el `search_path` del usuario
+4. Tu función ejecutaría código malicioso en lugar del código legítimo
+
+**Referencia:** https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable
+
+### Security Advisors
+
+**Verificar regularmente:**
+```typescript
+mcp_supabase_get_advisors({
+  project_id: "rlrzcfnhhvrvrxzfifeh",
+  type: "security"
+})
+```
+
+**Estado actual (2025-11-16):**
+- ✅ 9 funciones corregidas con `SET search_path = public`
+- ⚠️ Leaked Password Protection deshabilitada (configurar en Dashboard)
+
+**Documentación completa:** Ver `docs/SUPABASE-SECURITY-FIXES.md`
