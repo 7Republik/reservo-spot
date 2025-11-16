@@ -1,0 +1,11 @@
+{
+  "name": "Auditoría Completa",
+  "description": "Auditoría exhaustiva del proyecto: BD, código, tests y documentación",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Realiza una auditoría completa del proyecto RESERVEO y genera un reporte detallado.\n\n**PASO 1: AUDITORÍA DE BASE DE DATOS**\n\nUsa MCP de Supabase para obtener:\n1. Total de tablas (execute_sql)\n2. Total de funciones (execute_sql)\n3. Total de triggers (execute_sql)\n4. Total de RLS policies (execute_sql)\n5. Storage buckets (execute_sql)\n6. Scheduled jobs (execute_sql: SELECT * FROM cron.job)\n\nCompara con .kiro/steering/tech.md y .kiro/steering/supabase.md\n\n**PASO 2: AUDITORÍA DE CÓDIGO**\n\nCuenta elementos:\n1. Componentes en src/components/\n2. Hooks en src/hooks/\n3. Páginas en src/pages/\n4. Tests en tests/k6/\n\nCompara con .kiro/steering/structure.md\n\n**PASO 3: AUDITORÍA DE TESTS**\n\nAnaliza cobertura de tests K6:\n1. Lista todos los tests\n2. Identifica funcionalidades principales\n3. Verifica qué funcionalidades tienen tests\n4. Calcula % de cobertura\n\n**PASO 4: AUDITORÍA DE DOCUMENTACIÓN**\n\nVerifica consistencia:\n1. README.md vs product.md\n2. tech.md vs realidad\n3. structure.md vs src/\n4. supabase.md vs BD\n\n**PASO 5: AUDITORÍA DE SPECS**\n\nRevisa specs en .kiro/specs/:\n1. Lista todas las specs\n2. Identifica specs completadas\n3. Verifica si están en product.md y README.md\n\n**PASO 6: REPORTE FINAL**\n\nGenera reporte estructurado con:\n- Resumen ejecutivo con puntuación\n- Hallazgos principales\n- Recomendaciones priorizadas\n- Métricas y próximos pasos"
+  }
+}

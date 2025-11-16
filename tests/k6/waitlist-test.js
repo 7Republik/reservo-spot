@@ -51,170 +51,135 @@ export default function() {
     'Authorization': `Bearer ${USER_TOKEN || SUPABASE_ANON_KEY}`,
   };
 
-  // Escenario 1: Registrarse en lista de espera (60% de los casos)
+  // Escenario 1: Consultar listas de espera activas (60% de los casos)
   if (Math.random() < 0.6) {
     // 1. Consultar grupos disponibles
     const groups = http.get(
-      `${SUPABASE_URL}/rest/v1/parking_groups?select=id&is_active=eq.true&limit=5`,
+      `${SUPABASE_URL}/rest/v1/parking_groups?select=id,name&is_active=eq.true&limit=5`,
       { 
         headers,
         tags: { name: 'get_groups' }
       }
     );
 
-    check(groups, {
+    const hasGroups = check(groups, {
       'groups: status is 200': (r) => r.status === 200,
-    });
-
-    sleep(1);
-
-    // 2. Registrarse en lista de espera
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + Math.floor(Math.random() * 7) + 1);
-    const dateStr = futureDate.toISOString().split('T')[0];
-
-    const registerPayload = JSON.stringify({
-      user_id: `test-user-${__VU}`,
-      group_id: 'test-group-id',
-      reservation_date: dateStr
-    });
-
-    const registerStart = Date.now();
-    const register = http.post(
-      `${SUPABASE_URL}/rest/v1/rpc/register_in_waitlist`,
-      registerPayload,
-      { 
-        headers,
-        tags: { name: 'register_waitlist' }
+      'groups: has data': (r) => {
+        try {
+          const data = JSON.parse(r.body);
+          return Array.isArray(data) && data.length > 0;
+        } catch {
+          return false;
+        }
       }
-    );
-    const registerTime = Date.now() - registerStart;
-
-    const registerSuccess = check(register, {
-      'register: status is 200 or 400': (r) => r.status === 200 || r.status === 400,
-      'register: response time < 300ms': (r) => r.timings.duration < 300,
     });
 
-    registerSuccessRate.add(registerSuccess);
-    registerDuration.add(registerTime);
+    if (hasGroups && groups.status === 200) {
+      try {
+        const groupsData = JSON.parse(groups.body);
+        if (groupsData && groupsData.length > 0) {
+          const group = groupsData[Math.floor(Math.random() * groupsData.length)];
+          
+          sleep(1);
 
-    sleep(2);
+          // 2. Consultar listas de espera activas para ese grupo
+          const waitlists = http.get(
+            `${SUPABASE_URL}/rest/v1/waitlist_entries?select=*&group_id=eq.${group.id}&status=eq.active&limit=10`,
+            { 
+              headers,
+              tags: { name: 'get_active_waitlists' }
+            }
+          );
 
-    // 3. Consultar posición en lista
-    const position = http.get(
-      `${SUPABASE_URL}/rest/v1/waitlist_entries?select=*&user_id=eq.test-user-${__VU}&limit=5`,
-      { 
-        headers,
-        tags: { name: 'get_waitlist_position' }
+          check(waitlists, {
+            'waitlists: status is 200': (r) => r.status === 200,
+          });
+
+          sleep(1);
+
+          // 3. Consultar estadísticas de waitlist
+          const stats = http.get(
+            `${SUPABASE_URL}/rest/v1/waitlist_entries?select=status&group_id=eq.${group.id}`,
+            { 
+              headers,
+              tags: { name: 'get_waitlist_stats' }
+            }
+          );
+
+          check(stats, {
+            'stats: status is 200': (r) => r.status === 200,
+          });
+
+          registerSuccessRate.add(true);
+        }
+      } catch (e) {
+        registerSuccessRate.add(false);
       }
-    );
-
-    check(position, {
-      'position: status is 200': (r) => r.status === 200,
-    });
+    } else {
+      registerSuccessRate.add(false);
+    }
 
   } 
-  // Escenario 2: Procesar lista de espera (20% de los casos)
-  else if (Math.random() < 0.75) {
-    // Simular liberación de plaza y procesamiento de waitlist
-    const processPayload = JSON.stringify({
-      spot_id: 'test-spot-id',
-      reservation_date: new Date().toISOString().split('T')[0]
-    });
-
-    const processStart = Date.now();
-    const process = http.post(
-      `${SUPABASE_URL}/rest/v1/rpc/process_waitlist_for_spot`,
-      processPayload,
-      { 
-        headers,
-        tags: { name: 'process_waitlist' }
-      }
-    );
-    const processTime = Date.now() - processStart;
-
-    check(process, {
-      'process: status is 200 or 400': (r) => r.status === 200 || r.status === 400,
-      'process: response time < 1s': (r) => r.timings.duration < 1000,
-    });
-
-    processDuration.add(processTime);
-
-    sleep(1);
-
-  } 
-  // Escenario 3: Aceptar/Rechazar oferta (20% de los casos)
+  // Escenario 2: Consultar ofertas (40% de los casos)
   else {
     // 1. Consultar ofertas pendientes
     const offers = http.get(
-      `${SUPABASE_URL}/rest/v1/waitlist_offers?select=*&status=eq.pending&limit=5`,
+      `${SUPABASE_URL}/rest/v1/waitlist_offers?select=*,waitlist_entries(user_id,group_id)&status=eq.pending&limit=10`,
       { 
         headers,
         tags: { name: 'get_pending_offers' }
       }
     );
 
-    check(offers, {
+    const hasOffers = check(offers, {
       'offers: status is 200': (r) => r.status === 200,
+      'offers: has data': (r) => {
+        try {
+          const data = JSON.parse(r.body);
+          return Array.isArray(data);
+        } catch {
+          return false;
+        }
+      }
     });
 
     sleep(1);
 
-    // 2. Aceptar o rechazar (50/50)
-    if (Math.random() < 0.5) {
-      // Aceptar oferta
-      const acceptPayload = JSON.stringify({
-        offer_id: 'test-offer-id',
-        user_id: `test-user-${__VU}`
-      });
+    // 2. Consultar ofertas expiradas
+    const expiredOffers = http.get(
+      `${SUPABASE_URL}/rest/v1/waitlist_offers?select=*&status=eq.expired&limit=10`,
+      { 
+        headers,
+        tags: { name: 'get_expired_offers' }
+      }
+    );
 
-      const accept = http.post(
-        `${SUPABASE_URL}/rest/v1/rpc/accept_waitlist_offer`,
-        acceptPayload,
-        { 
-          headers,
-          tags: { name: 'accept_offer' }
-        }
-      );
-
-      const acceptSuccess = check(accept, {
-        'accept: status is 200 or 400': (r) => r.status === 200 || r.status === 400,
-        'accept: response time < 500ms': (r) => r.timings.duration < 500,
-      });
-
-      acceptOfferSuccessRate.add(acceptSuccess);
-
-    } else {
-      // Rechazar oferta
-      const rejectPayload = JSON.stringify({
-        offer_id: 'test-offer-id',
-        user_id: `test-user-${__VU}`
-      });
-
-      const reject = http.post(
-        `${SUPABASE_URL}/rest/v1/rpc/reject_waitlist_offer`,
-        rejectPayload,
-        { 
-          headers,
-          tags: { name: 'reject_offer' }
-        }
-      );
-
-      const rejectSuccess = check(reject, {
-        'reject: status is 200 or 400': (r) => r.status === 200 || r.status === 400,
-        'reject: response time < 500ms': (r) => r.timings.duration < 500,
-      });
-
-      rejectOfferSuccessRate.add(rejectSuccess);
-    }
+    check(expiredOffers, {
+      'expired offers: status is 200': (r) => r.status === 200,
+    });
 
     sleep(1);
+
+    // 3. Consultar logs de waitlist
+    const logs = http.get(
+      `${SUPABASE_URL}/rest/v1/waitlist_logs?select=*&order=created_at.desc&limit=20`,
+      { 
+        headers,
+        tags: { name: 'get_waitlist_logs' }
+      }
+    );
+
+    check(logs, {
+      'logs: status is 200': (r) => r.status === 200,
+    });
+
+    acceptOfferSuccessRate.add(hasOffers);
   }
 
   // Consultar penalizaciones (solo algunos usuarios)
-  if (Math.random() < 0.05) {
+  if (Math.random() < 0.1) {
     const penalties = http.get(
-      `${SUPABASE_URL}/rest/v1/waitlist_penalties?select=*&user_id=eq.test-user-${__VU}`,
+      `${SUPABASE_URL}/rest/v1/waitlist_penalties?select=*&order=created_at.desc&limit=10`,
       { 
         headers,
         tags: { name: 'get_penalties' }

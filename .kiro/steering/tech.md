@@ -69,11 +69,12 @@ Required in `.env`:
 
 ## Database Architecture
 
-- **11 main tables**: profiles, user_roles, parking_groups, parking_spots, reservations, license_plates, user_group_assignments, blocked_dates, reservation_settings, reservation_cancellation_log, incident_reports
-- **15+ SQL functions**: Validation, business logic, and data operations
-- **6 triggers**: Automatic profile creation, reservation cancellation, timestamp updates
-- **40+ RLS policies**: Row-level security on all sensitive tables
-- **Storage bucket**: `floor-plans` for parking map images
+- **24 main tables**: profiles, user_roles, parking_groups, parking_spots, reservations, license_plates, user_group_assignments, blocked_dates, reservation_settings, reservation_cancellation_log, incident_reports, user_warnings, reservation_checkins, checkin_infractions, checkin_settings, parking_group_checkin_config, user_blocks, waitlist_entries, waitlist_offers, waitlist_logs, waitlist_penalties, notifications, checkin_notifications, waitlist_cron_logs
+- **40+ SQL functions**: Validation, business logic, check-in/check-out automation, waitlist processing, infraction detection, warning generation, and data operations
+- **15+ triggers**: Automatic profile creation, reservation cancellation, waitlist processing, check-in tracking, timestamp updates
+- **60+ RLS policies**: Row-level security on all sensitive tables
+- **2 Storage buckets**: `floor-plans` for parking map images, `incident-photos` for incident evidence
+- **10+ Scheduled Jobs (pg_cron)**: Check-in reset, infraction detection, warning generation, waitlist processing, offer expiration
 
 ## Key Libraries
 
@@ -86,3 +87,26 @@ Required in `.env`:
 - **recharts**: Charts and data visualization
 - **class-variance-authority**: Component variant management
 - **tailwind-merge**: Tailwind class merging utility
+
+## Testing
+
+### K6 Load Testing
+- **Performance testing suite** with smoke, load, stress, and spike tests
+- **Feature-specific tests**: Check-in, waitlist, and statistics tests
+- **Test scripts**: Located in `tests/k6/` with helper utilities
+- **Quick start**: See `K6-QUICK-START.md` for 5-minute setup
+- **Full documentation**: See `docs/K6-LOAD-TESTING-GUIDE.md`
+
+### Test Commands
+```bash
+# Basic tests
+npm run test:k6:smoke   # Smoke test (1 min, 2 VUs)
+npm run test:k6:load    # Load test (10 min, 50-100 VUs)
+npm run test:k6:stress  # Stress test (25 min, 100-400 VUs)
+npm run test:k6:spike   # Spike test (10 min, 50-500 VUs)
+
+# Feature-specific tests
+npm run test:k6:checkin        # Check-in/Check-out (15 min, 200 VUs)
+npm run test:k6:waitlist       # Lista de espera (10 min, 50 VUs)
+npm run test:k6:checkin-stats  # Estadísticas (5 min, 20 VUs)
+```

@@ -1,0 +1,12 @@
+{
+  "name": "Verificador de Migraciones",
+  "description": "Aviso discreto cuando se guardan migraciones significativas (cooldown: 1 hora)",
+  "when": {
+    "type": "fileEdit",
+    "patterns": ["supabase/migrations/*.sql"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Se guardó un archivo de migración. Verifica si requiere actualización de documentación.\n\n**PASO 1: LEER MIGRACIÓN**\n\nLee el contenido del archivo guardado en supabase/migrations/\n\n**PASO 2: DETECTAR CAMBIOS SIGNIFICATIVOS**\n\nBusca:\n- CREATE TABLE (nueva tabla)\n- CREATE OR REPLACE FUNCTION (nueva función)\n- ALTER TABLE ADD COLUMN (cambio en estructura)\n- CREATE POLICY (nueva política RLS)\n- CREATE TRIGGER (nuevo trigger)\n- CREATE BUCKET (nuevo storage bucket)\n\n**PASO 3: EVALUAR SIGNIFICANCIA**\n\nEs significativo SI:\n- ✅ Nueva tabla en schema público\n- ✅ Nueva función pública (no internal_*)\n- ✅ Función que se llama desde API (en RPC)\n- ✅ Cambio en estructura de tabla pública\n- ✅ Nuevo storage bucket\n\nNO es significativo SI:\n- ❌ Solo cambios en RLS policies\n- ❌ Solo cambios en índices\n- ❌ Solo cambios en triggers internos\n- ❌ Solo comentarios\n- ❌ Funciones internas (internal_*, private_*)\n\n**PASO 4: MOSTRAR AVISO (SOLO SI ES SIGNIFICATIVO)**\n\nSi es significativo, muestra mensaje ultra-conciso (máximo 2 líneas):\n\n```\n💡 Nueva migración con cambios significativos detectada.\n   Considera ejecutar \"Sync Docs\" y \"Update K6 Tests\" cuando termines.\n```\n\n**REGLAS CRÍTICAS:**\n- ❌ NO interrumpir el trabajo del usuario\n- ❌ NO mostrar si no es significativo\n- ❌ NO actualizar ningún archivo\n- ❌ NO crear documentación\n- ✅ Solo mostrar mensaje discreto\n- ✅ Mensaje máximo 2 líneas\n- ✅ Tono amigable, no imperativo"
+  }
+}

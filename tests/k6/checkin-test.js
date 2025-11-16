@@ -52,106 +52,152 @@ export default function() {
 
   // Escenario 1: Usuario hace check-in (70% de los casos)
   if (Math.random() < 0.7) {
-    // 1. Consultar reservas del día
+    // 1. Consultar reservas del día actual o futuras
     const today = new Date().toISOString().split('T')[0];
     const reservations = http.get(
-      `${SUPABASE_URL}/rest/v1/reservations?select=id&reservation_date=eq.${today}&limit=1`,
+      `${SUPABASE_URL}/rest/v1/reservations?select=id,user_id,reservation_date&reservation_date=gte.${today}&order=reservation_date.asc&limit=1`,
       { 
         headers,
         tags: { name: 'get_today_reservations' }
       }
     );
 
-    check(reservations, {
+    const hasReservations = check(reservations, {
       'reservations: status is 200': (r) => r.status === 200,
-    });
-
-    sleep(1);
-
-    // 2. Realizar check-in
-    const checkinPayload = JSON.stringify({
-      reservation_id: 'test-reservation-id', // En producción vendría de la query anterior
-      user_id: 'test-user-id'
-    });
-
-    const checkinStart = Date.now();
-    const checkin = http.post(
-      `${SUPABASE_URL}/rest/v1/rpc/perform_checkin`,
-      checkinPayload,
-      { 
-        headers,
-        tags: { name: 'perform_checkin' }
+      'reservations: has data': (r) => {
+        try {
+          const data = JSON.parse(r.body);
+          return Array.isArray(data) && data.length > 0;
+        } catch {
+          return false;
+        }
       }
-    );
-    const checkinTime = Date.now() - checkinStart;
-
-    const checkinSuccess = check(checkin, {
-      'checkin: status is 200 or 400': (r) => r.status === 200 || r.status === 400,
-      'checkin: response time < 500ms': (r) => r.timings.duration < 500,
     });
 
-    checkinSuccessRate.add(checkinSuccess);
-    checkinDuration.add(checkinTime);
+    if (hasReservations && reservations.status === 200) {
+      try {
+        const resData = JSON.parse(reservations.body);
+        if (resData && resData.length > 0) {
+          const reservation = resData[0];
+          
+          sleep(1);
 
-    sleep(2);
+          // 2. Realizar check-in con datos reales
+          const checkinPayload = JSON.stringify({
+            reservation_id: reservation.id,
+            user_id: reservation.user_id
+          });
 
-    // 3. Consultar estado de check-in
-    const checkinStatus = http.get(
-      `${SUPABASE_URL}/rest/v1/reservation_checkins?select=*&reservation_id=eq.test-reservation-id&limit=1`,
-      { 
-        headers,
-        tags: { name: 'get_checkin_status' }
+          const checkinStart = Date.now();
+          const checkin = http.post(
+            `${SUPABASE_URL}/rest/v1/rpc/perform_checkin`,
+            checkinPayload,
+            { 
+              headers,
+              tags: { name: 'perform_checkin' }
+            }
+          );
+          const checkinTime = Date.now() - checkinStart;
+
+          const checkinSuccess = check(checkin, {
+            'checkin: status is 200 or 400': (r) => r.status === 200 || r.status === 400,
+            'checkin: response time < 500ms': (r) => r.timings.duration < 500,
+          });
+
+          checkinSuccessRate.add(checkinSuccess);
+          checkinDuration.add(checkinTime);
+
+          sleep(2);
+
+          // 3. Consultar estado de check-in
+          const checkinStatus = http.get(
+            `${SUPABASE_URL}/rest/v1/reservation_checkins?select=*&reservation_id=eq.${reservation.id}&limit=1`,
+            { 
+              headers,
+              tags: { name: 'get_checkin_status' }
+            }
+          );
+
+          check(checkinStatus, {
+            'checkin status: status is 200': (r) => r.status === 200,
+          });
+        }
+      } catch (e) {
+        // Si hay error parseando, solo registramos el fallo
+        checkinSuccessRate.add(false);
       }
-    );
-
-    check(checkinStatus, {
-      'checkin status: status is 200': (r) => r.status === 200,
-    });
+    } else {
+      // No hay reservas disponibles, registrar como fallo
+      checkinSuccessRate.add(false);
+    }
 
   } 
   // Escenario 2: Usuario hace check-out (30% de los casos)
   else {
-    // 1. Consultar check-ins activos
+    // 1. Consultar check-ins activos (sin check-out)
     const activeCheckins = http.get(
-      `${SUPABASE_URL}/rest/v1/reservation_checkins?select=*&checkout_time=is.null&limit=1`,
+      `${SUPABASE_URL}/rest/v1/reservation_checkins?select=reservation_id,reservation:reservations(user_id)&checkout_at=is.null&limit=1`,
       { 
         headers,
         tags: { name: 'get_active_checkins' }
       }
     );
 
-    check(activeCheckins, {
+    const hasActiveCheckins = check(activeCheckins, {
       'active checkins: status is 200': (r) => r.status === 200,
-    });
-
-    sleep(1);
-
-    // 2. Realizar check-out
-    const checkoutPayload = JSON.stringify({
-      reservation_id: 'test-reservation-id',
-      user_id: 'test-user-id'
-    });
-
-    const checkoutStart = Date.now();
-    const checkout = http.post(
-      `${SUPABASE_URL}/rest/v1/rpc/perform_checkout`,
-      checkoutPayload,
-      { 
-        headers,
-        tags: { name: 'perform_checkout' }
+      'active checkins: has data': (r) => {
+        try {
+          const data = JSON.parse(r.body);
+          return Array.isArray(data) && data.length > 0;
+        } catch {
+          return false;
+        }
       }
-    );
-    const checkoutTime = Date.now() - checkoutStart;
-
-    const checkoutSuccess = check(checkout, {
-      'checkout: status is 200 or 400': (r) => r.status === 200 || r.status === 400,
-      'checkout: response time < 300ms': (r) => r.timings.duration < 300,
     });
 
-    checkoutSuccessRate.add(checkoutSuccess);
-    checkoutDuration.add(checkoutTime);
+    if (hasActiveCheckins && activeCheckins.status === 200) {
+      try {
+        const checkinData = JSON.parse(activeCheckins.body);
+        if (checkinData && checkinData.length > 0) {
+          const checkin = checkinData[0];
+          
+          sleep(1);
 
-    sleep(1);
+          // 2. Realizar check-out con datos reales
+          const checkoutPayload = JSON.stringify({
+            reservation_id: checkin.reservation_id,
+            user_id: checkin.reservation?.user_id
+          });
+
+          const checkoutStart = Date.now();
+          const checkout = http.post(
+            `${SUPABASE_URL}/rest/v1/rpc/perform_checkout`,
+            checkoutPayload,
+            { 
+              headers,
+              tags: { name: 'perform_checkout' }
+            }
+          );
+          const checkoutTime = Date.now() - checkoutStart;
+
+          const checkoutSuccess = check(checkout, {
+            'checkout: status is 200 or 400': (r) => r.status === 200 || r.status === 400,
+            'checkout: response time < 300ms': (r) => r.timings.duration < 300,
+          });
+
+          checkoutSuccessRate.add(checkoutSuccess);
+          checkoutDuration.add(checkoutTime);
+
+          sleep(1);
+        }
+      } catch (e) {
+        // Si hay error parseando, solo registramos el fallo
+        checkoutSuccessRate.add(false);
+      }
+    } else {
+      // No hay check-ins activos, registrar como fallo
+      checkoutSuccessRate.add(false);
+    }
   }
 
   // Consultar infracciones (solo algunos usuarios)
