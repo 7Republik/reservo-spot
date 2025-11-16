@@ -7,33 +7,92 @@ src/
 ├── components/          # React components (feature-based organization)
 │   ├── ui/             # shadcn/ui base components (DO NOT MODIFY)
 │   ├── admin/          # Admin panel components
-│   │   ├── configuration/
-│   │   ├── groups/
-│   │   ├── license-plates/
-│   │   ├── parking-spots/
-│   │   ├── users/
-│   │   ├── visual-editor/
-│   │   └── skeletons/
+│   │   ├── check-in-stats/    # Check-in statistics and reporting
+│   │   ├── configuration/     # Global system configuration
+│   │   ├── groups/            # Parking group management
+│   │   ├── incidents/         # Incident management
+│   │   ├── license-plates/    # License plate approval
+│   │   ├── parking-spots/     # Parking spot management
+│   │   ├── reports/           # Check-in reports and history
+│   │   ├── users/             # User management
+│   │   ├── visual-editor/     # Visual editor for spot positioning
+│   │   ├── waitlist/          # Waitlist management and stats
+│   │   └── skeletons/         # Loading skeletons
 │   ├── calendar/       # Calendar system components
-│   ├── dashboard/      # User dashboard components
+│   ├── dashboard/      # User dashboard components (includes check-in card)
 │   ├── group-selector/ # Group selection components
+│   ├── incidents/      # User incident reporting flow
 │   ├── license-plates/ # User license plate management
-│   └── spot-selection/ # Interactive map components
+│   ├── notifications/  # Notification bell and system
+│   ├── profile/        # User profile and warnings
+│   ├── spot-selection/ # Interactive map components
+│   └── waitlist/       # User waitlist dashboard and registration
 ├── hooks/              # Custom React hooks
-│   └── admin/          # Admin-specific hooks with caching pattern
+│   ├── admin/          # Admin-specific hooks with caching pattern
+│   │   ├── useAdminWaitlist.ts
+│   │   ├── useBlockedDates.ts
+│   │   ├── useCheckInStats.ts
+│   │   ├── useCheckinReports.ts
+│   │   ├── useCheckinSettings.ts
+│   │   ├── useGroupCheckinConfig.ts
+│   │   ├── useIncidentManagement.ts
+│   │   ├── useLicensePlates.ts
+│   │   ├── useParkingGroups.ts
+│   │   ├── useParkingSpots.ts
+│   │   ├── useReservationSettings.ts
+│   │   ├── useUserManagement.ts
+│   │   └── useVisualEditor.ts
+│   ├── useCheckin.ts           # User check-in/check-out
+│   ├── useConnectionMonitor.ts # Offline mode connection monitoring
+│   ├── useIncidentReport.ts    # User incident reporting
+│   ├── useNotifications.ts     # Notification system
+│   ├── useOfflineMode.ts       # Offline mode management
+│   ├── useOfflineSync.ts       # Offline data synchronization
+│   ├── useUserProfile.ts       # User profile management
+│   ├── useUserWarnings.ts      # User warnings with realtime
+│   ├── useWaitlist.ts          # User waitlist operations
+│   ├── useWaitlistOffers.ts    # Waitlist offer management
+│   └── useWaitlistSettings.ts  # Waitlist configuration
 ├── integrations/       # External service integrations
 │   └── supabase/       # Supabase client and auto-generated types
 ├── lib/                # Utility functions
+│   ├── ConnectionMonitorService.ts  # Offline connection monitoring
+│   ├── animationOptimizer.ts        # Animation performance
+│   ├── connectionMonitor.ts         # Connection utilities
+│   ├── incidentHelpers.ts           # Incident utilities
+│   ├── offlineStorage.ts            # IndexedDB offline storage
+│   ├── offlineStorage.utils.ts      # Offline storage utilities
+│   ├── spotColors.ts                # Visual editor color system
+│   └── visualEditorStorage.ts      # Visual editor state persistence
 ├── pages/              # Route-level page components
+│   ├── Dashboard.tsx           # Main user dashboard
+│   ├── Profile.tsx             # User profile with warnings
+│   ├── WaitlistPage.tsx        # User waitlist management
+│   └── ...
 ├── styles/             # Global CSS files
+│   ├── auth.css                # Authentication styles
+│   └── visual-effects.css      # Glassmorphism and visual effects
 └── types/              # TypeScript type definitions
-    └── admin/          # Admin-specific types
+    ├── admin/          # Admin-specific types
+    │   ├── check-in-stats.ts
+    │   ├── index.ts
+    │   ├── license-plates.types.ts
+    │   ├── parking-groups.types.ts
+    │   ├── parking-spots.types.ts
+    │   ├── settings.types.ts
+    │   └── users.types.ts
+    ├── checkin.types.ts        # Check-in system types
+    ├── incidents.ts            # Incident reporting types
+    ├── profile.ts              # User profile types
+    ├── waitlist.ts             # Waitlist system types
+    └── index.ts
 
 supabase/
 ├── config.toml         # Supabase local configuration
-└── migrations/         # Database migration files (18 migrations)
+└── migrations/         # Database migration files (54 migrations)
 
 docs/                   # Project documentation
+tests/k6/              # K6 load testing scripts
 ```
 
 ## Component Organization Rules

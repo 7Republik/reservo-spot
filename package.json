@@ -8,7 +8,15 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:k6": "./scripts/run-k6-tests.sh",
+    "test:k6:smoke": "./scripts/run-k6-tests.sh smoke",
+    "test:k6:load": "./scripts/run-k6-tests.sh load",
+    "test:k6:stress": "./scripts/run-k6-tests.sh stress",
+    "test:k6:spike": "./scripts/run-k6-tests.sh spike",
+    "test:k6:checkin": "./scripts/run-k6-tests.sh checkin",
+    "test:k6:waitlist": "./scripts/run-k6-tests.sh waitlist",
+    "test:k6:checkin-stats": "./scripts/run-k6-tests.sh checkin-stats"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
