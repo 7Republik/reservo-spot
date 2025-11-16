@@ -389,39 +389,142 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          email_blocks: boolean | null
+          email_enabled: boolean | null
+          email_incident_reassignment: boolean | null
+          email_license_plate_rejected: boolean | null
+          email_reservation_cancelled: boolean | null
+          email_waitlist_offers: boolean | null
+          email_warnings: boolean | null
+          organization_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_blocks?: boolean | null
+          email_enabled?: boolean | null
+          email_incident_reassignment?: boolean | null
+          email_license_plate_rejected?: boolean | null
+          email_reservation_cancelled?: boolean | null
+          email_waitlist_offers?: boolean | null
+          email_warnings?: boolean | null
+          organization_id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email_blocks?: boolean | null
+          email_enabled?: boolean | null
+          email_incident_reassignment?: boolean | null
+          email_license_plate_rejected?: boolean | null
+          email_reservation_cancelled?: boolean | null
+          email_waitlist_offers?: boolean | null
+          email_warnings?: boolean | null
+          organization_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
+          action_url: string | null
+          category: string
           created_at: string
           data: Json | null
+          email_sent: boolean | null
+          email_sent_at: string | null
           id: string
           is_read: boolean
           message: string
+          organization_id: string
+          priority: string
           read_at: string | null
+          reference_id: string | null
           title: string
           type: string
           user_id: string
         }
         Insert: {
+          action_url?: string | null
+          category?: string
           created_at?: string
           data?: Json | null
+          email_sent?: boolean | null
+          email_sent_at?: string | null
           id?: string
           is_read?: boolean
           message: string
+          organization_id?: string
+          priority?: string
           read_at?: string | null
+          reference_id?: string | null
           title: string
           type: string
           user_id: string
         }
         Update: {
+          action_url?: string | null
+          category?: string
           created_at?: string
           data?: Json | null
+          email_sent?: boolean | null
+          email_sent_at?: string | null
           id?: string
           is_read?: boolean
           message?: string
+          organization_id?: string
+          priority?: string
           read_at?: string | null
+          reference_id?: string | null
           title?: string
           type?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1231,6 +1334,21 @@ export type Database = {
           total_deleted: number
         }[]
       }
+      cleanup_old_notifications: { Args: never; Returns: number }
+      create_notification: {
+        Args: {
+          _action_url?: string
+          _category?: string
+          _data?: Json
+          _message: string
+          _priority?: string
+          _reference_id?: string
+          _title: string
+          _type: string
+          _user_id: string
+        }
+        Returns: string
+      }
       create_waitlist_offer: {
         Args: { p_entry_id: string; p_spot_id: string }
         Returns: string
@@ -1368,6 +1486,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_unread_count: { Args: { _user_id: string }; Returns: number }
       get_user_checkin_notifications: {
         Args: { p_limit?: number; p_user_id?: string }
         Returns: {
@@ -1381,6 +1500,7 @@ export type Database = {
           subject: string
         }[]
       }
+      get_user_organization: { Args: { _user_id: string }; Returns: string }
       get_user_role_priority: { Args: { _user_id: string }; Returns: number }
       get_user_warning_count: { Args: { _user_id: string }; Returns: number }
       get_waitlist_settings: {
@@ -1414,6 +1534,14 @@ export type Database = {
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
       is_user_blocked_by_checkin: {
         Args: { p_user_id: string }
+        Returns: boolean
+      }
+      mark_all_notifications_as_read: {
+        Args: { _user_id: string }
+        Returns: number
+      }
+      mark_notification_as_read: {
+        Args: { _notification_id: string; _user_id: string }
         Returns: boolean
       }
       perform_checkin: {
@@ -1466,6 +1594,10 @@ export type Database = {
           user_id: string
           user_name: string
         }[]
+      }
+      should_send_email: {
+        Args: { _notification_type: string; _user_id: string }
+        Returns: boolean
       }
       validate_parking_spot_reservation: {
         Args: { _reservation_date: string; _spot_id: string; _user_id: string }

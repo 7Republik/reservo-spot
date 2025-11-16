@@ -1,333 +1,168 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { Notification } from '@/types/waitlist';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import type { Notification, UseNotificationsReturn } from '@/types/notifications';
 
-/**
- * Custom hook for managing in-app notifications
- * 
- * Provides functions for:
- * - Getting unread notifications for the current user
- * - Marking individual notifications as read
- * - Marking all notifications as read
- * - Real-time subscription to new notifications
- * - Counting unread notifications
- * 
- * Automatically subscribes to real-time updates when component mounts
- * and unsubscribes when component unmounts.
- * 
- * @returns {Object} Notifications operations and state
- * @returns {Notification[]} unreadNotifications - Array of unread notifications
- * @returns {number} unreadCount - Count of unread notifications
- * @returns {boolean} isLoading - Loading state indicator
- * @returns {Error | null} error - Error object if any
- * @returns {Function} markAsRead - Mark a notification as read
- * @returns {Function} markAllAsRead - Mark all notifications as read
- * @returns {Function} refetch - Manually refetch notifications
- * 
- * @example
- * ```tsx
- * const {
- *   unreadNotifications,
- *   unreadCount,
- *   isLoading,
- *   markAsRead,
- *   markAllAsRead
- * } = useNotifications();
- * 
- * // Display unread count
- * <Badge>{unreadCount}</Badge>
- * 
- * // Display notifications
- * {unreadNotifications.map(notification => (
- *   <NotificationItem
- *     key={notification.id}
- *     notification={notification}
- *     onRead={() => markAsRead(notification.id)}
- *   />
- * ))}
- * ```
- */
-export const useNotifications = () => {
-  const [error, setError] = useState<Error | null>(null);
+export const useNotifications = (): UseNotificationsReturn => {
   const queryClient = useQueryClient();
-  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  /**
-   * Query to fetch unread notifications for the current user
-   */
+  // Query para obtener notificaciones
   const {
-    data: unreadNotifications = [],
-    isLoading,
-    refetch
-  } = useQuery<Notification[]>({
-    queryKey: ['notifications', 'unread'],
+    data: notifications = [],
+    isLoading: loading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['notifications'],
     queryFn: async () => {
-      try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          throw new Error('Usuario no autenticado');
-        }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
 
-        // Query unread notifications
-        const { data, error: queryError } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_read', false)
-          .order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-        if (queryError) {
-          throw queryError;
-        }
-
-        return data || [];
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('Error al obtener notificaciones');
-        setError(error);
-        console.error('Error en getUnreadNotifications:', err);
-        throw error;
-      }
+      if (error) throw error;
+      return data as Notification[];
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
-    staleTime: 10000, // Consider data stale after 10 seconds
+    staleTime: 30000, // Cache 30 segundos
+    refetchOnWindowFocus: false,
   });
 
-  /**
-   * Computed value for unread count
-   */
-  const unreadCount = unreadNotifications.length;
-
-  /**
-   * Set up real-time subscription to notifications changes
-   */
+  // Calcular contador de no leídas
   useEffect(() => {
-    const setupRealtimeSubscription = async () => {
-      try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          return;
-        }
+    const count = notifications.filter(n => !n.is_read).length;
+    setUnreadCount(count);
+  }, [notifications]);
 
-        // Create channel for real-time updates
-        const realtimeChannel = supabase
-          .channel('notifications-changes')
-          .on(
-            'postgres_changes',
-            {
-              event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=eq.${user.id}`
-            },
-            (payload) => {
-              console.log('Notification change detected:', payload);
-              
-              // Show toast for new notifications
-              if (payload.eventType === 'INSERT') {
-                const newNotification = payload.new as Notification;
-                
-                // Show toast based on notification type
-                switch (newNotification.type) {
-                  case 'waitlist_offer':
-                    toast.success(newNotification.title, {
-                      description: newNotification.message,
-                      duration: 10000, // 10 seconds for important offers
-                    });
-                    break;
-                  case 'waitlist_reminder':
-                    toast.info(newNotification.title, {
-                      description: newNotification.message,
-                      duration: 8000,
-                    });
-                    break;
-                  case 'waitlist_expired':
-                    toast.warning(newNotification.title, {
-                      description: newNotification.message,
-                      duration: 5000,
-                    });
-                    break;
-                  case 'waitlist_penalty':
-                    toast.error(newNotification.title, {
-                      description: newNotification.message,
-                      duration: 10000,
-                    });
-                    break;
-                  default:
-                    toast(newNotification.title, {
-                      description: newNotification.message,
-                    });
-                }
-              }
-              
-              // Invalidate and refetch queries
-              queryClient.invalidateQueries({ queryKey: ['notifications'] });
-              
-              // Refetch immediately
-              refetch();
-            }
-          )
-          .subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-              console.log('Subscribed to notifications real-time updates');
-            } else if (status === 'CHANNEL_ERROR') {
-              console.error('Error subscribing to notifications channel');
-            }
-          });
+  // Subscription real-time solo para notificaciones urgentes
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-        setChannel(realtimeChannel);
-      } catch (err) {
-        console.error('Error setting up real-time subscription:', err);
-      }
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      channel = supabase
+        .channel('urgent-notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newNotification = payload.new as Notification;
+            
+            // Solo mostrar toast para notificaciones urgentes
+            if (newNotification.priority === 'urgent') {
+              toast.info(newNotification.title, {
+                description: newNotification.message,
+                duration: 5000,
+              });
+            }
+            
+            // Invalidar cache para refrescar
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+          }
+        )
+        .subscribe();
     };
 
-    setupRealtimeSubscription();
+    setupSubscription();
 
-    // Cleanup subscription on unmount
     return () => {
       if (channel) {
-        console.log('Unsubscribing from notifications real-time updates');
         supabase.removeChannel(channel);
       }
     };
-  }, [queryClient, refetch]);
+  }, [queryClient]);
 
-  /**
-   * Mutation to mark a notification as read
-   */
+  // Polling cada 30s para notificaciones no urgentes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [queryClient]);
+
+  // Mutation para marcar como leída
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: string) => {
-      try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          throw new Error('Usuario no autenticado');
-        }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
 
-        // Update notification
-        const { error: updateError } = await supabase
-          .from('notifications')
-          .update({
-            is_read: true,
-            read_at: new Date().toISOString()
-          })
-          .eq('id', notificationId)
-          .eq('user_id', user.id); // Security: ensure user owns the notification
+      const { error } = await supabase.rpc('mark_notification_as_read', {
+        _notification_id: notificationId,
+        _user_id: user.id,
+      });
 
-        if (updateError) {
-          throw updateError;
-        }
-
-        return notificationId;
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('Error al marcar notificación como leída');
-        console.error('Error en markAsRead:', err);
-        throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: () => {
-      // Invalidate queries to refetch
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
-    onError: (err) => {
-      const error = err instanceof Error ? err : new Error('Error al marcar notificación como leída');
-      setError(error);
+    onError: (error) => {
+      console.error('Error marking notification as read:', error);
       toast.error('Error al marcar notificación como leída');
-    }
+    },
   });
 
-  /**
-   * Mutation to mark all notifications as read
-   */
+  // Mutation para marcar todas como leídas
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          throw new Error('Usuario no autenticado');
-        }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
 
-        // Update all unread notifications
-        const { error: updateError } = await supabase
-          .from('notifications')
-          .update({
-            is_read: true,
-            read_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id)
-          .eq('is_read', false);
+      const { error } = await supabase.rpc('mark_all_notifications_as_read', {
+        _user_id: user.id,
+      });
 
-        if (updateError) {
-          throw updateError;
-        }
-
-        return true;
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('Error al marcar todas las notificaciones como leídas');
-        console.error('Error en markAllAsRead:', err);
-        throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: () => {
-      // Invalidate queries to refetch
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Todas las notificaciones marcadas como leídas');
     },
-    onError: (err) => {
-      const error = err instanceof Error ? err : new Error('Error al marcar todas las notificaciones como leídas');
-      setError(error);
-      toast.error('Error al marcar todas las notificaciones como leídas');
-    }
+    onError: (error) => {
+      console.error('Error marking all notifications as read:', error);
+      toast.error('Error al marcar todas como leídas');
+    },
   });
 
-  /**
-   * Mark a notification as read
-   * 
-   * @param notificationId - ID of the notification to mark as read
-   * 
-   * @example
-   * ```tsx
-   * <Button onClick={() => markAsRead(notification.id)}>
-   *   Marcar como leída
-   * </Button>
-   * ```
-   */
-  const markAsRead = (notificationId: string) => {
-    markAsReadMutation.mutate(notificationId);
-  };
-
-  /**
-   * Mark all notifications as read
-   * 
-   * @example
-   * ```tsx
-   * <Button onClick={markAllAsRead}>
-   *   Marcar todas como leídas
-   * </Button>
-   * ```
-   */
-  const markAllAsRead = () => {
-    markAllAsReadMutation.mutate();
-  };
-
   return {
-    unreadNotifications,
+    notifications,
     unreadCount,
-    isLoading,
-    error,
-    markAsRead,
-    markAllAsRead,
-    refetch,
-    isMarkingAsRead: markAsReadMutation.isPending,
-    isMarkingAllAsRead: markAllAsReadMutation.isPending
+    loading,
+    error: error as Error | null,
+    markAsRead: async (notificationId: string) => {
+      return new Promise<void>((resolve, reject) => {
+        markAsReadMutation.mutate(notificationId, {
+          onSuccess: () => resolve(),
+          onError: (error) => reject(error),
+        });
+      });
+    },
+    markAllAsRead: async () => {
+      return new Promise<void>((resolve, reject) => {
+        markAllAsReadMutation.mutate(undefined, {
+          onSuccess: () => resolve(),
+          onError: (error) => reject(error),
+        });
+      });
+    },
+    refetch: async () => {
+      await refetch();
+    },
   };
 };

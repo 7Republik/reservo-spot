@@ -270,13 +270,7 @@ const Profile = () => {
             )}
 
             {/* Notification Preferences */}
-            {profile && (
-              <NotificationPreferences
-                profile={profile}
-                onUpdate={updateNotificationPreferences}
-                isLoading={profileLoading}
-              />
-            )}
+            <NotificationPreferences />
 
             {/* Active Blocks Section */}
             <ActiveBlocksCard

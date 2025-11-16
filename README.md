@@ -176,6 +176,84 @@ Soporte completo para uso sin conexión a internet.
 - **Reintentos Automáticos**: 2 reintentos para requests fallidos
 - **Limpieza Automática**: Eliminación de datos expirados y al cerrar sesión
 
+### Sistema de Notificaciones ✅ IMPLEMENTADO
+Sistema completo de notificaciones in-app y por email para mantener a los usuarios informados.
+
+#### Notificaciones In-App
+- **Campana de Notificaciones**: Indicador visual en el header con contador de no leídas
+- **Dropdown Interactivo**: Lista de notificaciones con scroll y acciones rápidas
+- **Prioridades Visuales**: Colores e iconos según urgencia (urgent, high, medium, low)
+- **Categorías**: Organización por tipo (waitlist, warning, reservation, incident, system)
+- **Navegación Directa**: Enlaces a acciones relevantes desde cada notificación
+- **Marcar como Leídas**: Individual o todas a la vez
+- **Real-time**: Actualizaciones instantáneas para notificaciones urgentes
+- **Polling**: Actualización cada 30s para notificaciones no urgentes
+
+#### Notificaciones por Email
+- **Emails Transaccionales**: Envío automático vía Resend API
+- **Templates Responsive**: Diseños profesionales adaptados a móvil y desktop
+- **Preferencias Granulares**: Control por tipo de notificación
+- **Master Switch**: Desactivar todos los emails con un toggle
+- **Cumplimiento GDPR**: Respeto a preferencias del usuario
+- **Retry Logic**: Reintentos automáticos con exponential backoff
+- **Tracking**: Registro de emails enviados y errores
+
+#### Tipos de Notificaciones
+
+**Waitlist (Urgentes):**
+- Oferta de plaza disponible (con countdown)
+- Recordatorio de oferta próxima a expirar
+- Confirmación de aceptación/rechazo
+- Registro en lista de espera
+
+**Amonestaciones y Bloqueos (Críticas):**
+- Nueva amonestación recibida
+- Bloqueo temporal activado
+- Bloqueo expirado
+
+**Reservas (Importantes):**
+- Reserva cancelada por administrador
+- Confirmación de reserva desde waitlist
+- Recordatorio de check-in
+
+**Incidentes (Importantes):**
+- Reasignación de plaza por incidente
+- Confirmación de incidente reportado
+
+**Sistema (Informativas):**
+- Matrícula aprobada/rechazada
+- Acceso a grupo añadido/removido
+
+#### Gestión de Preferencias
+- **Página de Configuración**: Sección dedicada en perfil de usuario
+- **Switches por Tipo**: Control individual de cada tipo de notificación
+- **Agrupación por Categoría**: Críticas, Importantes, Informativas
+- **Descripciones Claras**: Explicación de cada tipo de notificación
+- **Guardado Automático**: Cambios aplicados inmediatamente
+- **Aviso Legal**: Notificaciones in-app no se pueden desactivar
+
+#### Características Técnicas
+- **Multi-Tenant Ready**: Arquitectura preparada para multi-tenancy
+- **Deduplicación**: Prevención de notificaciones duplicadas
+- **Limpieza Automática**: Eliminación de notificaciones antiguas (30 días)
+- **Índices Optimizados**: Queries rápidos (< 50ms)
+- **Edge Functions**: Procesamiento serverless para emails
+- **Cron Jobs**: Limpieza diaria y recordatorios automáticos
+- **Monitoreo**: Métricas de envío y tasas de error
+
+#### Configuración de Email
+- **Proveedor**: Resend (free tier: 3,000 emails/mes)
+- **Dominio**: noreply@reserveo.app (verificado con SPF/DKIM/DMARC)
+- **Variables de Entorno**: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME`
+- **Templates**: HTML responsive con logo hosteado (64x64px) y diseño profesional
+- **Logo**: Hosteado en `https://reserveo.app/logo-email.png` (fácil de actualizar)
+- **Anti-Spam**: Headers List-Unsubscribe, Reply-To, tags de organización
+- **Compatibilidad**: Gmail, Outlook, Apple Mail, clientes móviles
+- **Documentación**: 
+  - Mejores prácticas: `docs/EMAIL-BEST-PRACTICES.md`
+  - Setup completo: `docs/EMAIL-SETUP-CHECKLIST.md`
+  - Configuración de logo: `docs/LOGO-EMAIL-SETUP.md`
+
 ### Rediseño Visual Dashboard "Hoy" ✅ IMPLEMENTADO
 Mejoras visuales significativas en la sección principal del dashboard.
 
@@ -266,10 +344,20 @@ npm run dev
 Crear un archivo `.env` con las siguientes variables:
 
 ```env
+# Supabase
 VITE_SUPABASE_PROJECT_ID="tu-project-id"
 VITE_SUPABASE_URL="https://tu-project-id.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY="tu-anon-key"
+
+# Resend (para notificaciones por email)
+RESEND_API_KEY="re_xxxxxxxxxx"  # Configurar en Supabase Edge Functions
 ```
+
+**Nota sobre Resend:**
+- Crear cuenta en [Resend](https://resend.com)
+- Verificar dominio personalizado (ej: noreply@reserveo.com)
+- Obtener API key desde el dashboard
+- Configurar en Supabase: Dashboard → Edge Functions → Environment Variables
 
 ## Stack Tecnológico
 
@@ -293,12 +381,13 @@ VITE_SUPABASE_PUBLISHABLE_KEY="tu-anon-key"
   - Triggers automáticos
 
 ### Arquitectura de Base de Datos
-- **24 tablas principales**: 
+- **26 tablas principales**: 
   - Core: profiles, user_roles, parking_groups, parking_spots, reservations, license_plates
   - Gestión: user_group_assignments, blocked_dates, reservation_settings, reservation_cancellation_log
   - Incidentes: incident_reports, user_warnings
   - Check-in: reservation_checkins, checkin_infractions, checkin_settings, parking_group_checkin_config, user_blocks
-  - Waitlist: waitlist_entries, waitlist_offers, waitlist_logs, waitlist_penalties, notifications
+  - Waitlist: waitlist_entries, waitlist_offers, waitlist_logs, waitlist_penalties
+  - Notificaciones: organizations, notifications, notification_preferences
 - **40+ funciones SQL**: 
   - Validación y lógica de negocio
   - Check-in/check-out automático
@@ -312,9 +401,10 @@ VITE_SUPABASE_PUBLISHABLE_KEY="tu-anon-key"
   - Actualizaciones de timestamps
 - **60+ políticas RLS**: Seguridad a nivel de fila en todas las tablas sensibles
 - **2 buckets de Storage**: `floor-plans` para mapas de aparcamiento, `incident-photos` para evidencia de incidentes
-- **10+ trabajos programados (pg_cron)**:
+- **12+ trabajos programados (pg_cron)**:
   - Check-in: reset diario, detección de infracciones, generación de amonestaciones, recordatorios
   - Waitlist: expiración de ofertas, limpieza de entradas, recordatorios
+  - Notificaciones: limpieza de notificaciones antiguas, recordatorios de ofertas waitlist
 
 ## Comandos Útiles
 

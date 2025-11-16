@@ -1,126 +1,194 @@
-import { useState } from "react";
-import { Loader2, Bell, BellOff } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { UserProfile } from "@/types/profile";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info, Mail, Bell } from 'lucide-react';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 
-interface NotificationPreferencesProps {
-  profile: UserProfile;
-  onUpdate: (checkinRemindersEnabled: boolean) => Promise<void>;
-  isLoading: boolean;
-}
+export const NotificationPreferences = () => {
+  const { preferences, loading, updatePreferences } = useNotificationPreferences();
 
-/**
- * NotificationPreferences Component
- * 
- * Permite al usuario configurar sus preferencias de notificaciones
- * de check-in.
- * 
- * Features:
- * - Toggle para activar/desactivar recordatorios de check-in
- * - Feedback visual del estado actual
- * - Loading state durante actualización
- * - Accesible con ARIA labels
- * 
- * Requirements: 15.4, 15.5
- */
-export const NotificationPreferences = ({ 
-  profile, 
-  onUpdate, 
-  isLoading 
-}: NotificationPreferencesProps) => {
-  const [isUpdating, setIsUpdating] = useState(false);
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Preferencias de Notificaciones</CardTitle>
+          <CardDescription>Cargando preferencias...</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
-  const handleToggle = async (checked: boolean) => {
-    setIsUpdating(true);
-    try {
-      await onUpdate(checked);
-    } finally {
-      setIsUpdating(false);
-    }
+  if (!preferences) {
+    return null;
+  }
+
+  const handleToggle = (field: string, value: boolean) => {
+    updatePreferences({ [field]: value });
   };
-
-  const isDisabled = isLoading || isUpdating;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
-          {profile.checkin_reminders_enabled ? (
-            <Bell className="h-5 w-5" aria-hidden="true" />
-          ) : (
-            <BellOff className="h-5 w-5" aria-hidden="true" />
-          )}
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="h-5 w-5" />
           Preferencias de Notificaciones
         </CardTitle>
-        <CardDescription className="text-sm sm:text-base">
-          Configura cómo quieres recibir recordatorios sobre tus reservas
+        <CardDescription>
+          Configura cómo quieres recibir notificaciones del sistema
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Checkin Reminders Toggle */}
-        <div className="flex items-start justify-between gap-4 p-4 rounded-lg border bg-card">
-          <div className="flex-1 space-y-1">
-            <Label 
-              htmlFor="checkin-reminders" 
-              className="text-sm sm:text-base font-medium cursor-pointer"
-            >
-              Recordatorios de Check-in
-            </Label>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Recibe recordatorios cuando tengas una reserva activa sin check-in.
-              Te ayudará a evitar infracciones por olvido.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isUpdating && (
-              <Loader2 
-                className="h-4 w-4 animate-spin text-muted-foreground" 
-                aria-hidden="true" 
-              />
-            )}
+        {/* Aviso sobre notificaciones in-app */}
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Las notificaciones dentro de la aplicación siempre están activas y no se pueden desactivar.
+            Aquí solo puedes configurar las notificaciones por email.
+          </AlertDescription>
+        </Alert>
+
+        {/* Master switch */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+            <div className="space-y-0.5">
+              <Label htmlFor="email_enabled" className="text-base font-semibold flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Notificaciones por Email
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Activar o desactivar todos los emails
+              </p>
+            </div>
             <Switch
-              id="checkin-reminders"
-              checked={profile.checkin_reminders_enabled}
-              onCheckedChange={handleToggle}
-              disabled={isDisabled}
-              aria-label="Activar o desactivar recordatorios de check-in"
-              aria-describedby="checkin-reminders-description"
+              id="email_enabled"
+              checked={preferences.email_enabled}
+              onCheckedChange={(checked) => handleToggle('email_enabled', checked)}
             />
           </div>
         </div>
 
-        {/* Status Message */}
-        <div 
-          id="checkin-reminders-description"
-          className="text-xs sm:text-sm text-muted-foreground bg-muted/50 p-3 rounded-md"
-          role="status"
-          aria-live="polite"
-        >
-          {profile.checkin_reminders_enabled ? (
-            <>
-              <span className="font-medium text-foreground">✓ Recordatorios activados:</span>
-              {" "}Recibirás notificaciones cuando tengas una reserva activa sin check-in.
-              Los recordatorios se envían cada 30 minutos durante el horario de oficina.
-            </>
-          ) : (
-            <>
-              <span className="font-medium text-foreground">✗ Recordatorios desactivados:</span>
-              {" "}No recibirás notificaciones de recordatorio. Recuerda hacer check-in
-              manualmente para evitar infracciones.
-            </>
-          )}
+        {/* Notificaciones críticas */}
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold mb-3">Notificaciones Críticas</h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Recomendamos mantener estas notificaciones activas
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="email_waitlist_offers" className="text-sm font-medium">
+                  Ofertas de Lista de Espera
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Cuando hay una plaza disponible para ti (expira en minutos)
+                </p>
+              </div>
+              <Switch
+                id="email_waitlist_offers"
+                checked={preferences.email_waitlist_offers}
+                disabled={!preferences.email_enabled}
+                onCheckedChange={(checked) => handleToggle('email_waitlist_offers', checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="email_blocks" className="text-sm font-medium">
+                  Bloqueos Temporales
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Cuando tu cuenta es bloqueada temporalmente
+                </p>
+              </div>
+              <Switch
+                id="email_blocks"
+                checked={preferences.email_blocks}
+                disabled={!preferences.email_enabled}
+                onCheckedChange={(checked) => handleToggle('email_blocks', checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="email_warnings" className="text-sm font-medium">
+                  Amonestaciones
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Cuando recibes una amonestación
+                </p>
+              </div>
+              <Switch
+                id="email_warnings"
+                checked={preferences.email_warnings}
+                disabled={!preferences.email_enabled}
+                onCheckedChange={(checked) => handleToggle('email_warnings', checked)}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Additional Info */}
-        <div className="text-xs text-muted-foreground space-y-2 pt-2 border-t">
-          <p className="font-medium">Información adicional:</p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Los recordatorios solo se envían durante el horario de oficina (6:00 - 22:00)</li>
-            <li>No recibirás más de un recordatorio cada 2 horas por reserva</li>
-            <li>Puedes cambiar esta preferencia en cualquier momento</li>
-          </ul>
+        {/* Notificaciones importantes */}
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold mb-3">Notificaciones Importantes</h3>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="email_reservation_cancelled" className="text-sm font-medium">
+                  Reservas Canceladas
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Cuando un administrador cancela tu reserva
+                </p>
+              </div>
+              <Switch
+                id="email_reservation_cancelled"
+                checked={preferences.email_reservation_cancelled}
+                disabled={!preferences.email_enabled}
+                onCheckedChange={(checked) => handleToggle('email_reservation_cancelled', checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="email_incident_reassignment" className="text-sm font-medium">
+                  Reasignación de Plaza
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Cuando se te asigna una nueva plaza por un incidente
+                </p>
+              </div>
+              <Switch
+                id="email_incident_reassignment"
+                checked={preferences.email_incident_reassignment}
+                disabled={!preferences.email_enabled}
+                onCheckedChange={(checked) => handleToggle('email_incident_reassignment', checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="email_license_plate_rejected" className="text-sm font-medium">
+                  Matrículas Rechazadas
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Cuando tu solicitud de matrícula es rechazada
+                </p>
+              </div>
+              <Switch
+                id="email_license_plate_rejected"
+                checked={preferences.email_license_plate_rejected}
+                disabled={!preferences.email_enabled}
+                onCheckedChange={(checked) => handleToggle('email_license_plate_rejected', checked)}
+              />
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

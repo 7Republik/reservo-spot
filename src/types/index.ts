@@ -19,3 +19,5 @@ export * from './profile';
 
 // Waitlist Types
 export * from './waitlist';
+// Notification Types
+export * from './notifications';
