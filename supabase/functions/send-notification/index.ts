@@ -132,7 +132,9 @@ function generateEmailHtml(
 ): string {
   // Logo hosteado (mejor para producción)
   // Ventajas: Emails más ligeros, fácil de actualizar, mejor deliverability
-  const logoUrl = 'https://reserveo.app/logo-email.png'
+  // Usa variable de entorno para funcionar en local y producción
+  const baseUrl = Deno.env.get('VITE_APP_URL') || Deno.env.get('APP_URL') || 'https://www.reserveo.app'
+  const logoUrl = `${baseUrl}/logo-email.png`
   
   // Fallback a base64 si prefieres (para testing o si no tienes logo hosteado aún)
   // const logoBase64 = 'data:image/svg+xml;base64,...'
@@ -350,7 +352,7 @@ function generateEmailHtml(
           </div>
         `
       }
-      actionButton = `<a href="https://reserveo.app/waitlist" class="button">Ver Oferta y Aceptar</a>`
+      actionButton = `<a href="${baseUrl}/waitlist" class="button">Ver Oferta y Aceptar</a>`
       break
     
     case 'warning_received':
@@ -370,7 +372,7 @@ function generateEmailHtml(
           </div>
         `
       }
-      actionButton = `<a href="https://reserveo.app/profile" class="button">Ver Mis Amonestaciones</a>`
+      actionButton = `<a href="${baseUrl}/profile" class="button">Ver Mis Amonestaciones</a>`
       break
     
     case 'user_blocked':
@@ -408,7 +410,7 @@ function generateEmailHtml(
           </div>
         `
       }
-      actionButton = `<a href="https://reserveo.app/dashboard" class="button">Ver Mis Reservas</a>`
+      actionButton = `<a href="${baseUrl}/dashboard" class="button">Ver Mis Reservas</a>`
       break
     
     case 'incident_reassignment':
@@ -420,7 +422,7 @@ function generateEmailHtml(
           </div>
         `
       }
-      actionButton = `<a href="https://reserveo.app/dashboard" class="button">Ver Nueva Plaza</a>`
+      actionButton = `<a href="${baseUrl}/dashboard" class="button">Ver Nueva Plaza</a>`
       break
     
     case 'license_plate_rejected':
@@ -440,7 +442,7 @@ function generateEmailHtml(
           </div>
         `
       }
-      actionButton = `<a href="https://reserveo.app/profile/license-plates" class="button">Gestionar Matrículas</a>`
+      actionButton = `<a href="${baseUrl}/profile/license-plates" class="button">Gestionar Matrículas</a>`
       break
     
     default:
@@ -448,7 +450,7 @@ function generateEmailHtml(
       if (actionUrl) {
         actionButton = `<a href="${actionUrl}" class="button">Ver Detalles</a>`
       } else {
-        actionButton = `<a href="https://reserveo.app/dashboard" class="button">Ir al Dashboard</a>`
+        actionButton = `<a href="${baseUrl}/dashboard" class="button">Ir al Dashboard</a>`
       }
   }
 
@@ -500,9 +502,9 @@ function generateEmailHtml(
                 <div class="footer">
                   <p>Este es un email automático del sistema Reserveo</p>
                   <div class="footer-links">
-                    <a href="https://reserveo.app/profile/preferences">Gestionar preferencias</a>
+                    <a href="${baseUrl}/profile/preferences">Gestionar preferencias</a>
                     <span style="color: #cbd5e0;">|</span>
-                    <a href="https://reserveo.app/dashboard">Ir al Dashboard</a>
+                    <a href="${baseUrl}/dashboard">Ir al Dashboard</a>
                   </div>
                   <p class="copyright">
                     © ${new Date().getFullYear()} Reserveo. Todos los derechos reservados.

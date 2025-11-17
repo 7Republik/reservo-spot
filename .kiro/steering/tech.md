@@ -13,6 +13,8 @@ Siempre hablame en español.
 - **Icons**: Lucide React
 - **Notifications**: Sonner (toast notifications)
 
+## El proyecto usa ES modules para scripts y js
+
 ## Project Structure
 
 - **Path Alias**: `@/` maps to `./src/`
