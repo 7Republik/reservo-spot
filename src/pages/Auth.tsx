@@ -473,13 +473,11 @@ const Auth = () => {
       <div className="w-full max-w-md">
         {/* Logo animado */}
         <div className="flex justify-center mb-8 animate-fade-in">
-          <div className="bg-white/10 dark:bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl shadow-lg auth-logo animate-pulse-glow">
-            <img 
-              src={logoReserveo} 
-              alt="Logo RESERVEO" 
-              className="h-16 w-16 object-contain"
-            />
-          </div>
+          <img 
+            src={logoReserveo} 
+            alt="Logo RESERVEO" 
+            className="h-20 w-20 object-contain auth-logo animate-pulse-glow"
+          />
         </div>
         
         {/* Card principal con animación */}
