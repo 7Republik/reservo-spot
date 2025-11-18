@@ -2,8 +2,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'noreply@noreply.reserveo.app'
-const RESEND_FROM_NAME = Deno.env.get('RESEND_FROM_NAME') || 'Reserveo'
+// Usar siempre el dominio verificado en Resend
+const RESEND_FROM_EMAIL = 'noreply@noreply.reserveo.app'
+const RESEND_FROM_NAME = 'Reserveo'
 
 serve(async (req) => {
   try {
