@@ -116,65 +116,67 @@ const AdminPanel = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="plates" className="w-full" value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-7 bg-card">
-          <TabsTrigger 
-            value="plates"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            <CreditCard className="w-4 h-4 mr-2" />
-            Matrículas
-          </TabsTrigger>
-          <TabsTrigger 
-            value="users"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            <Users className="w-4 h-4 mr-2" />
-            Usuarios
-          </TabsTrigger>
-          <TabsTrigger 
-            value="spots"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            <ParkingSquare className="w-4 h-4 mr-2" />
-            Plazas
-          </TabsTrigger>
-          <TabsTrigger 
-            value="incidents" 
-            className="relative data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Incidentes
-            {pendingIncidentsCount > 0 && (
-              <Badge 
-                variant="destructive" 
-                className="ml-2 h-5 min-w-5 px-1.5 text-xs"
-              >
-                {pendingIncidentsCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger 
-            value="waitlist"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            <ListOrdered className="w-4 h-4 mr-2" />
-            Lista Espera
-          </TabsTrigger>
-          <TabsTrigger 
-            value="checkin-reports"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            <ClipboardCheck className="w-4 h-4 mr-2" />
-            Check-in
-          </TabsTrigger>
-          <TabsTrigger 
-            value="groups"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Configuración
-          </TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto pb-2 -mb-2">
+          <TabsList className="inline-flex w-auto min-w-full bg-card/95 backdrop-blur-sm p-1 rounded-lg shadow-sm">
+            <TabsTrigger 
+              value="plates"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all whitespace-nowrap flex-shrink-0"
+            >
+              <CreditCard className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Matrículas</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="users"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all whitespace-nowrap flex-shrink-0"
+            >
+              <Users className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Usuarios</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="spots"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all whitespace-nowrap flex-shrink-0"
+            >
+              <ParkingSquare className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Plazas</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="incidents" 
+              className="relative data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all whitespace-nowrap flex-shrink-0"
+            >
+              <AlertTriangle className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Incidentes</span>
+              {pendingIncidentsCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="ml-1 sm:ml-2 h-5 min-w-5 px-1.5 text-xs absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0"
+                >
+                  {pendingIncidentsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="waitlist"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all whitespace-nowrap flex-shrink-0"
+            >
+              <ListOrdered className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Lista Espera</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="checkin-reports"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all whitespace-nowrap flex-shrink-0"
+            >
+              <ClipboardCheck className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Check-in</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="groups"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all whitespace-nowrap flex-shrink-0"
+            >
+              <Settings className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Configuración</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="plates" className="space-y-4">
           <LicensePlatesTab />
