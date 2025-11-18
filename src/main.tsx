@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import "./styles/visual-effects.css";
+import "./styles/landing.css";
 import "flyonui/flyonui";
 import { initConnectionMonitor } from "./lib/connectionMonitor";
 

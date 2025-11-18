@@ -13,6 +13,7 @@ interface GroupSelectorModalProps {
   userId: string;
   onGroupSelected: (groupId: string, groupName: string) => void;
   onQuickReserve: (groupId: string, groupName: string, spotId: string, spotNumber: string, type: 'last' | 'random') => void;
+  onJoinWaitlist?: (groupId: string, groupName: string) => void;
   onCancel: () => void;
 }
 
@@ -30,6 +31,7 @@ const GroupSelectorModal = ({
   userId,
   onGroupSelected,
   onQuickReserve,
+  onJoinWaitlist,
   onCancel,
 }: GroupSelectorModalProps) => {
   const { groups, loading, getOccupancyColor, isOnline, lastSyncTime } = useGroupSelection(
@@ -76,6 +78,7 @@ const GroupSelectorModal = ({
                 group={group}
                 onGroupSelected={onGroupSelected}
                 onQuickReserve={onQuickReserve}
+                onJoinWaitlist={onJoinWaitlist}
                 getOccupancyColor={getOccupancyColor}
               />
             ))}

@@ -1,0 +1,56 @@
+/* Landing Page Styles */
+
+/* Scroll suave global */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Offset para compensar header fijo (si lo hubiera) */
+section[id] {
+  scroll-margin-top: 2rem;
+}
+
+/* Animaciones de fade-in para secciones */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+/* Delays para animaciones escalonadas */
+.animate-fade-in[style*="animation-delay"] {
+  opacity: 0;
+}
+
+/* Transiciones suaves para hover */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Respeto a prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  .animate-fade-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -471,13 +471,23 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4 auth-container">
       <div className="w-full max-w-md">
-        {/* Logo animado */}
+        {/* Logo animado - clickeable para volver a home */}
         <div className="flex justify-center mb-8 animate-fade-in">
-          <img 
-            src={logoReserveo} 
-            alt="Logo RESERVEO" 
-            className="h-20 w-20 object-contain auth-logo animate-pulse-glow"
-          />
+          <button
+            onClick={() => navigate("/")}
+            className="group relative transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-lg"
+            aria-label="Volver a la página principal"
+          >
+            <img 
+              src={logoReserveo} 
+              alt="Logo RESERVEO" 
+              className="h-20 w-20 object-contain auth-logo animate-pulse-glow"
+            />
+            {/* Tooltip sutil */}
+            <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              Volver al inicio
+            </span>
+          </button>
         </div>
         
         {/* Card principal con animación */}

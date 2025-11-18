@@ -267,24 +267,40 @@ export const useAdminWaitlist = () => {
         return;
       }
 
-      const { data, error } = await supabase
+      // Get waitlist entries with parking group info
+      const { data: entriesData, error: entriesError } = await supabase
         .from("waitlist_entries")
         .select(`
           *,
-          parking_groups!inner(id, name, location),
-          profiles!inner(id, full_name, email)
+          parking_groups!inner(id, name, description)
         `)
         .eq("group_id", groupId)
         .eq("reservation_date", date)
         .eq("status", "active")
         .order("created_at", { ascending: true });
 
-      if (error) throw error;
+      if (entriesError) throw entriesError;
 
-      const entriesWithDetails: WaitlistEntryWithDetails[] = (data || []).map((entry: any) => ({
+      // Get user profiles for all entries
+      const userIds = (entriesData || []).map((entry: any) => entry.user_id);
+      
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of profiles by id for quick lookup
+      const profilesMap = new Map(
+        (profilesData || []).map((profile: any) => [profile.id, profile])
+      );
+
+      // Combine entries with their user profiles
+      const entriesWithDetails: WaitlistEntryWithDetails[] = (entriesData || []).map((entry: any) => ({
         ...entry,
         parking_group: entry.parking_groups,
-        user: entry.profiles,
+        user: profilesMap.get(entry.user_id) || null,
       }));
 
       setEntries(entriesWithDetails);

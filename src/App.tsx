@@ -13,6 +13,14 @@ import NotFound from "./pages/NotFound";
 import SelectParkingSpot from "./pages/SelectParkingSpot";
 import ViewSpotLocation from "./pages/ViewSpotLocation";
 import WaitlistPage from "./pages/WaitlistPage";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Blog from "./pages/Blog";
+import Careers from "./pages/Careers";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Cookies from "./pages/Cookies";
+import GDPR from "./pages/GDPR";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +43,14 @@ const App = () => {
             <Route path="/select-parking-spot" element={<SelectParkingSpot />} />
             <Route path="/view-spot-location" element={<ViewSpotLocation />} />
             <Route path="/waitlist" element={<WaitlistPage />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/careers" element={<Careers />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/cookies" element={<Cookies />} />
+            <Route path="/gdpr" element={<GDPR />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

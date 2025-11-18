@@ -33,6 +33,7 @@ const ParkingCalendar = ({ userId, onReservationUpdate }: ParkingCalendarProps) 
     handleReserve,
     handleGroupSelected,
     handleQuickReserve,
+    handleJoinWaitlist,
     loadReservationDetails,
     handleEditReservation,
     handleCancel,
@@ -112,6 +113,7 @@ const ParkingCalendar = ({ userId, onReservationUpdate }: ParkingCalendarProps) 
         userId={userId}
         onGroupSelected={handleGroupSelected}
         onQuickReserve={handleQuickReserve}
+        onJoinWaitlist={handleJoinWaitlist}
         onCancel={() => setShowGroupSelector(false)}
       />
 

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { useOfflineMode } from "./useOfflineMode";
 import { useOfflineSync } from "./useOfflineSync";
+import { useWaitlist } from "./useWaitlist";
 import { OfflineStorageService } from "@/lib/offlineStorage";
 
 interface Reservation {
@@ -91,6 +92,7 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
   const navigate = useNavigate();
   const location = useLocation();
   const { isOnline, lastSyncTime } = useOfflineMode();
+  const { registerInWaitlist } = useWaitlist();
   const [storage] = useState(() => new OfflineStorageService());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -752,6 +754,47 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
   }, [location.state]);
 
   /**
+   * Handles joining the waitlist for a specific group
+   * 
+   * Called when user clicks "Unirse a lista de espera" button
+   * on a full parking group.
+   * 
+   * @param {string} groupId - ID of the parking group
+   * @param {string} groupName - Name of the parking group (for display)
+   * @returns {Promise<void>}
+   */
+  const handleJoinWaitlist = async (groupId: string, groupName: string) => {
+    if (!selectedDateForMap) {
+      toast.error('No se ha seleccionado una fecha');
+      return;
+    }
+
+    // Check if offline
+    if (!isOnline) {
+      toast.error('No puedes unirte a la lista de espera sin conexión');
+      return;
+    }
+
+    try {
+      const dateStr = format(selectedDateForMap, 'yyyy-MM-dd');
+      await registerInWaitlist([groupId], dateStr);
+      
+      // Close group selector modal
+      setShowGroupSelector(false);
+      
+      // Refresh data
+      await refreshData();
+      
+      if (onReservationUpdate) {
+        onReservationUpdate();
+      }
+    } catch (error) {
+      console.error('Error joining waitlist:', error);
+      // Error toast is already shown by useWaitlist hook
+    }
+  };
+
+  /**
    * Refreshes reservations and available spots data
    * 
    * Used after operations that modify reservations (e.g., incident reports)
@@ -783,6 +826,7 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
     handleReserve,
     handleGroupSelected,
     handleQuickReserve,
+    handleJoinWaitlist,
     loadReservationDetails,
     handleEditReservation,
     handleCancel,

@@ -1,7 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Users, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, CheckCircle2, Clock } from "lucide-react";
 import { GroupWithAvailability } from "@/hooks/useGroupSelection";
 import QuickReserveButtons from "./QuickReserveButtons";
 
@@ -9,6 +10,7 @@ interface GroupCardProps {
   group: GroupWithAvailability;
   onGroupSelected: (groupId: string, groupName: string) => void;
   onQuickReserve: (groupId: string, groupName: string, spotId: string, spotNumber: string, type: 'last' | 'random') => void;
+  onJoinWaitlist?: (groupId: string, groupName: string) => void;
   getOccupancyColor: (rate: number) => string;
 }
 
@@ -17,8 +19,9 @@ interface GroupCardProps {
  * 
  * Shows group availability, occupancy metrics, and provides quick reservation buttons
  * for last used spot, random spot, or map selection.
+ * When no spots are available, shows a button to join the waitlist.
  */
-const GroupCard = ({ group, onGroupSelected, onQuickReserve, getOccupancyColor }: GroupCardProps) => {
+const GroupCard = ({ group, onGroupSelected, onQuickReserve, onJoinWaitlist, getOccupancyColor }: GroupCardProps) => {
   const isAvailable = group.availableSpots > 0;
   
   return (
@@ -26,7 +29,7 @@ const GroupCard = ({ group, onGroupSelected, onQuickReserve, getOccupancyColor }
       className={`p-4 transition-all duration-200 ${
         isAvailable
           ? "hover:shadow-lg hover:border-primary"
-          : "opacity-60"
+          : "border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 dark:border-orange-800"
       }`}
     >
       <div className="space-y-3">
@@ -76,13 +79,22 @@ const GroupCard = ({ group, onGroupSelected, onQuickReserve, getOccupancyColor }
           </p>
         </div>
 
-        {/* Quick reservation buttons */}
-        {isAvailable && (
+        {/* Quick reservation buttons or waitlist button */}
+        {isAvailable ? (
           <QuickReserveButtons
             group={group}
             onGroupSelected={onGroupSelected}
             onQuickReserve={onQuickReserve}
           />
+        ) : onJoinWaitlist && (
+          <Button
+            onClick={() => onJoinWaitlist(group.id, group.name)}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white border-0 shadow-sm hover:shadow-md transition-all text-xs"
+            size="sm"
+          >
+            <Clock className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+            <span className="truncate">Lista de espera</span>
+          </Button>
         )}
       </div>
     </Card>
