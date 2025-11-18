@@ -374,10 +374,55 @@ mcp_brave_search_brave_local_search({
 - Investigar competencia
 - Encontrar proveedores
 
-## 5. shadcn MCP Server
+## 5. shadcn MCP Server ✅ OFICIAL
 
 **Servidor:** `mcp_shadcn`  
-**Propósito:** Explorar, buscar e instalar componentes de registries de shadcn/ui
+**Tipo:** CLI-based (usa `npx shadcn@latest mcp`)  
+**Propósito:** Explorar, buscar e instalar componentes de registries de shadcn/ui  
+**Documentación oficial:** https://ui.shadcn.com/docs/mcp  
+**Estado:** ✅ Configurado y funcionando
+
+### ¿Qué es el shadcn MCP?
+
+El shadcn MCP Server es el **servidor oficial de shadcn/ui** que permite a los asistentes de IA interactuar con registries de componentes usando lenguaje natural. **NO es un servidor externo**, sino que usa el CLI de shadcn directamente.
+
+**Características principales:**
+- ✅ Explorar componentes de cualquier registry compatible con shadcn
+- ✅ Buscar componentes por nombre o funcionalidad
+- ✅ Instalar componentes con lenguaje natural
+- ✅ Soporte para múltiples registries (públicos y privados)
+- ✅ Acceso a ejemplos y demos de componentes
+
+### Configuración Actual
+
+**Archivo:** `.kiro/settings/mcp.json`
+
+```json
+{
+  "shadcn": {
+    "command": "npx",
+    "args": ["shadcn@latest", "mcp"],
+    "disabled": false,
+    "autoApprove": [
+      "list_registry_items",
+      "search_registry_items",
+      "get_registry_item",
+      "add_registry_item",
+      "get_item_examples_from_registries"
+    ]
+  }
+}
+```
+
+**Registries configurados en `components.json`:**
+
+```json
+{
+  "registries": {
+    "@shadcn": "https://ui.shadcn.com/r/{name}.json"
+  }
+}
+```
 
 ### Herramientas Disponibles
 
@@ -389,8 +434,13 @@ mcp_shadcn_get_project_registries()
 ```
 
 **Retorna:**
-- Lista de registries configurados
-- URLs de cada registry
+```
+The following registries are configured in the current project:
+- @shadcn
+
+You can view the items in a registry by running:
+`bunx shadcn@latest view @shadcn`
+```
 
 **Uso recomendado:**
 - Verificar qué registries están disponibles
@@ -415,7 +465,7 @@ mcp_shadcn_list_items_in_registries({
 **Retorna:**
 - Nombres de componentes
 - Descripciones
-- Tipos (component, hook, lib, etc.)
+- Tipos (component, hook, lib, block, example, etc.)
 
 **Uso recomendado:**
 - Explorar componentes disponibles
@@ -564,10 +614,15 @@ El MCP de shadcn lee la configuración de `components.json`:
 - Usar variables de entorno en `.env.local`
 - Ejemplo: `REGISTRY_TOKEN=your_token_here`
 
+**Nota:** El registry `@shadcn` está configurado por defecto y no necesita configuración adicional.
+
 ### Ejemplos de Uso
 
 **Explorar componentes disponibles:**
 ```typescript
+// Ver registries configurados
+mcp_shadcn_get_project_registries()
+
 // Ver todos los componentes de shadcn
 mcp_shadcn_list_items_in_registries({
   registries: ["@shadcn"],
@@ -602,14 +657,107 @@ mcp_shadcn_get_add_command_for_items({
 // Retorna: npx shadcn@latest add @shadcn/badge @shadcn/avatar
 ```
 
-### Prompts Útiles
+### Prompts con Lenguaje Natural
 
-- "Muéstrame los componentes disponibles en shadcn"
+El MCP de shadcn está diseñado para funcionar con lenguaje natural:
+
+**Explorar:**
+- "Muéstrame todos los componentes disponibles en shadcn"
+- "¿Qué registries tengo configurados?"
+- "Lista los componentes del registry @shadcn"
+
+**Buscar:**
 - "Busca un componente de formulario"
-- "Cómo uso el componente accordion de shadcn"
+- "Encuentra componentes relacionados con tablas"
+- "Busca un componente de diálogo"
+
+**Ver ejemplos:**
+- "Muéstrame ejemplos de uso del componente accordion"
+- "Cómo uso el componente dialog de shadcn"
+- "Enséñame un ejemplo de button"
+
+**Instalar:**
 - "Instala el componente badge de shadcn"
-- "Muéstrame ejemplos de uso del componente dialog"
-- "Busca componentes relacionados con tablas"
+- "Añade los componentes button, dialog y card"
+- "Agrega el componente table a mi proyecto"
+
+### Troubleshooting
+
+#### Error: "No tools or prompts"
+
+**Causa:** Cache de npx corrupto o MCP no inicializado correctamente.
+
+**Solución:**
+1. Limpiar cache de npx:
+   ```bash
+   npx clear-npx-cache
+   ```
+2. Reiniciar Kiro
+3. Verificar que shadcn CLI está instalado:
+   ```bash
+   npx shadcn@latest --version
+   ```
+
+#### Error: "Registry not found"
+
+**Causa:** Registry no configurado en `components.json`.
+
+**Solución:**
+1. Verificar `components.json`:
+   ```json
+   {
+     "registries": {
+       "@shadcn": "https://ui.shadcn.com/r/{name}.json"
+     }
+   }
+   ```
+2. Añadir registry faltante
+3. Reiniciar MCP
+
+#### Error: "Failed to fetch component"
+
+**Causa:** Problemas de red o URL de registry incorrecta.
+
+**Solución:**
+1. Verificar conexión a internet
+2. Verificar URL del registry en `components.json`
+3. Para registries privados, verificar autenticación en `.env.local`
+
+#### MCP no responde
+
+**Causa:** MCP deshabilitado o configuración incorrecta.
+
+**Solución:**
+1. Verificar en `.kiro/settings/mcp.json`:
+   ```json
+   {
+     "shadcn": {
+       "disabled": false  // Debe ser false
+     }
+   }
+   ```
+2. Reiniciar Kiro
+3. Verificar logs en Output panel (View -> Output -> MCP)
+
+### Diferencias con Otros MCPs
+
+**shadcn MCP vs 21st.dev Magic:**
+- shadcn: Instala componentes de registries oficiales
+- 21st.dev: Genera componentes con IA
+
+**shadcn MCP vs FlyonUI:**
+- shadcn: Componentes Radix UI con Tailwind
+- FlyonUI: Componentes con clases semánticas
+
+**Todos pueden coexistir** - usa cada uno según la necesidad.
+
+### Referencias
+
+- **Documentación oficial:** https://ui.shadcn.com/docs/mcp
+- **Registry docs:** https://ui.shadcn.com/docs/registry
+- **Namespaces:** https://ui.shadcn.com/docs/registry/namespace
+- **Authentication:** https://ui.shadcn.com/docs/registry/authentication
+- **MCP Protocol:** https://modelcontextprotocol.io/
 
 ## 6. FlyonUI Community (Instalado)
 
