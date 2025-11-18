@@ -26,6 +26,7 @@ const AdminPanel = () => {
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [pendingIncidentsCount, setPendingIncidentsCount] = useState(0);
   const [checkinReportView, setCheckinReportView] = useState<"infractions" | "history" | "stats">("infractions");
+  const [configurationView, setConfigurationView] = useState<"groups" | "visual-editor" | "settings" | "checkin-config">("groups");
 
   const loadUserGroupAssignments = async () => {
     try {
@@ -95,6 +96,11 @@ const AdminPanel = () => {
     setSelectedIncidentId(null);
   };
 
+  const handleOpenVisualEditor = () => {
+    setActiveTab("groups");
+    setConfigurationView("visual-editor");
+  };
+
   // Load pending incidents count on mount
   useEffect(() => {
     loadPendingIncidentsCount();
@@ -110,20 +116,32 @@ const AdminPanel = () => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="plates" className="w-full" value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="plates">
+        <TabsList className="grid w-full grid-cols-7 bg-card">
+          <TabsTrigger 
+            value="plates"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <CreditCard className="w-4 h-4 mr-2" />
             Matrículas
           </TabsTrigger>
-          <TabsTrigger value="users">
+          <TabsTrigger 
+            value="users"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <Users className="w-4 h-4 mr-2" />
             Usuarios
           </TabsTrigger>
-          <TabsTrigger value="spots">
+          <TabsTrigger 
+            value="spots"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <ParkingSquare className="w-4 h-4 mr-2" />
             Plazas
           </TabsTrigger>
-          <TabsTrigger value="incidents" className="relative">
+          <TabsTrigger 
+            value="incidents" 
+            className="relative data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <AlertTriangle className="w-4 h-4 mr-2" />
             Incidentes
             {pendingIncidentsCount > 0 && (
@@ -135,15 +153,24 @@ const AdminPanel = () => {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="waitlist">
+          <TabsTrigger 
+            value="waitlist"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <ListOrdered className="w-4 h-4 mr-2" />
             Lista Espera
           </TabsTrigger>
-          <TabsTrigger value="checkin-reports">
+          <TabsTrigger 
+            value="checkin-reports"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <ClipboardCheck className="w-4 h-4 mr-2" />
             Check-in
           </TabsTrigger>
-          <TabsTrigger value="groups">
+          <TabsTrigger 
+            value="groups"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <Settings className="w-4 h-4 mr-2" />
             Configuración
           </TabsTrigger>
@@ -162,7 +189,10 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="spots" className="space-y-4">
-          <ParkingSpotsTab parkingGroups={parkingGroupsHook.parkingGroups} />
+          <ParkingSpotsTab 
+            parkingGroups={parkingGroupsHook.parkingGroups}
+            onOpenVisualEditor={handleOpenVisualEditor}
+          />
         </TabsContent>
 
         <TabsContent value="incidents" className="space-y-4">
@@ -176,10 +206,25 @@ const AdminPanel = () => {
         <TabsContent value="checkin-reports" className="space-y-4">
           <div className="space-y-4">
             <Tabs value={checkinReportView} onValueChange={(v) => setCheckinReportView(v as "infractions" | "history" | "stats")}>
-              <TabsList className="grid w-full max-w-2xl grid-cols-3">
-                <TabsTrigger value="infractions">Infracciones del Día</TabsTrigger>
-                <TabsTrigger value="history">Histórico</TabsTrigger>
-                <TabsTrigger value="stats">Estadísticas</TabsTrigger>
+              <TabsList className="grid w-full max-w-2xl grid-cols-3 bg-card">
+                <TabsTrigger 
+                  value="infractions"
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Infracciones del Día
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="history"
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Histórico
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="stats"
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Estadísticas
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="infractions" className="mt-4">
@@ -198,7 +243,11 @@ const AdminPanel = () => {
         </TabsContent>
 
         <TabsContent value="groups" className="space-y-4">
-          <ConfigurationTab parkingGroups={parkingGroupsHook.parkingGroups} />
+          <ConfigurationTab 
+            parkingGroups={parkingGroupsHook.parkingGroups}
+            initialView={configurationView}
+            onViewChange={setConfigurationView}
+          />
         </TabsContent>
       </Tabs>
 

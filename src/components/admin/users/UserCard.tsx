@@ -112,10 +112,25 @@ export const UserCard = ({
               onValueChange={onSetTab}
               className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="permissions">Permisos</TabsTrigger>
-                <TabsTrigger value="groups">Grupos</TabsTrigger>
-                <TabsTrigger value="plates">Matrículas</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 bg-card">
+                <TabsTrigger 
+                  value="permissions"
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Permisos
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="groups"
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Grupos
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="plates"
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Matrículas
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="permissions" className="space-y-3 mt-4">

@@ -19,20 +19,32 @@ export const AdminWaitlistPanel = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="stats">
+        <TabsList className="grid w-full grid-cols-4 bg-card">
+          <TabsTrigger 
+            value="stats"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <BarChart3 className="w-4 h-4 mr-2" />
             Estadísticas
           </TabsTrigger>
-          <TabsTrigger value="lists">
+          <TabsTrigger 
+            value="lists"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <List className="w-4 h-4 mr-2" />
             Listas Activas
           </TabsTrigger>
-          <TabsTrigger value="config">
+          <TabsTrigger 
+            value="config"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <Settings className="w-4 h-4 mr-2" />
             Configuración
           </TabsTrigger>
-          <TabsTrigger value="logs">
+          <TabsTrigger 
+            value="logs"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             <FileText className="w-4 h-4 mr-2" />
             Logs de Auditoría
           </TabsTrigger>

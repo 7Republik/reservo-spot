@@ -106,9 +106,19 @@ export const GroupFormDialog = ({
 
         {editingGroup ? (
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="general">Información General</TabsTrigger>
-              <TabsTrigger value="checkin">Check-in/Check-out</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 bg-card">
+              <TabsTrigger 
+                value="general"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                Información General
+              </TabsTrigger>
+              <TabsTrigger 
+                value="checkin"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                Check-in/Check-out
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="general" className="space-y-4 mt-4">

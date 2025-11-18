@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useAdminWaitlist } from "@/hooks/admin/useAdminWaitlist";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import { Users, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import {
   BarChart,
@@ -20,37 +21,19 @@ import {
 /**
  * AdminWaitlistStats Component
  * 
- * Displays comprehensive statistics and metrics for the waitlist system.
- * 
- * Features:
- * - Total active entries and pending offers
- * - Acceptance, rejection, and expiration rates
- * - Average wait time
- * - Entries by parking group (bar chart)
- * - Offers by status (pie chart)
- * - Auto-refresh every 30 seconds
- * 
- * Requirements: 10.1, 10.2, 10.3, 10.4, 10.7
- * 
- * @example
- * ```tsx
- * <AdminWaitlistStats />
- * ```
+ * Displays comprehensive statistics in a single scrollable view
  */
 export const AdminWaitlistStats = () => {
   const { stats, loading, getWaitlistStats } = useAdminWaitlist();
 
-  // Load stats on mount
   useEffect(() => {
     getWaitlistStats();
   }, []);
 
-  // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       getWaitlistStats(true);
-    }, 30000); // 30 seconds
-
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -70,28 +53,26 @@ export const AdminWaitlistStats = () => {
     );
   }
 
-  // Prepare data for charts
-  const entriesByGroupData = stats.entriesByGroup.map((group) => ({
+  const entriesByGroupData = stats.entriesByGroup.map((group: any) => ({
     name: group.groupName,
     usuarios: group.count,
   }));
 
-  const offersByStatusData = stats.offersByStatus.map((offer) => ({
+  const offersByStatusData = stats.offersByStatus.map((offer: any) => ({
     name: getStatusLabel(offer.status),
     value: offer.count,
   }));
 
-  // Colors for pie chart
   const COLORS = {
-    pending: "#f59e0b", // amber
-    accepted: "#10b981", // green
-    rejected: "#ef4444", // red
-    expired: "#6b7280", // gray
+    pending: "#f59e0b",
+    accepted: "#10b981",
+    rejected: "#ef4444",
+    expired: "#6b7280",
   };
 
   return (
-    <div className="space-y-6">
-      {/* Key Metrics Cards */}
+    <div className="space-y-8">
+      {/* KPIs principales */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Usuarios en Espera"
@@ -126,36 +107,43 @@ export const AdminWaitlistStats = () => {
         />
       </div>
 
-      {/* Rates Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <RateCard
-          title="Tasa de Aceptación"
-          rate={stats.acceptanceRate}
-          icon={CheckCircle}
-          iconColor="text-green-500"
-          description="Ofertas aceptadas"
-        />
-        
-        <RateCard
-          title="Tasa de Rechazo"
-          rate={stats.rejectionRate}
-          icon={XCircle}
-          iconColor="text-red-500"
-          description="Ofertas rechazadas"
-        />
-        
-        <RateCard
-          title="Tasa de Expiración"
-          rate={stats.expirationRate}
-          icon={AlertCircle}
-          iconColor="text-gray-500"
-          description="Ofertas sin respuesta"
-        />
+      <Separator />
+
+      {/* Tasas de Respuesta */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Tasas de Respuesta</h3>
+        <div className="grid gap-4 md:grid-cols-3">
+          <RateCard
+            title="Tasa de Aceptación"
+            rate={stats.acceptanceRate}
+            icon={CheckCircle}
+            iconColor="text-green-500"
+            description="Ofertas aceptadas"
+          />
+          
+          <RateCard
+            title="Tasa de Rechazo"
+            rate={stats.rejectionRate}
+            icon={XCircle}
+            iconColor="text-red-500"
+            description="Ofertas rechazadas"
+          />
+          
+          <RateCard
+            title="Tasa de Expiración"
+            rate={stats.expirationRate}
+            icon={AlertCircle}
+            iconColor="text-gray-500"
+            description="Ofertas sin respuesta"
+          />
+        </div>
       </div>
 
-      {/* Charts */}
+      <Separator />
+
+      {/* Gráficos */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Entries by Group Bar Chart */}
+        {/* Entradas por Grupo */}
         <Card>
           <CardHeader>
             <CardTitle>Entradas por Grupo</CardTitle>
@@ -201,7 +189,7 @@ export const AdminWaitlistStats = () => {
           </CardContent>
         </Card>
 
-        {/* Offers by Status Pie Chart */}
+        {/* Ofertas por Estado */}
         <Card>
           <CardHeader>
             <CardTitle>Ofertas por Estado</CardTitle>
@@ -210,7 +198,7 @@ export const AdminWaitlistStats = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {offersByStatusData.some(d => d.value > 0) ? (
+            {offersByStatusData.some((d: any) => d.value > 0) ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -223,12 +211,12 @@ export const AdminWaitlistStats = () => {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {offersByStatusData.map((entry, index) => {
+                    {offersByStatusData.map((entry: any, index: number) => {
                       const status = stats.offersByStatus[index].status;
                       return (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={COLORS[status]} 
+                          fill={COLORS[status as keyof typeof COLORS]} 
                         />
                       );
                     })}
@@ -257,7 +245,6 @@ export const AdminWaitlistStats = () => {
 
 /**
  * Metric Card Component
- * Displays a single metric with icon
  */
 interface MetricCardProps {
   title: string;
@@ -282,7 +269,6 @@ const MetricCard = ({ title, value, description, icon: Icon, iconColor }: Metric
 
 /**
  * Rate Card Component
- * Displays a percentage rate with icon
  */
 interface RateCardProps {
   title: string;
@@ -309,7 +295,7 @@ const RateCard = ({ title, rate, icon: Icon, iconColor, description }: RateCardP
  * Loading Skeleton
  */
 const StatsLoadingSkeleton = () => (
-  <div className="space-y-6">
+  <div className="space-y-8">
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {[...Array(4)].map((_, i) => (
         <Card key={i}>

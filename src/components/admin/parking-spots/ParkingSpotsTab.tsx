@@ -1,144 +1,56 @@
-import { useState, useEffect } from "react";
-import { ParkingSquare, Plus } from "lucide-react";
+import { useEffect } from "react";
+import { ParkingSquare, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useParkingSpots } from "@/hooks/admin/useParkingSpots";
 import { ParkingSpotsSkeleton } from "../skeletons/AdminSkeletons";
 import type { ParkingGroup } from "@/types/admin";
 
 interface ParkingSpotsTabProps {
   parkingGroups: ParkingGroup[];
+  onOpenVisualEditor?: () => void;
 }
 
-export const ParkingSpotsTab = ({ parkingGroups }: ParkingSpotsTabProps) => {
-  const { spots, loading, loadSpots, addSpot, toggleSpot } = useParkingSpots();
+export const ParkingSpotsTab = ({ parkingGroups, onOpenVisualEditor }: ParkingSpotsTabProps) => {
+  const { spots, loading, loadSpots, toggleSpot } = useParkingSpots();
   
   useEffect(() => {
     // Forzar recarga cada vez que se monta el componente
     loadSpots(true);
   }, []);
-  
-  const [newSpotNumber, setNewSpotNumber] = useState("");
-  const [newSpotGroupId, setNewSpotGroupId] = useState<string>("");
-  const [newSpotIsAccessible, setNewSpotIsAccessible] = useState(false);
-  const [newSpotHasCharger, setNewSpotHasCharger] = useState(false);
-  const [newSpotIsCompact, setNewSpotIsCompact] = useState(false);
-
-  const handleAddSpot = async () => {
-    const success = await addSpot({
-      spotNumber: newSpotNumber,
-      groupId: newSpotGroupId,
-      isAccessible: newSpotIsAccessible,
-      hasCharger: newSpotHasCharger,
-      isCompact: newSpotIsCompact,
-    });
-
-    if (success) {
-      setNewSpotNumber("");
-      setNewSpotGroupId("");
-      setNewSpotIsAccessible(false);
-      setNewSpotHasCharger(false);
-      setNewSpotIsCompact(false);
-    }
-  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ParkingSquare className="h-5 w-5" />
-          Gestión de Plazas de Aparcamiento
-        </CardTitle>
-        <CardDescription>
-          Añade, activa o desactiva plazas de aparcamiento
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <ParkingSquare className="h-5 w-5" />
+              Gestión de Plazas de Aparcamiento
+            </CardTitle>
+            <CardDescription>
+              Visualiza y gestiona las plazas de aparcamiento
+            </CardDescription>
+          </div>
+          {onOpenVisualEditor && (
+            <Button onClick={onOpenVisualEditor} size="lg" className="gap-2">
+              <Edit className="h-5 w-5" />
+              Abrir Editor Visual
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Add New Spot */}
-        <Card className="p-4 bg-secondary/20">
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold">Añadir Nueva Plaza</Label>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="spot-number">Número de Plaza *</Label>
-                <Input
-                  id="spot-number"
-                  placeholder="Ej: A-01, P1-15, etc."
-                  value={newSpotNumber}
-                  onChange={(e) => setNewSpotNumber(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="spot-group">Grupo de Parking *</Label>
-                <Select value={newSpotGroupId} onValueChange={setNewSpotGroupId}>
-                  <SelectTrigger id="spot-group">
-                    <SelectValue placeholder="Selecciona un grupo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {parkingGroups
-                      .filter(g => g.is_active)
-                      .map(group => (
-                        <SelectItem key={group.id} value={group.id}>
-                          {group.name}
-                        </SelectItem>
-                      ))
-                    }
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Atributos Especiales</Label>
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="spot-accessible"
-                    checked={newSpotIsAccessible}
-                    onCheckedChange={(checked) => setNewSpotIsAccessible(checked as boolean)}
-                  />
-                  <Label htmlFor="spot-accessible" className="cursor-pointer flex items-center gap-1">
-                    ♿ Plaza PMR (Movilidad Reducida)
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="spot-charger"
-                    checked={newSpotHasCharger}
-                    onCheckedChange={(checked) => setNewSpotHasCharger(checked as boolean)}
-                  />
-                  <Label htmlFor="spot-charger" className="cursor-pointer flex items-center gap-1">
-                    ⚡ Con Cargador Eléctrico
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="spot-compact"
-                    checked={newSpotIsCompact}
-                    onCheckedChange={(checked) => setNewSpotIsCompact(checked as boolean)}
-                  />
-                  <Label htmlFor="spot-compact" className="cursor-pointer flex items-center gap-1">
-                    🚗 Plaza Reducida (Aviso)
-                  </Label>
-                </div>
-              </div>
-            </div>
-
-            <Button onClick={handleAddSpot} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Añadir Plaza
-            </Button>
-          </div>
-        </Card>
+        {/* Info Alert */}
+        <Alert>
+          <Edit className="h-4 w-4" />
+          <AlertDescription>
+            Para añadir nuevas plazas, usa el <strong>Editor Visual</strong> donde podrás posicionarlas en el plano del parking.
+            Las plazas se crean arrastrando botones al mapa y configurando sus atributos.
+          </AlertDescription>
+        </Alert>
 
         {/* Spots List */}
         {loading ? (

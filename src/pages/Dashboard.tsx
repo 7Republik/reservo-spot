@@ -53,17 +53,26 @@ const Dashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue={isAdmin ? "admin" : "calendar"} className="space-y-3 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="calendar" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+          <TabsList className="inline-flex w-auto bg-card/95 backdrop-blur-sm border-b border-border h-auto px-1 pb-0 pt-1 rounded-t-lg shadow-sm">
+            <TabsTrigger 
+              value="calendar" 
+              className="gap-1 sm:gap-2 text-xs sm:text-sm rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold pb-2 pt-2 px-4 sm:px-6 text-muted-foreground mb-[-2px]"
+            >
               <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden xs:inline">Calendario</span>
             </TabsTrigger>
-            <TabsTrigger value="licenses" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <TabsTrigger 
+              value="licenses" 
+              className="gap-1 sm:gap-2 text-xs sm:text-sm rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold pb-2 pt-2 px-4 sm:px-6 text-muted-foreground mb-[-2px]"
+            >
               <ParkingSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden xs:inline">Matrículas</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="admin" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <TabsTrigger 
+                value="admin" 
+                className="gap-1 sm:gap-2 text-xs sm:text-sm rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold pb-2 pt-2 px-4 sm:px-6 text-muted-foreground mb-[-2px]"
+              >
                 <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden xs:inline">Admin</span>
               </TabsTrigger>
