@@ -14,7 +14,6 @@
       "autoApprove": []
     },
     "supabase": {
-      "type": "http",
       "url": "https://mcp.supabase.com/mcp",
       "disabled": false,
       "autoApprove": [
@@ -93,7 +92,8 @@
         "search_registry_items",
         "get_registry_item",
         "add_registry_item",
-        "get_item_examples_from_registries"
+        "get_item_examples_from_registries",
+        "search_items_in_registries"
       ]
     },
     "flyonui": {
