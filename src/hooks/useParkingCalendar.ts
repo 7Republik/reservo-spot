@@ -170,7 +170,8 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
     setUserGroups(allGroupIds);
     setUserGroupNames(allGroupNames);
 
-    if (allGroupIds.length === 0) {
+    // Solo mostrar error si estamos online y no hay grupos
+    if (allGroupIds.length === 0 && isOnline) {
       toast.error("No tienes acceso a ningún grupo de parking", {
         description: "Contacta con el administrador para obtener acceso",
       });
@@ -415,10 +416,13 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
 
     const dateStr = format(date, "yyyy-MM-dd");
 
+    // Solo mostrar error si estamos online y no hay grupos
     if (userGroups.length === 0) {
-      toast.error("No tienes acceso a ningún grupo de parking", {
-        description: "Contacta con el administrador",
-      });
+      if (isOnline) {
+        toast.error("No tienes acceso a ningún grupo de parking", {
+          description: "Contacta con el administrador",
+        });
+      }
       return;
     }
 

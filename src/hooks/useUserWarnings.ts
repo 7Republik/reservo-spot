@@ -50,6 +50,7 @@ export const useUserWarnings = (
 
   /**
    * Loads warnings from Supabase with optional filtering
+   * Offline-aware: Returns empty array without error when offline
    */
   const loadWarnings = async () => {
     try {
@@ -59,9 +60,19 @@ export const useUserWarnings = (
       // Get current user
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (authError) throw authError;
+      if (authError) {
+        // Si es error de red/offline, retornar vacío sin error
+        setWarnings([]);
+        setUnviewedCount(0);
+        setIsLoading(false);
+        return;
+      }
+      
       if (!user) {
-        throw new Error("No hay usuario autenticado");
+        setWarnings([]);
+        setUnviewedCount(0);
+        setIsLoading(false);
+        return;
       }
 
       setUserId(user.id);
@@ -156,11 +167,10 @@ export const useUserWarnings = (
         await markAllAsViewed();
       }
     } catch (err) {
-      const errorObj = err instanceof Error ? err : new Error("Error desconocido");
-      setError(errorObj);
+      // No mostrar error si es problema de red/offline
       console.error("Error loading warnings:", err);
-      toast.error("Error al cargar amonestaciones");
-    } finally {
+      setWarnings([]);
+      setUnviewedCount(0);
       setIsLoading(false);
     }
   };

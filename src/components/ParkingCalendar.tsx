@@ -86,8 +86,8 @@ const ParkingCalendar = ({ userId, onReservationUpdate }: ParkingCalendarProps) 
         isOnline={isOnline}
       />
 
-      {/* Advertencia de sin acceso a grupos */}
-      {userGroups.length === 0 && !loading && (
+      {/* Advertencia de sin acceso a grupos - Solo mostrar si estamos online */}
+      {userGroups.length === 0 && !loading && isOnline && (
         <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">

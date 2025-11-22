@@ -42,7 +42,38 @@ const ViewSpotLocation = () => {
       }
 
       try {
-        // Cargar datos de la plaza con su grupo
+        // Intentar cargar desde caché primero
+        const { offlineCache } = await import('@/lib/offlineCache');
+        const { useOfflineMode } = await import('@/hooks/useOfflineMode');
+        
+        // Verificar si estamos offline
+        const isOffline = !navigator.onLine;
+        
+        if (isOffline) {
+          // Buscar en caché de grupos
+          const groups = await offlineCache.get<any[]>('groups');
+          if (groups) {
+            // Buscar el grupo que contiene esta plaza
+            for (const group of groups) {
+              const spots = await offlineCache.get<any[]>(`spots_${group.id}`);
+              if (spots) {
+                const spot = spots.find(s => s.id === state.spotId);
+                if (spot) {
+                  setSpotData(spot);
+                  setGroupData(group);
+                  setLoading(false);
+                  return;
+                }
+              }
+            }
+          }
+          
+          // Si no hay datos en caché, mostrar error
+          setLoading(false);
+          return;
+        }
+
+        // Online: Cargar desde servidor
         const { data: spot, error: spotError } = await supabase
           .from("parking_spots")
           .select(`
@@ -61,6 +92,12 @@ const ViewSpotLocation = () => {
 
         setSpotData(spot);
         setGroupData((spot as any).parking_groups);
+        
+        // Cachear para uso offline
+        const groupData = (spot as any).parking_groups;
+        if (groupData) {
+          await offlineCache.set(`spots_${groupData.id}`, [spot]);
+        }
       } catch (error) {
         console.error("Error loading spot location:", error);
       } finally {
