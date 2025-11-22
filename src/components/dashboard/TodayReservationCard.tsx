@@ -4,6 +4,7 @@ import { GradientText } from "@/components/ui/gradient-text";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { MapPin, AlertCircle, Calendar } from "lucide-react";
 import { getIconProps } from "@/lib/iconConfig";
+import { getSpotAttributes, SpotIcon } from "@/lib/spotIcons";
 
 interface Reservation {
   id: string;
@@ -62,10 +63,11 @@ export const TodayReservationCard = ({
       {/* Reservas */}
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap">
         {reservations.map((reservation, index) => {
-          const attributes = [];
-          if (reservation.isAccessible) attributes.push("♿");
-          if (reservation.hasCharger) attributes.push("⚡");
-          if (reservation.isCompact) attributes.push("🚗");
+          const attributes = getSpotAttributes({
+            is_accessible: reservation.isAccessible,
+            has_charger: reservation.hasCharger,
+            is_compact: reservation.isCompact
+          });
 
           return (
             <div
@@ -87,9 +89,11 @@ export const TodayReservationCard = ({
                     {reservation.spotNumber}
                   </span>
                   {attributes.length > 0 && (
-                    <span className="text-xl md:text-2xl">
-                      {attributes.join(" ")}
-                    </span>
+                    <div className="flex gap-1">
+                      {attributes.map(attr => (
+                        <SpotIcon key={attr} type={attr} size={20} />
+                      ))}
+                    </div>
                   )}
                 </div>
 

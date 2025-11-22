@@ -7,6 +7,8 @@ import { CalendarTabContent } from "@/components/dashboard/CalendarTabContent";
 import { useDashboardAuth } from "@/hooks/useDashboardAuth";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import UserStatusGuard from "@/components/dashboard/UserStatusGuard";
+import { AdminBlockScreen } from "@/components/AdminBlockScreen";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
 
 /**
  * Main dashboard page
@@ -26,6 +28,7 @@ const Dashboard = () => {
     userStatus,
     handleLogout,
   } = useDashboardAuth();
+  const { isOnline } = useOfflineMode();
 
   if (loading) {
     return (
@@ -102,7 +105,11 @@ const Dashboard = () => {
 
           {isAdmin && (
             <TabsContent value="admin" className="space-y-3 sm:space-y-6 mt-3 sm:mt-6">
-              <AdminPanel />
+              {!isOnline ? (
+                <AdminBlockScreen />
+              ) : (
+                <AdminPanel />
+              )}
             </TabsContent>
           )}
         </Tabs>

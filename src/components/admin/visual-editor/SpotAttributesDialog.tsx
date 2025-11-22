@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2 } from "lucide-react";
+import { Trash2, Accessibility, Zap, Minimize2 } from "lucide-react";
 import type { ParkingSpot } from "@/types/admin";
 
 interface SpotAttributesDialogProps {
@@ -87,8 +87,9 @@ export const SpotAttributesDialog = ({
                 checked={isAccessible}
                 onCheckedChange={(checked) => setIsAccessible(checked as boolean)}
               />
-              <Label htmlFor="accessible" className="font-normal">
-                ♿ Plaza Accesible (PMR)
+              <Label htmlFor="accessible" className="font-normal flex items-center gap-2">
+                <Accessibility className="w-4 h-4 text-blue-600" />
+                Plaza Accesible (PMR)
               </Label>
             </div>
 
@@ -98,8 +99,9 @@ export const SpotAttributesDialog = ({
                 checked={hasCharger}
                 onCheckedChange={(checked) => setHasCharger(checked as boolean)}
               />
-              <Label htmlFor="charger" className="font-normal">
-                🔌 Con Cargador Eléctrico
+              <Label htmlFor="charger" className="font-normal flex items-center gap-2">
+                <Zap className="w-4 h-4 text-yellow-600" />
+                Con Cargador Eléctrico
               </Label>
             </div>
 
@@ -109,8 +111,9 @@ export const SpotAttributesDialog = ({
                 checked={isCompact}
                 onCheckedChange={(checked) => setIsCompact(checked as boolean)}
               />
-              <Label htmlFor="compact" className="font-normal">
-                📏 Plaza Reducida
+              <Label htmlFor="compact" className="font-normal flex items-center gap-2">
+                <Minimize2 className="w-4 h-4 text-gray-600" />
+                Plaza Reducida
               </Label>
             </div>
           </div>

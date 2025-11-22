@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserProfile, ProfileUpdateData } from "@/types/profile";
+import { DisabledControlTooltip } from "@/components/DisabledControlTooltip";
 
 /**
  * Validation schema for profile form
@@ -34,6 +35,7 @@ interface ProfileEditorProps {
   profile: UserProfile;
   onUpdate: (data: ProfileUpdateData) => Promise<void>;
   isLoading: boolean;
+  isOffline?: boolean;
 }
 
 /**
@@ -48,12 +50,14 @@ interface ProfileEditorProps {
  * - Dirty state detection for unsaved changes
  * - Email displayed as readonly
  * - Accessible form with proper ARIA labels
+ * - Offline mode support with disabled form and tooltips
  * 
  * @param profile - Current user profile data
  * @param onUpdate - Function to update profile
  * @param isLoading - Loading state from parent
+ * @param isOffline - Whether the app is offline (disables editing)
  */
-export const ProfileEditor = ({ profile, onUpdate, isLoading }: ProfileEditorProps) => {
+export const ProfileEditor = ({ profile, onUpdate, isLoading, isOffline = false }: ProfileEditorProps) => {
   const {
     register,
     handleSubmit,
@@ -141,17 +145,19 @@ export const ProfileEditor = ({ profile, onUpdate, isLoading }: ProfileEditorPro
             <Label htmlFor="full_name" className="text-sm sm:text-base">
               Nombre completo <span className="text-destructive" aria-label="requerido">*</span>
             </Label>
-            <Input
-              id="full_name"
-              type="text"
-              {...register("full_name")}
-              aria-required="true"
-              aria-invalid={!!errors.full_name}
-              aria-describedby={errors.full_name ? "full_name_error" : undefined}
-              disabled={isSubmitting}
-              className="text-sm sm:text-base min-h-[44px]"
-              placeholder="Ej: Juan Pérez"
-            />
+            <DisabledControlTooltip isDisabled={isOffline}>
+              <Input
+                id="full_name"
+                type="text"
+                {...register("full_name")}
+                aria-required="true"
+                aria-invalid={!!errors.full_name}
+                aria-describedby={errors.full_name ? "full_name_error" : undefined}
+                disabled={isSubmitting || isOffline}
+                className="text-sm sm:text-base min-h-[44px]"
+                placeholder="Ej: Juan Pérez"
+              />
+            </DisabledControlTooltip>
             {errors.full_name && (
               <p
                 id="full_name_error"
@@ -169,16 +175,18 @@ export const ProfileEditor = ({ profile, onUpdate, isLoading }: ProfileEditorPro
             <Label htmlFor="phone" className="text-sm sm:text-base">
               Teléfono
             </Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="+34 600 123 456"
-              {...register("phone")}
-              aria-invalid={!!errors.phone}
-              aria-describedby={errors.phone ? "phone_error phone_help" : "phone_help"}
-              disabled={isSubmitting}
-              className="text-sm sm:text-base min-h-[44px]"
-            />
+            <DisabledControlTooltip isDisabled={isOffline}>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+34 600 123 456"
+                {...register("phone")}
+                aria-invalid={!!errors.phone}
+                aria-describedby={errors.phone ? "phone_error phone_help" : "phone_help"}
+                disabled={isSubmitting || isOffline}
+                className="text-sm sm:text-base min-h-[44px]"
+              />
+            </DisabledControlTooltip>
             {errors.phone && (
               <p
                 id="phone_error"
@@ -196,25 +204,33 @@ export const ProfileEditor = ({ profile, onUpdate, isLoading }: ProfileEditorPro
 
           {/* Submit Button */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 pt-2">
-            <Button
-              type="submit"
-              disabled={!isDirty || isSubmitting || isLoading}
-              className="min-h-[44px] w-full sm:w-auto text-sm sm:text-base"
-              aria-label={isSubmitting || isLoading ? "Guardando cambios" : "Guardar cambios"}
-            >
-              {isSubmitting || isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                  Guardando...
-                </>
-              ) : (
-                "Guardar cambios"
-              )}
-            </Button>
+            <DisabledControlTooltip isDisabled={isOffline}>
+              <Button
+                type="submit"
+                disabled={!isDirty || isSubmitting || isLoading || isOffline}
+                className="min-h-[44px] w-full sm:w-auto text-sm sm:text-base"
+                aria-label={isSubmitting || isLoading ? "Guardando cambios" : "Guardar cambios"}
+              >
+                {isSubmitting || isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar cambios"
+                )}
+              </Button>
+            </DisabledControlTooltip>
             
-            {isDirty && !isSubmitting && (
+            {isDirty && !isSubmitting && !isOffline && (
               <p className="text-xs sm:text-sm text-muted-foreground" role="status" aria-live="polite">
                 Tienes cambios sin guardar
+              </p>
+            )}
+            
+            {isOffline && (
+              <p className="text-xs sm:text-sm text-muted-foreground" role="status" aria-live="polite">
+                Edición deshabilitada sin conexión
               </p>
             )}
           </div>

@@ -3,8 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { UserWithRole } from "@/types/admin";
 import { useOfflineMode } from "@/hooks/useOfflineMode";
-import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
 
 /**
  * Custom hook for comprehensive user management in the admin panel
@@ -71,7 +70,6 @@ export const useUserManagement = () => {
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const isCached = useRef(false);
   const { isOnline } = useOfflineMode();
-  const storage = new OfflineStorageService();
 
   const loadUsers = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
@@ -86,7 +84,7 @@ export const useUserManagement = () => {
 
       // Si estamos offline, cargar desde cache
       if (!isOnline) {
-        const cached = await storage.get<UserWithRole[]>(cacheKey);
+        const cached = await offlineCache.get<UserWithRole[]>(cacheKey);
         if (cached) {
           setUsers(cached);
           toast.warning("Funcionalidad limitada sin conexión", {
@@ -132,18 +130,17 @@ export const useUserManagement = () => {
       setUsers(usersWithData as any);
       
       // Cachear datos
-      await storage.set(cacheKey, usersWithData, {
+      await offlineCache.set(cacheKey, usersWithData, {
         dataType: 'admin_users',
         userId: 'admin'
       });
-      await storage.recordSync(cacheKey);
       
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading users:", error);
       
       // Si falla online, intentar cache
-      const cached = await storage.get<UserWithRole[]>(cacheKey);
+      const cached = await offlineCache.get<UserWithRole[]>(cacheKey);
       if (cached) {
         setUsers(cached);
         toast.warning("Mostrando datos en caché", {
@@ -460,17 +457,12 @@ export const useUserManagement = () => {
   };
 
   // Sincronizar datos cuando se recupera la conexión
-  useOfflineSync(
-    () => {
-      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
-      console.log('[useUserManagement] Controles re-habilitados');
-    },
-    () => {
-      // Sincronizar datos después de 3s (Requisito 3.3)
+  useEffect(() => {
+    if (isOnline) {
       console.log('[useUserManagement] Sincronizando usuarios...');
       loadUsers(true); // forceReload = true
     }
-  );
+  }, [isOnline]);
 
   return {
     users,

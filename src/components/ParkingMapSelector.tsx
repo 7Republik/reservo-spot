@@ -9,7 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { MapIcon, List, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { MapIcon, List, ZoomIn, ZoomOut, Maximize2, Accessibility, Zap, Car } from "lucide-react";
+import { getSpotAttributesText } from "@/lib/spotIcons";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 interface ParkingMapSelectorProps {
@@ -202,12 +203,8 @@ const ParkingMapSelector = ({
       return;
     }
 
-    const attributes = [];
-    if (spot.is_accessible) attributes.push('♿ PMR');
-    if (spot.has_charger) attributes.push('⚡ Cargador');
-    if (spot.is_compact) attributes.push('🚗 Reducida');
-    
-    const attributesText = attributes.length > 0 ? ` (${attributes.join(', ')})` : '';
+    const attributesText = getSpotAttributesText(spot);
+    const formattedAttributes = attributesText ? ` (${attributesText})` : '';
     
     toast.success(`Plaza ${spot.spot_number}${attributesText} seleccionada`);
     onSpotSelected(spot.id, spot.spot_number);
@@ -291,16 +288,18 @@ const ParkingMapSelector = ({
               {/* PMR */}
               <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white border border-gray-200 shadow-sm">
                 <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded bg-blue-500" />
+                <Accessibility className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
                 <span className="text-[0.65rem] sm:text-xs font-medium text-gray-700 whitespace-nowrap">
-                  ♿ PMR
+                  PMR
                 </span>
               </div>
               
               {/* Cargador */}
               <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white border border-gray-200 shadow-sm">
                 <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded bg-yellow-500" />
+                <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
                 <span className="text-[0.65rem] sm:text-xs font-medium text-gray-700 whitespace-nowrap">
-                  ⚡ Cargador
+                  Cargador
                 </span>
               </div>
               
@@ -438,9 +437,9 @@ const ParkingMapSelector = ({
                                       {spot.spot_number.split('-')[1] || spot.spot_number}
                                     </span>
                                     <div className="flex gap-0.5 mt-0.5">
-                                      {spot.is_accessible && <span style={{ fontSize: `${buttonSize * 0.25}px` }}>♿</span>}
-                                      {spot.has_charger && <span style={{ fontSize: `${buttonSize * 0.25}px` }}>⚡</span>}
-                                      {spot.is_compact && <span style={{ fontSize: `${buttonSize * 0.25}px` }}>🚗</span>}
+                                      {spot.is_accessible && <Accessibility size={buttonSize * 0.25} className="text-blue-600" />}
+                                      {spot.has_charger && <Zap size={buttonSize * 0.25} className="text-yellow-600" />}
+                                      {spot.is_compact && <Car size={buttonSize * 0.25} className="text-gray-600" />}
                                     </div>
                                   </div>
                                 ))}
@@ -486,13 +485,19 @@ const ParkingMapSelector = ({
                               <p className="font-semibold">{spot.spot_number}</p>
                               <div className="flex gap-2 mt-1">
                                 {spot.is_accessible && (
-                                  <Badge variant="outline" className="text-xs">♿ PMR</Badge>
+                                  <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                    <Accessibility className="w-3 h-3" /> PMR
+                                  </Badge>
                                 )}
                                 {spot.has_charger && (
-                                  <Badge variant="outline" className="text-xs">⚡ Cargador</Badge>
+                                  <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                    <Zap className="w-3 h-3" /> Cargador
+                                  </Badge>
                                 )}
                                 {spot.is_compact && (
-                                  <Badge variant="outline" className="text-xs">🚗 Reducida</Badge>
+                                  <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                    <Car className="w-3 h-3" /> Reducida
+                                  </Badge>
                                 )}
                               </div>
                             </div>

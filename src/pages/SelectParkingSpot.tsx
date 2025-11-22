@@ -42,7 +42,7 @@ const SelectParkingSpot = () => {
     getSpotColor,
     handleSpotClick,
     isOnline,
-    lastSyncTime,
+    lastSync,
   } = useSpotSelection(state);
 
   const { settings, loading: settingsLoading } = useWaitlistSettings();
@@ -99,7 +99,7 @@ const SelectParkingSpot = () => {
       <main className="container mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6 space-y-3 sm:space-y-4">
         {/* Indicador de datos cacheados */}
         <CachedDataIndicator 
-          lastSyncTime={lastSyncTime} 
+          lastSyncTime={lastSync} 
           isOnline={isOnline}
         />
 
@@ -165,6 +165,7 @@ const SelectParkingSpot = () => {
                 onSpotClick={handleSpotClick}
                 getSpotColor={getSpotColor}
                 isOnline={isOnline}
+                lastSync={lastSync}
               />
             ) : (
               <SpotsList

@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useOfflineMode } from "./useOfflineMode";
-import { useOfflineSync } from "./useOfflineSync";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
  * Group with calculated availability metrics
@@ -49,33 +49,11 @@ export const useGroupSelection = (
   const [groups, setGroups] = useState<GroupWithAvailability[]>([]);
   const [loading, setLoading] = useState(true);
   const { isOnline, lastSyncTime } = useOfflineMode();
-  const storage = new OfflineStorageService();
-
-  useEffect(() => {
-    if (isOpen && selectedDate && userGroups.length > 0) {
-      loadGroupsWithAvailability();
-    }
-  }, [isOpen, selectedDate, userGroups]);
-
-  // Sincronizar datos cuando se recupera la conexión
-  useOfflineSync(
-    () => {
-      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
-      console.log('[useGroupSelection] Controles re-habilitados');
-    },
-    () => {
-      // Sincronizar datos después de 3s (Requisito 3.3)
-      if (isOpen && selectedDate && userGroups.length > 0) {
-        console.log('[useGroupSelection] Sincronizando grupos...');
-        loadGroupsWithAvailability();
-      }
-    }
-  );
 
   /**
    * Loads all groups with availability metrics for the selected date
    */
-  const loadGroupsWithAvailability = async () => {
+  const loadGroupsWithAvailability = useCallback(async () => {
     try {
       setLoading(true);
       const dateStr = format(selectedDate!, "yyyy-MM-dd");
@@ -83,7 +61,7 @@ export const useGroupSelection = (
 
       // Modo offline: cargar desde cache
       if (!isOnline) {
-        const cached = await storage.get<GroupWithAvailability[]>(cacheKey);
+        const cached = await offlineCache.get<GroupWithAvailability[]>(cacheKey);
         if (cached) {
           setGroups(cached);
           setLoading(false);
@@ -104,7 +82,7 @@ export const useGroupSelection = (
           .select("id, name, description")
           .eq("id", groupId)
           .eq("is_active", true)
-          .single();
+          .maybeSingle();
 
         if (groupError || !group) continue;
 
@@ -129,9 +107,43 @@ export const useGroupSelection = (
 
         if (reservationsError) continue;
 
-        const occupiedSpots = reservations?.length || 0;
+        // Get spots with pending waitlist offers
+        const { data: pendingOffers, error: offersError } = await supabase
+          .from("waitlist_offers")
+          .select(`
+            spot_id,
+            waitlist_entries!inner (
+              reservation_date,
+              group_id
+            )
+          `)
+          .eq("status", "pending")
+          .gt("expires_at", new Date().toISOString())
+          .eq("waitlist_entries.reservation_date", dateStr)
+          .eq("waitlist_entries.group_id", groupId)
+          .in("spot_id", spots?.map(s => s.id) || []);
+
+        if (offersError) {
+          console.error(`[useGroupSelection] Error loading pending offers:`, offersError);
+        }
+
+        const occupiedByReservations = reservations?.length || 0;
+        const occupiedByOffers = pendingOffers?.length || 0;
+        const occupiedSpots = occupiedByReservations + occupiedByOffers;
         const availableSpots = totalSpots - occupiedSpots;
         const occupancyRate = totalSpots > 0 ? (occupiedSpots / totalSpots) * 100 : 0;
+
+        // Debug log
+        console.log(`[useGroupSelection] Group ${group.name}:`, {
+          totalSpots,
+          occupiedByReservations,
+          occupiedByOffers,
+          occupiedSpots,
+          availableSpots,
+          date: dateStr,
+          reservations: reservations?.map(r => r.spot_id),
+          pendingOffers: pendingOffers?.map(o => o.spot_id)
+        });
 
         // Find last used spot by user in this group
         const { data: lastReservation } = await supabase
@@ -207,18 +219,17 @@ export const useGroupSelection = (
       setGroups(groupsData);
 
       // Cachear datos cargados
-      await storage.set(cacheKey, groupsData, {
+      await offlineCache.set(cacheKey, groupsData, {
         dataType: 'groups',
         userId
       });
-      await storage.recordSync(cacheKey);
     } catch (error) {
       console.error("Error loading groups:", error);
       
       // Si falla online, intentar cache como fallback
       const dateStr = format(selectedDate!, "yyyy-MM-dd");
       const cacheKey = `groups_${userId}_${dateStr}`;
-      const cached = await storage.get<GroupWithAvailability[]>(cacheKey);
+      const cached = await offlineCache.get<GroupWithAvailability[]>(cacheKey);
       
       if (cached) {
         setGroups(cached);
@@ -229,7 +240,23 @@ export const useGroupSelection = (
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate, userGroups, userId, isOnline]);
+
+  // Load groups when modal opens or dependencies change
+  useEffect(() => {
+    if (isOpen && selectedDate && userGroups.length > 0) {
+      // Siempre recargar cuando se abre el modal para tener datos frescos
+      loadGroupsWithAvailability();
+    }
+  }, [isOpen, selectedDate, userGroups, loadGroupsWithAvailability]);
+
+  // Sincronizar datos cuando se recupera la conexión
+  useEffect(() => {
+    if (isOnline && isOpen && selectedDate && userGroups.length > 0) {
+      console.log('[useGroupSelection] Sincronizando grupos...');
+      loadGroupsWithAvailability();
+    }
+  }, [isOnline, isOpen, selectedDate, userGroups, loadGroupsWithAvailability]);
 
   /**
    * Returns color class based on occupancy rate
@@ -248,6 +275,47 @@ export const useGroupSelection = (
     if (rate >= 50) return "bg-yellow-500";
     return "bg-green-500";
   };
+
+  // Real-time subscription to reservations changes
+  useEffect(() => {
+    if (!isOpen || !selectedDate || userGroups.length === 0) return;
+
+    let channel: RealtimeChannel | null = null;
+
+    const setupRealtimeSubscription = async () => {
+      try {
+        channel = supabase
+          .channel('group-selection-reservations')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'reservations'
+            },
+            (payload) => {
+              console.log('[useGroupSelection] Reservation change detected, reloading groups');
+              loadGroupsWithAvailability();
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('[useGroupSelection] Subscribed to reservations updates');
+            }
+          });
+      } catch (err) {
+        console.error('[useGroupSelection] Error setting up subscription:', err);
+      }
+    };
+
+    setupRealtimeSubscription();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [isOpen, selectedDate, userGroups, loadGroupsWithAvailability]);
 
   return {
     groups,

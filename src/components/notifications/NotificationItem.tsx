@@ -1,7 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/types/notifications';
-import { getPriorityConfig, getCategoryIcon, getRelativeTime } from '@/types/notifications';
+import { getPriorityConfig, getCategoryIconConfig, getRelativeTime } from '@/types/notifications';
+import { 
+  ParkingSquare, 
+  Clock, 
+  AlertTriangle, 
+  AlertCircle, 
+  Info,
+  Circle
+} from 'lucide-react';
 
 interface NotificationItemProps {
   notification: Notification;
@@ -11,7 +19,18 @@ interface NotificationItemProps {
 export const NotificationItem = ({ notification, onRead }: NotificationItemProps) => {
   const navigate = useNavigate();
   const priorityConfig = getPriorityConfig(notification.priority as any);
-  const categoryIcon = getCategoryIcon(notification.category as any);
+  const categoryIconConfig = getCategoryIconConfig(notification.category as any);
+
+  // Mapeo de iconos
+  const iconMap = {
+    ParkingSquare,
+    Clock,
+    AlertTriangle,
+    AlertCircle,
+    Info,
+  };
+
+  const IconComponent = iconMap[categoryIconConfig.icon as keyof typeof iconMap];
 
   const handleClick = () => {
     // Marcar como leída
@@ -36,8 +55,8 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
     >
       <div className="flex items-start gap-3">
         {/* Icono de categoría */}
-        <div className="text-xl flex-shrink-0 mt-0.5">
-          {categoryIcon}
+        <div className="flex-shrink-0 mt-0.5">
+          <IconComponent className={cn("w-5 h-5", categoryIconConfig.color)} />
         </div>
 
         {/* Contenido */}
@@ -50,8 +69,8 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
             )}>
               {notification.title}
             </h4>
-            <span className="text-xs flex-shrink-0">
-              {priorityConfig.icon}
+            <span className="flex-shrink-0">
+              <Circle className={cn("w-3 h-3 fill-current", priorityConfig.iconColor)} />
             </span>
           </div>
 

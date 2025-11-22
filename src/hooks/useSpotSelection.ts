@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useOfflineMode } from "./useOfflineMode";
-import { useOfflineSync } from "./useOfflineSync";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
+import { safeSupabaseQuery, ensureArray } from "@/lib/errorHandler";
+import { getSpotAttributesText } from "@/lib/spotIcons";
 
 export interface ParkingGroup {
   id: string;
@@ -123,7 +124,7 @@ interface LocationState {
  */
 export const useSpotSelection = (state: LocationState | null) => {
   const navigate = useNavigate();
-  const { isOnline, lastSyncTime } = useOfflineMode();
+  const { isOnline, lastSync } = useOfflineMode();
   const [selectedGroup, setSelectedGroup] = useState<ParkingGroup | null>(null);
   const [availableGroups, setAvailableGroups] = useState<ParkingGroup[]>([]);
   const [spots, setSpots] = useState<SpotWithStatus[]>([]);
@@ -132,7 +133,6 @@ export const useSpotSelection = (state: LocationState | null) => {
 
   const selectedDate = state?.selectedDate ? new Date(state.selectedDate) : new Date();
   const availableCount = spots.filter(s => s.status === 'available').length;
-  const storage = new OfflineStorageService();
 
   /**
    * Loads parking groups accessible to user with floor plans
@@ -151,95 +151,103 @@ export const useSpotSelection = (state: LocationState | null) => {
       ? `groups_single_${state.selectedGroupId}`
       : `groups_${state.userId}`;
 
-    try {
-      setLoading(true);
+    setLoading(true);
 
-      // Modo offline: cargar desde cache
-      if (!isOnline) {
-        const cached = await storage.get<ParkingGroup[]>(cacheKey);
-        if (cached) {
-          setAvailableGroups(cached);
-          if (cached.length > 0) {
-            setSelectedGroup(cached[0]);
-          }
-          setLoading(false);
-          return;
+    // Modo offline: cargar desde cache
+    if (!isOnline) {
+      const cached = await offlineCache.get<ParkingGroup[]>(cacheKey);
+      if (cached) {
+        setAvailableGroups(cached);
+        if (cached.length > 0) {
+          setSelectedGroup(cached[0]);
         }
-        toast.error("No hay datos de grupos en caché");
-        setLoading(false);
-        return;
-      }
-
-      // Modo online: cargar desde servidor
-      if (state.selectedGroupId) {
-        const { data, error } = await supabase
-          .from("parking_groups")
-          .select("*")
-          .eq("id", state.selectedGroupId)
-          .eq("is_active", true)
-          .single();
-
-        if (error) throw error;
-
-        const groupsArray = [data];
-        setAvailableGroups(groupsArray);
-        setSelectedGroup(data);
-        
-        // Cachear datos
-        await storage.set(cacheKey, groupsArray, {
-          dataType: 'parking_groups',
-          userId: state.userId
-        });
-        await storage.recordSync(cacheKey);
-        
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("parking_groups")
-        .select("*")
-        .in("id", state.userGroups)
-        .eq("is_active", true)
-        .not("floor_plan_url", "is", null);
-
-      if (error) throw error;
-
-      setAvailableGroups(data || []);
-      if (data && data.length > 0) {
-        setSelectedGroup(data[0]);
       } else {
-        toast.error("No hay grupos con planos disponibles");
+        // Siempre retornar array vacío, nunca null
+        setAvailableGroups([]);
+        toast.error("No hay datos de grupos en caché");
       }
-      
-      // Cachear datos
-      await storage.set(cacheKey, data || [], {
-        dataType: 'parking_groups',
-        userId: state.userId
-      });
-      await storage.recordSync(cacheKey);
-      
-    } catch (error: any) {
-      console.error("Error loading groups:", error);
-      
-      // Si falla online, intentar cache
-      if (isOnline) {
-        const cached = await storage.get<ParkingGroup[]>(cacheKey);
+      setLoading(false);
+      return;
+    }
+
+    // Modo online: cargar desde servidor
+    if (state.selectedGroupId) {
+      const result = await safeSupabaseQuery(
+        async () => {
+          const query = await supabase
+            .from("parking_groups")
+            .select("*")
+            .eq("id", state.selectedGroupId)
+            .eq("is_active", true)
+            .single();
+          return query;
+        },
+        null,
+        { logError: true, context: 'loadSingleGroup' }
+      );
+
+      if (result.error) {
+        // Fallback a cache
+        const cached = await offlineCache.get<ParkingGroup[]>(cacheKey);
         if (cached) {
           setAvailableGroups(cached);
           if (cached.length > 0) {
             setSelectedGroup(cached[0]);
           }
           toast.warning("Mostrando datos en caché");
-          setLoading(false);
-          return;
+        } else {
+          setAvailableGroups([]);
         }
+      } else if (result.data) {
+        const groupsArray = [result.data];
+        setAvailableGroups(groupsArray);
+        setSelectedGroup(result.data);
+        await offlineCache.set(cacheKey, groupsArray);
       }
       
-      toast.error("Error al cargar los grupos");
-    } finally {
       setLoading(false);
+      return;
     }
+
+    const result = await safeSupabaseQuery(
+      async () => {
+        const query = await supabase
+          .from("parking_groups")
+          .select("*")
+          .in("id", state.userGroups)
+          .eq("is_active", true)
+          .not("floor_plan_url", "is", null);
+        return query;
+      },
+      [],
+      { logError: true, context: 'loadGroups' }
+    );
+
+    if (result.error) {
+      // Fallback a cache
+      const cached = await offlineCache.get<ParkingGroup[]>(cacheKey);
+      if (cached) {
+        setAvailableGroups(cached);
+        if (cached.length > 0) {
+          setSelectedGroup(cached[0]);
+        }
+        toast.warning("Mostrando datos en caché");
+      } else {
+        setAvailableGroups([]);
+        toast.error("Error al cargar los grupos");
+      }
+    } else {
+      const groups = ensureArray(result.data);
+      setAvailableGroups(groups);
+      if (groups.length > 0) {
+        setSelectedGroup(groups[0]);
+      } else {
+        toast.error("No hay grupos con planos disponibles");
+      }
+      await offlineCache.set(cacheKey, groups);
+    }
+
+    setLoading(false);
   };
 
   /**
@@ -261,76 +269,108 @@ export const useSpotSelection = (state: LocationState | null) => {
     const dateStr = format(date, "yyyy-MM-dd");
     const cacheKey = `spots_${groupId}_${dateStr}`;
 
-    try {
-      // Modo offline: cargar desde cache
-      if (!isOnline) {
-        const cached = await storage.get<SpotWithStatus[]>(cacheKey);
-        if (cached) {
-          setSpots(cached);
-          return;
-        }
+    // Modo offline: cargar desde cache
+    if (!isOnline) {
+      const cached = await offlineCache.get<SpotWithStatus[]>(cacheKey);
+      if (cached) {
+        setSpots(cached);
+      } else {
+        // Siempre retornar array vacío, nunca null
+        setSpots([]);
         toast.error("No hay datos de plazas en caché");
-        return;
       }
-
-      // Modo online: cargar desde servidor
-      const { data: spotsData, error: spotsError } = await supabase
-        .from("parking_spots")
-        .select("*")
-        .eq("group_id", groupId)
-        .not("position_x", "is", null)
-        .not("position_y", "is", null);
-
-      if (spotsError) throw spotsError;
-
-      const { data: reservations, error: reservationsError } = await supabase
-        .from("reservations")
-        .select("spot_id, user_id")
-        .eq("reservation_date", dateStr)
-        .eq("status", "active");
-
-      if (reservationsError) throw reservationsError;
-
-      const spotsWithStatus: SpotWithStatus[] = (spotsData || []).map(spot => {
-        const reservation = reservations?.find(r => r.spot_id === spot.id);
-
-        let status: SpotWithStatus['status'] = 'available';
-        if (!spot.is_active) {
-          status = 'inactive';
-        } else if (reservation) {
-          status = reservation.user_id === state.userId ? 'user_reserved' : 'occupied';
-        }
-
-        return {
-          ...spot,
-          status,
-        };
-      });
-
-      setSpots(spotsWithStatus);
-      
-      // Cachear datos
-      await storage.set(cacheKey, spotsWithStatus, {
-        dataType: 'parking_spots',
-        userId: state.userId
-      });
-      await storage.recordSync(cacheKey);
-      
-    } catch (error: any) {
-      console.error("Error loading spots:", error);
-      
-      // Si falla online, intentar cache
-      if (isOnline) {
-        const cached = await storage.get<SpotWithStatus[]>(cacheKey);
-        if (cached) {
-          setSpots(cached);
-          toast.warning("Mostrando datos en caché");
-          return;
-        }
-      }
-      
-      toast.error("Error al cargar las plazas");
+      return;
     }
+
+    // Modo online: cargar desde servidor
+    const spotsResult = await safeSupabaseQuery(
+      async () => {
+        const query = await supabase
+          .from("parking_spots")
+          .select("*")
+          .eq("group_id", groupId)
+          .not("position_x", "is", null)
+          .not("position_y", "is", null);
+        return query;
+      },
+      [],
+      { logError: true, context: 'loadSpots' }
+    );
+
+    const reservationsResult = await safeSupabaseQuery(
+      async () => {
+        const query = await supabase
+          .from("reservations")
+          .select("spot_id, user_id")
+          .eq("reservation_date", dateStr)
+          .eq("status", "active");
+        return query;
+      },
+      [],
+      { logError: true, context: 'loadReservations' }
+    );
+
+    // Cargar ofertas pendientes de waitlist
+    const pendingOffersResult = await safeSupabaseQuery(
+      async () => {
+        const query = await supabase
+          .from("waitlist_offers")
+          .select(`
+            spot_id,
+            waitlist_entries!inner (
+              reservation_date
+            )
+          `)
+          .eq("status", "pending")
+          .gt("expires_at", new Date().toISOString())
+          .eq("waitlist_entries.reservation_date", dateStr);
+        return query;
+      },
+      [],
+      { logError: true, context: 'loadPendingOffers' }
+    );
+
+    if (spotsResult.error || reservationsResult.error || pendingOffersResult.error) {
+      // Fallback a cache si falla online
+      const cached = await offlineCache.get<SpotWithStatus[]>(cacheKey);
+      if (cached) {
+        setSpots(cached);
+        toast.warning("Mostrando datos en caché");
+      } else {
+        setSpots([]);
+        toast.error("Error al cargar las plazas");
+      }
+      return;
+    }
+
+    const spotsData = ensureArray(spotsResult.data);
+    const reservations = ensureArray(reservationsResult.data);
+    const pendingOffers = ensureArray(pendingOffersResult.data);
+
+    const spotsWithStatus: SpotWithStatus[] = spotsData.map(spot => {
+      const reservation = reservations.find(r => r.spot_id === spot.id);
+      const hasPendingOffer = pendingOffers.some(o => o.spot_id === spot.id);
+
+      let status: SpotWithStatus['status'] = 'available';
+      if (!spot.is_active) {
+        status = 'inactive';
+      } else if (reservation) {
+        status = reservation.user_id === state.userId ? 'user_reserved' : 'occupied';
+      } else if (hasPendingOffer) {
+        // Plazas con ofertas pendientes se marcan como ocupadas
+        status = 'occupied';
+      }
+
+      return {
+        ...spot,
+        status,
+      };
+    });
+
+    setSpots(spotsWithStatus);
+    
+    // Cachear datos
+    await offlineCache.set(cacheKey, spotsWithStatus);
   };
 
   /**
@@ -400,12 +440,8 @@ export const useSpotSelection = (state: LocationState | null) => {
       return;
     }
 
-    const attributes = [];
-    if (spot.is_accessible) attributes.push('♿ PMR');
-    if (spot.has_charger) attributes.push('⚡ Cargador');
-    if (spot.is_compact) attributes.push('🚗 Reducida');
-
-    const attributesText = attributes.length > 0 ? ` (${attributes.join(', ')})` : '';
+    const attributesText = getSpotAttributesText(spot);
+    const formattedAttributes = attributesText ? ` (${attributesText})` : '';
 
     toast.success(`Plaza ${spot.spot_number}${attributesText} seleccionada`);
 
@@ -436,21 +472,6 @@ export const useSpotSelection = (state: LocationState | null) => {
     }
   }, [selectedGroup, selectedDate]);
 
-  // Sincronizar datos cuando se recupera la conexión
-  useOfflineSync(
-    () => {
-      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
-      console.log('[useSpotSelection] Controles re-habilitados');
-    },
-    () => {
-      // Sincronizar datos después de 3s (Requisito 3.3)
-      if (selectedGroup && selectedDate) {
-        console.log('[useSpotSelection] Sincronizando plazas disponibles...');
-        loadSpotsForGroup(selectedGroup.id, selectedDate);
-      }
-    }
-  );
-
   return {
     selectedGroup,
     setSelectedGroup,
@@ -464,6 +485,6 @@ export const useSpotSelection = (state: LocationState | null) => {
     getSpotColor,
     handleSpotClick,
     isOnline,
-    lastSyncTime,
+    lastSync,
   };
 };

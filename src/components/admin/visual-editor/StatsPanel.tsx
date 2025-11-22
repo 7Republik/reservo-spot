@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Accessibility, Zap, Minimize2 } from "lucide-react";
 import type { ParkingSpot } from "@/types/admin";
 import type { EditorStats } from "@/types/admin/parking-spots.types";
 
@@ -47,9 +47,8 @@ export const StatsPanel = ({ spots, maxSpots }: StatsPanelProps) => {
   const stats = calculateStats(spots, maxSpots);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
-        <h3 className="font-semibold mb-3">Estadísticas</h3>
         
         {/* Contador principal */}
         <div className="flex items-center justify-between mb-2">
@@ -73,22 +72,22 @@ export const StatsPanel = ({ spots, maxSpots }: StatsPanelProps) => {
 
       {/* Desglose de atributos */}
       <div>
-        <div className="text-sm font-medium mb-2">Atributos especiales:</div>
+        <div className="text-xs font-medium mb-2 text-muted-foreground">Atributos especiales</div>
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div className="flex flex-col items-center p-2 rounded-md bg-muted">
-            <span className="text-lg mb-1">♿</span>
+            <Accessibility className="w-5 h-5 mb-1 text-blue-600" />
             <span className="font-semibold">{stats.accessibleCount}</span>
-            <span className="text-xs text-muted-foreground">Accesibles</span>
+            <span className="text-xs text-muted-foreground">PMR</span>
           </div>
           <div className="flex flex-col items-center p-2 rounded-md bg-muted">
-            <span className="text-lg mb-1">🔌</span>
+            <Zap className="w-5 h-5 mb-1 text-yellow-600" />
             <span className="font-semibold">{stats.chargerCount}</span>
-            <span className="text-xs text-muted-foreground">Cargadores</span>
+            <span className="text-xs text-muted-foreground">Cargador</span>
           </div>
           <div className="flex flex-col items-center p-2 rounded-md bg-muted">
-            <span className="text-lg mb-1">📏</span>
+            <Minimize2 className="w-5 h-5 mb-1 text-gray-600" />
             <span className="font-semibold">{stats.compactCount}</span>
-            <span className="text-xs text-muted-foreground">Compactas</span>
+            <span className="text-xs text-muted-foreground">Compacta</span>
           </div>
         </div>
       </div>

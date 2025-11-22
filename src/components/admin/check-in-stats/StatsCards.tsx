@@ -10,24 +10,24 @@ interface StatsCardsProps {
 
 export const StatsCards = ({ stats, isLoading = false }: StatsCardsProps) => {
   const formatTime = (minutes: number | null) => {
-    if (minutes === null) return 'N/A';
+    if (minutes === null || minutes === 0) return '—';
     
     if (minutes < 1) {
-      return `${Math.round(minutes * 60)} seg`;
+      return `${Math.round(minutes * 60)}s`;
     }
     
     const mins = Math.floor(minutes);
     const secs = Math.round((minutes % 1) * 60);
     
     if (secs === 0) {
-      return `${mins} min`;
+      return `${mins}m`;
     }
     
-    return `${mins}:${String(secs).padStart(2, '0')} min`;
+    return `${mins}m ${secs}s`;
   };
 
-  const formatHour = (hour: number | null) => {
-    if (hour === null) return 'N/A';
+  const formatHour = (hour: number | null | undefined) => {
+    if (hour === null || hour === undefined) return '—';
     return `${String(hour).padStart(2, '0')}:00`;
   };
 
@@ -37,32 +37,32 @@ export const StatsCards = ({ stats, isLoading = false }: StatsCardsProps) => {
       value: stats.totalReservations.toLocaleString(),
       subtitle: 'Reservas totales',
       icon: Target,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-500/10',
     },
     {
       title: 'Tiempo Promedio',
       value: formatTime(stats.avgMinutes),
       subtitle: 'Desde desbloqueo',
       icon: Zap,
-      color: 'text-secondary',
-      bgColor: 'bg-secondary/10',
+      color: 'text-amber-600 dark:text-amber-400',
+      bgColor: 'bg-amber-500/10',
     },
     {
       title: 'Hora Pico',
       value: formatHour(stats.peakHour),
       subtitle: 'Mayor actividad',
       icon: Flame,
-      color: 'text-destructive',
-      bgColor: 'bg-destructive/10',
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-500/10',
     },
     {
       title: 'Usuario Más Rápido',
-      value: stats.fastestUser || 'N/A',
+      value: stats.fastestUser || '—',
       subtitle: stats.fastestTime ? formatTime(stats.fastestTime) : 'Sin datos',
       icon: User,
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bgColor: 'bg-emerald-500/10',
     },
   ];
 

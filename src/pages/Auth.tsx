@@ -209,19 +209,20 @@ const Auth = () => {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="login-password" className="text-sm font-medium flex items-center justify-between">
-          <span className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="login-password" className="text-sm font-medium flex items-center gap-2">
             <Lock className="h-4 w-4" />
             Contraseña
-          </span>
+          </Label>
           <button
             type="button"
             onClick={() => setCurrentStep("forgot")}
-            className="text-xs text-primary hover:underline focus:outline-none"
+            tabIndex={-1}
+            className="text-xs text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1"
           >
             ¿Olvidaste tu contraseña?
           </button>
-        </Label>
+        </div>
         <div className="relative">
           <Input
             id="login-password"
@@ -240,7 +241,8 @@ const Auth = () => {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            tabIndex={-1}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle2, XCircle, AlertCircle, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,7 @@ import type { WaitlistOfferWithDetails } from '@/types/waitlist';
  */
 const WaitlistPage = () => {
   const navigate = useNavigate();
+  const { offerId } = useParams<{ offerId?: string }>();
   const { pendingOffers, isLoading: offersLoading } = useWaitlistOffers();
   const [selectedOffer, setSelectedOffer] = useState<WaitlistOfferWithDetails | null>(null);
   const [offerDialogOpen, setOfferDialogOpen] = useState(false);
@@ -84,13 +85,28 @@ const WaitlistPage = () => {
     refetchInterval: 60000, // Refetch every minute
   });
 
-  // Auto-open dialog for first pending offer
+  // Auto-open dialog for specific offer from URL or first pending offer
   useEffect(() => {
-    if (pendingOffers.length > 0 && !selectedOffer) {
+    if (pendingOffers.length === 0) return;
+
+    // If offerId in URL, find and open that specific offer
+    if (offerId) {
+      const offer = pendingOffers.find(o => o.id === offerId);
+      if (offer) {
+        setSelectedOffer(offer);
+        setOfferDialogOpen(true);
+        // Clean URL after opening
+        navigate('/waitlist', { replace: true });
+      }
+      return;
+    }
+
+    // Otherwise, auto-open first pending offer if none selected
+    if (!selectedOffer) {
       setSelectedOffer(pendingOffers[0]);
       setOfferDialogOpen(true);
     }
-  }, [pendingOffers, selectedOffer]);
+  }, [pendingOffers, selectedOffer, offerId, navigate]);
 
   /**
    * Handle opening offer dialog

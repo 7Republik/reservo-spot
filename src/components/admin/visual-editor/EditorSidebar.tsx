@@ -1,15 +1,25 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Lock, Unlock, Hand } from "lucide-react";
+import { 
+  Pencil, 
+  Lock, 
+  Unlock, 
+  Hand, 
+  ChevronDown, 
+  ChevronRight,
+  BarChart3,
+  Wrench,
+  Palette
+} from "lucide-react";
 import { toast } from "sonner";
 import { hasSeenFirstDrawNotification, markFirstDrawNotificationShown } from "@/lib/visualEditorStorage";
 import { StatsPanel } from "./StatsPanel";
 import { LegendPanel } from "./LegendPanel";
+import { cn } from "@/lib/utils";
 import type { ParkingSpot } from "@/types/admin";
 import type { EditorTools } from "@/types/admin/parking-spots.types";
 
@@ -93,6 +103,13 @@ export const EditorSidebar = ({
   onToolChange,
   onLegendHover,
 }: EditorSidebarProps) => {
+  // Estado de secciones colapsadas
+  const [collapsedSections, setCollapsedSections] = useState({
+    stats: false,
+    tools: false,
+    legend: false,
+  });
+
   // Verificar si se alcanzó el límite de plazas
   const isLimitReached = spots.length >= maxSpots;
 
@@ -118,24 +135,69 @@ export const EditorSidebar = ({
     onToolChange("isDrawingMode", !tools.isDrawingMode);
   };
 
+  const toggleSection = (section: keyof typeof collapsedSections) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
   return (
     <aside className="w-80 border-l bg-card flex flex-col h-full">
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
+        <div className="p-3 space-y-2">
           {/* Sección: Estadísticas */}
-          <section>
-            <StatsPanel spots={spots} maxSpots={maxSpots} />
+          <section className="border rounded-lg overflow-hidden bg-background">
+            <button
+              onClick={() => toggleSection('stats')}
+              className={cn(
+                "w-full px-3 py-2 flex items-center justify-between",
+                "hover:bg-accent transition-colors",
+                "text-sm font-medium"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                <span>Estadísticas</span>
+              </div>
+              {collapsedSections.stats ? (
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
+            {!collapsedSections.stats && (
+              <div className="p-3 border-t">
+                <StatsPanel spots={spots} maxSpots={maxSpots} />
+              </div>
+            )}
           </section>
 
-          <Separator />
-
           {/* Sección: Herramientas */}
-          <section>
-            <h3 className="font-semibold mb-3">Herramientas</h3>
-            <div className="space-y-3">
+          <section className="border rounded-lg overflow-hidden bg-background">
+            <button
+              onClick={() => toggleSection('tools')}
+              className={cn(
+                "w-full px-3 py-2 flex items-center justify-between",
+                "hover:bg-accent transition-colors",
+                "text-sm font-medium"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-primary" />
+                <span>Herramientas</span>
+              </div>
+              {collapsedSections.tools ? (
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
+            {!collapsedSections.tools && (
+              <div className="p-3 border-t space-y-3">
               {/* Modo Dibujo */}
               <div className="space-y-2">
-                <Label>Modo Dibujo</Label>
+                <Label className="text-xs text-muted-foreground">Modo Dibujo</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -143,10 +205,11 @@ export const EditorSidebar = ({
                         variant={tools.isDrawingMode ? "default" : "outline"}
                         onClick={handleDrawingModeToggle}
                         disabled={!tools.isDrawingMode && isLimitReached}
-                        className="w-full"
+                        className="w-full justify-start"
+                        size="sm"
                       >
                         <Pencil className="w-4 h-4 mr-2" />
-                        {tools.isDrawingMode ? "Modo Dibujo ACTIVO" : "Activar Modo Dibujo"}
+                        {tools.isDrawingMode ? "Activo" : "Dibujar"}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -172,17 +235,18 @@ export const EditorSidebar = ({
 
               {/* Herramienta Mano */}
               <div className="space-y-2">
-                <Label>Herramienta Mano</Label>
+                <Label className="text-xs text-muted-foreground">Herramienta Mano</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant={tools.isHandToolActive ? "default" : "outline"}
                         onClick={() => onToolChange("isHandToolActive", !tools.isHandToolActive)}
-                        className="w-full"
+                        className="w-full justify-start"
+                        size="sm"
                       >
                         <Hand className="w-4 h-4 mr-2" />
-                        {tools.isHandToolActive ? "Herramienta ACTIVA" : "Activar Herramienta"}
+                        {tools.isHandToolActive ? "Activo" : "Navegar"}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -199,24 +263,25 @@ export const EditorSidebar = ({
 
               {/* Bloqueo de Canvas */}
               <div className="space-y-2">
-                <Label>Control de Canvas</Label>
+                <Label className="text-xs text-muted-foreground">Control de Canvas</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant={tools.isCanvasLocked ? "default" : "outline"}
                         onClick={() => onToolChange("isCanvasLocked", !tools.isCanvasLocked)}
-                        className="w-full"
+                        className="w-full justify-start"
+                        size="sm"
                       >
                         {tools.isCanvasLocked ? (
                           <>
                             <Lock className="w-4 h-4 mr-2" />
-                            Canvas Bloqueado
+                            Bloqueado
                           </>
                         ) : (
                           <>
                             <Unlock className="w-4 h-4 mr-2" />
-                            Canvas Desbloqueado
+                            Desbloqueado
                           </>
                         )}
                       </Button>
@@ -242,8 +307,8 @@ export const EditorSidebar = ({
               {/* Tamaño de Botones */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Tamaño de Botones</Label>
-                  <span className="text-sm font-medium text-muted-foreground">
+                  <Label className="text-xs text-muted-foreground">Tamaño</Label>
+                  <span className="text-xs font-medium text-foreground">
                     {tools.spotButtonSize}px
                   </span>
                 </div>
@@ -266,18 +331,36 @@ export const EditorSidebar = ({
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <p className="text-xs text-muted-foreground">
-                  Ajusta el tamaño de las plazas (12-64px)
-                </p>
               </div>
             </div>
+          )}
           </section>
 
-          <Separator />
-
           {/* Sección: Leyenda */}
-          <section>
-            <LegendPanel onHoverItem={onLegendHover} />
+          <section className="border rounded-lg overflow-hidden bg-background">
+            <button
+              onClick={() => toggleSection('legend')}
+              className={cn(
+                "w-full px-3 py-2 flex items-center justify-between",
+                "hover:bg-accent transition-colors",
+                "text-sm font-medium"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Palette className="w-4 h-4 text-primary" />
+                <span>Leyenda</span>
+              </div>
+              {collapsedSections.legend ? (
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
+            {!collapsedSections.legend && (
+              <div className="p-3 border-t">
+                <LegendPanel onHoverItem={onLegendHover} />
+              </div>
+            )}
           </section>
         </div>
       </ScrollArea>

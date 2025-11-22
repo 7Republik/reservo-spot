@@ -70,20 +70,20 @@ export const useWaitlistOffers = () => {
           .from('waitlist_offers')
           .select(`
             *,
-            parking_spots(
+            parking_spots!inner(
               id,
               spot_number,
               group_id,
               is_accessible,
               has_charger,
               is_compact,
-              parking_groups(
+              parking_groups!inner(
                 id,
                 name,
                 description
               )
             ),
-            waitlist_entries(
+            waitlist_entries!inner(
               id,
               group_id,
               reservation_date,
@@ -93,6 +93,7 @@ export const useWaitlistOffers = () => {
           `)
           .eq('user_id', user.id)
           .eq('status', 'pending')
+          .eq('parking_spots.parking_groups.is_active', true)
           .order('expires_at', { ascending: true });
 
         if (queryError) {
@@ -207,7 +208,7 @@ export const useWaitlistOffers = () => {
         .from('waitlist_offers')
         .select(`
           *,
-          parking_spots(
+          parking_spots!inner(
             id,
             spot_number,
             group_id,
@@ -215,14 +216,14 @@ export const useWaitlistOffers = () => {
             has_charger,
             is_compact,
             notes,
-            parking_groups(
+            parking_groups!inner(
               id,
               name,
               description,
               capacity
             )
           ),
-          waitlist_entries(
+          waitlist_entries!inner(
             id,
             group_id,
             reservation_date,
@@ -230,13 +231,14 @@ export const useWaitlistOffers = () => {
             created_at,
             status
           ),
-          profiles(
+          profiles!inner(
             id,
             full_name,
             email
           )
         `)
         .eq('id', offerId)
+        .eq('parking_spots.parking_groups.is_active', true)
         .single();
 
       if (queryError) {

@@ -3,6 +3,7 @@ import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { TodayReservationCard } from "./TodayReservationCard";
+import { TodayReservationSkeleton } from "./TodayReservationSkeleton";
 import { TodayCheckinCard } from "./TodayCheckinCard";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,59 +40,68 @@ export const TodaySection = ({
   const [checkinEnabled, setCheckinEnabled] = useState(false);
 
   const loadTodayReservations = useCallback(async () => {
-    // Usar fecha local del usuario (España: UTC+1)
-    const today = format(new Date(), "yyyy-MM-dd");
-    
-    // Cargar configuración de check-in
-    const { data: settings } = await supabase
-      .from("checkin_settings")
-      .select("system_enabled")
-      .eq("id", "00000000-0000-0000-0000-000000000001")
-      .single();
-    
-    setCheckinEnabled(settings?.system_enabled || false);
-    
-    // Cargar reservas con información de check-in
-    const { data, error } = await supabase
-      .from("reservations")
-      .select(`
-        id,
-        user_id,
-        reservation_date,
-        status,
-        created_at,
-        parking_spots (
-          id,
-          spot_number,
-          is_accessible,
-          has_charger,
-          is_compact,
-          parking_groups (
-            name
-          )
-        )
-      `)
-      .eq("user_id", userId)
-      .eq("reservation_date", today)
-      .eq("status", "active");
+    try {
+      // Verificar que el usuario esté autenticado
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log('[TodaySection] No active session');
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
-      console.error("Error loading today's reservations:", error);
-      setLoading(false);
-      return;
-    }
+      // Usar fecha local del usuario (España: UTC+1)
+      const today = format(new Date(), "yyyy-MM-dd");
+      
+      // Cargar configuración de check-in
+      const { data: settings } = await supabase
+        .from("checkin_settings")
+        .select("system_enabled")
+        .eq("id", "00000000-0000-0000-0000-000000000001")
+        .single();
+      
+      setCheckinEnabled(settings?.system_enabled || false);
+      
+      // Cargar reservas del día
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("reservation_date", today)
+        .eq("status", "active");
 
-    if (data && data.length > 0) {
+      if (error) {
+        // No loggear errores, solo manejarlos silenciosamente
+        setTodayReservations([]);
+        setLoading(false);
+        return;
+      }
+
+      if (data && data.length > 0) {
       // Cargar información de check-in para cada reserva
       const reservationIds = data.map(r => r.id);
+      const spotIds = data.map(r => r.spot_id);
+      
       const { data: checkins } = await supabase
         .from("reservation_checkins")
         .select("*")
         .in("reservation_id", reservationIds);
+      
+      // Cargar información de plazas
+      const { data: spots } = await supabase
+        .from("parking_spots")
+        .select("id, spot_number, is_accessible, has_charger, is_compact, group_id")
+        .in("id", spotIds);
+      
+      // Cargar información de grupos
+      const groupIds = spots?.map(s => s.group_id).filter(Boolean) || [];
+      const { data: groups } = await supabase
+        .from("parking_groups")
+        .select("id, name")
+        .in("id", groupIds);
 
       const formattedReservations = data.map(res => {
-        const spot = res.parking_spots as any;
-        const group = spot?.parking_groups as any;
+        const spot = spots?.find(s => s.id === res.spot_id);
+        const group = groups?.find(g => g.id === spot?.group_id);
         const checkin = checkins?.find(c => c.reservation_id === res.id);
 
         return {
@@ -125,9 +135,20 @@ export const TodaySection = ({
     }
     
     setLoading(false);
+    } catch (err) {
+      // Manejar errores silenciosamente
+      setTodayReservations([]);
+      setLoading(false);
+    }
   }, [userId]);
 
   useEffect(() => {
+    // Solo cargar si hay userId válido
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
     loadTodayReservations();
     
     // Registrar callback para recarga forzada
@@ -140,7 +161,7 @@ export const TodaySection = ({
       clearInterval(interval);
       forceReloadCallback = null;
     };
-  }, [loadTodayReservations]);
+  }, [loadTodayReservations, userId]);
 
   // Recargar cuando cambia refreshTrigger (cuando se crea/cancela una reserva)
   useEffect(() => {
@@ -166,9 +187,7 @@ export const TodaySection = ({
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-4 text-muted-foreground text-sm">
-              Cargando...
-            </div>
+            <TodayReservationSkeleton />
           ) : todayReservations.length > 0 ? (
             <div className="space-y-3 md:space-y-4">
               {/* Check-in/Check-out Card - Solo si está habilitado */}

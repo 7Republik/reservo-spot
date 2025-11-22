@@ -5,6 +5,7 @@ import GroupSelectorModal from "./GroupSelectorModal";
 import { MonthNavigation } from "./calendar/MonthNavigation";
 import { CalendarGrid } from "./calendar/CalendarGrid";
 import { CalendarLegend } from "./calendar/CalendarLegend";
+import { CalendarSkeleton } from "./calendar/CalendarSkeleton";
 import { CachedDataIndicator } from "./CachedDataIndicator";
 import { useParkingCalendar } from "@/hooks/useParkingCalendar";
 
@@ -63,6 +64,19 @@ const ParkingCalendar = ({ userId, onReservationUpdate }: ParkingCalendarProps) 
       onReservationUpdate();
     }
   };
+
+  // Mostrar skeleton mientras carga
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <CachedDataIndicator 
+          lastSyncTime={lastSyncTime} 
+          isOnline={isOnline}
+        />
+        <CalendarSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

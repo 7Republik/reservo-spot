@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
-import { useOfflineCleanup } from "@/hooks/useOfflineCleanup";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -25,9 +24,6 @@ import GDPR from "./pages/GDPR";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Inicializar limpieza automática de cache
-  useOfflineCleanup();
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -43,6 +39,7 @@ const App = () => {
             <Route path="/select-parking-spot" element={<SelectParkingSpot />} />
             <Route path="/view-spot-location" element={<ViewSpotLocation />} />
             <Route path="/waitlist" element={<WaitlistPage />} />
+            <Route path="/waitlist/offers/:offerId" element={<WaitlistPage />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/blog" element={<Blog />} />

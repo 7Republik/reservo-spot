@@ -348,25 +348,29 @@ export const WaitlistDashboard = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Cancelar registro en lista de espera?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Estás a punto de cancelar tu registro en la lista de espera para:
-              <div className="mt-3 p-3 bg-muted rounded-md">
-                <p className="font-semibold">
-                  {entryToCancel?.parking_groups?.name}
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Estás a punto de cancelar tu registro en la lista de espera para:
                 </p>
-                <p className="text-sm capitalize">
-                  {entryToCancel && format(new Date(entryToCancel.reservation_date), "EEEE, d 'de' MMMM", { locale: es })}
-                </p>
-                {entryToCancel?.queue_position && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Posición actual: #{entryToCancel.queue_position}
+                <div className="p-3 bg-muted rounded-md space-y-1">
+                  <p className="font-semibold">
+                    {entryToCancel?.parking_groups?.name}
                   </p>
-                )}
+                  <p className="text-sm capitalize">
+                    {entryToCancel && format(new Date(entryToCancel.reservation_date), "EEEE, d 'de' MMMM", { locale: es })}
+                  </p>
+                  {entryToCancel?.queue_position && (
+                    <p className="text-sm text-muted-foreground">
+                      Posición actual: #{entryToCancel.queue_position}
+                    </p>
+                  )}
+                </div>
+                <p>
+                  Si cancelas, perderás tu posición en la cola y no recibirás notificaciones 
+                  si se libera una plaza para esta fecha.
+                </p>
               </div>
-              <p className="mt-3">
-                Si cancelas, perderás tu posición en la cola y no recibirás notificaciones 
-                si se libera una plaza para esta fecha.
-              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

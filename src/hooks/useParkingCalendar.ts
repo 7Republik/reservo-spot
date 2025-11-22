@@ -4,9 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { useOfflineMode } from "./useOfflineMode";
-import { useOfflineSync } from "./useOfflineSync";
 import { useWaitlist } from "./useWaitlist";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { useReservationsRealtime } from "./useReservationsRealtime";
+import { offlineCache } from "@/lib/offlineCache";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
+import { safeSupabaseQuery, ensureArray } from "@/lib/errorHandler";
 
 interface Reservation {
   id: string;
@@ -91,9 +94,11 @@ interface ParkingGroup {
 export const useParkingCalendar = (userId: string, onReservationUpdate?: () => void) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isOnline, lastSyncTime } = useOfflineMode();
+  const { isOnline, queueAction } = useOfflineMode();
   const { registerInWaitlist } = useWaitlist();
-  const [storage] = useState(() => new OfflineStorageService());
+  
+  // Enable real-time updates for reservations
+  useReservationsRealtime();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [availableSpots, setAvailableSpots] = useState<Record<string, number>>({});
@@ -117,8 +122,9 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
    * @returns {Promise<void>}
    */
   const loadUserGroups = async () => {
-    try {
-      const { data: assignments, error: assignError } = await supabase
+    // Cargar asignaciones de grupos del usuario
+    const assignmentsResult = await safeSupabaseQuery(
+      () => supabase
         .from("user_group_assignments")
         .select(`
           group_id,
@@ -127,43 +133,47 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
             name
           )
         `)
-        .eq("user_id", userId);
+        .eq("user_id", userId),
+      [],
+      { logError: true, context: 'loadUserGroups' }
+    );
 
-      if (assignError) throw assignError;
-
-      const { data: generalGroup, error: generalError } = await supabase
+    // Cargar grupo "General" si existe
+    const generalResult = await safeSupabaseQuery(
+      () => supabase
         .from("parking_groups")
         .select("id, name")
         .eq("name", "General")
         .eq("is_active", true)
-        .maybeSingle();
+        .maybeSingle(),
+      null,
+      { logError: true, context: 'loadGeneralGroup' }
+    );
 
-      if (generalError) {
-        console.error("Error loading general group:", generalError);
-      }
+    // Siempre retornar arrays, nunca null
+    const assignments = ensureArray(assignmentsResult.data);
+    const generalGroup = generalResult.data;
 
-      const assignedGroupIds = assignments?.map(a => a.group_id) || [];
-      const assignedGroupNames = assignments?.map(a => (a.parking_groups as any)?.name).filter(Boolean) || [];
-      
-      const allGroupIds = generalGroup 
-        ? [...new Set([...assignedGroupIds, generalGroup.id])]
-        : assignedGroupIds;
-      
-      const allGroupNames = generalGroup 
-        ? [...new Set([...assignedGroupNames, generalGroup.name])]
-        : assignedGroupNames;
+    const assignedGroupIds = assignments.map(a => a.group_id);
+    const assignedGroupNames = assignments
+      .map(a => (a.parking_groups as any)?.name)
+      .filter(Boolean);
+    
+    const allGroupIds = generalGroup 
+      ? [...new Set([...assignedGroupIds, generalGroup.id])]
+      : assignedGroupIds;
+    
+    const allGroupNames = generalGroup 
+      ? [...new Set([...assignedGroupNames, generalGroup.name])]
+      : assignedGroupNames;
 
-      setUserGroups(allGroupIds);
-      setUserGroupNames(allGroupNames);
+    setUserGroups(allGroupIds);
+    setUserGroupNames(allGroupNames);
 
-      if (allGroupIds.length === 0) {
-        toast.error("No tienes acceso a ningún grupo de parking", {
-          description: "Contacta con el administrador para obtener acceso",
-        });
-      }
-    } catch (error: any) {
-      console.error("Error loading user groups:", error);
-      toast.error("Error al cargar tus permisos de acceso");
+    if (allGroupIds.length === 0) {
+      toast.error("No tienes acceso a ningún grupo de parking", {
+        description: "Contacta con el administrador para obtener acceso",
+      });
     }
   };
 
@@ -172,28 +182,68 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
    * Solo carga reservas con status = 'active'
    * Las reservas completadas o canceladas no se muestran en el calendario
    * 
+   * Modo offline: Carga desde cache con fallback
+   * 
    * @returns {Promise<void>}
    */
   const loadReservations = async () => {
-    try {
-      const start = startOfMonth(currentMonth);
-      const end = endOfMonth(currentMonth);
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    const cacheKey = `reservations_${userId}_${format(currentMonth, 'yyyy-MM')}`;
 
-      const { data, error } = await supabase
+    // Si estamos offline, cargar desde cache
+    if (!isOnline) {
+      const cached = await offlineCache.loadFromCache<Reservation[]>(cacheKey);
+      if (cached.data) {
+        setReservations(cached.data);
+        
+        // Mostrar advertencia si los datos son antiguos (>24h)
+        if (cached.isOld) {
+          toast.warning('Mostrando reservas en caché', {
+            description: `Última actualización: ${formatDistanceToNow(cached.timestamp, { locale: es, addSuffix: true })}`,
+          });
+        }
+      } else {
+        // Siempre retornar array vacío, nunca null
+        setReservations([]);
+      }
+      setLoading(false);
+      return;
+    }
+
+    // Online: intentar cargar desde servidor con fallback a cache
+    const result = await safeSupabaseQuery(
+      () => supabase
         .from("reservations")
         .select("*")
         .eq("user_id", userId)
-        .eq("status", "active") // Solo reservas activas
+        .eq("status", "active")
         .gte("reservation_date", format(start, "yyyy-MM-dd"))
-        .lte("reservation_date", format(end, "yyyy-MM-dd"));
+        .lte("reservation_date", format(end, "yyyy-MM-dd")),
+      [],
+      { logError: true, context: 'loadReservations' }
+    );
 
-      if (error) throw error;
-      setReservations(data || []);
-    } catch (error: any) {
-      console.error("Error loading reservations:", error);
-    } finally {
-      setLoading(false);
+    if (result.error) {
+      // Fallback a cache si falla online
+      const cached = await offlineCache.loadFromCache<Reservation[]>(cacheKey);
+      if (cached.data) {
+        setReservations(cached.data);
+        toast.warning('Mostrando reservas en caché', {
+          description: 'No se pudo conectar al servidor',
+        });
+      } else {
+        // Siempre retornar array vacío, nunca null
+        setReservations([]);
+      }
+    } else {
+      // Cachear datos exitosos
+      const data = ensureArray(result.data);
+      await offlineCache.set(cacheKey, data);
+      setReservations(data);
     }
+
+    setLoading(false);
   };
 
   /**
@@ -211,106 +261,134 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
    * @returns {Promise<void>}
    */
   const loadAvailableSpots = async () => {
-    try {
-      setLoadingSpots(true);
-      
-      if (userGroups.length === 0) {
-        setAvailableSpots({});
-        setLoadingSpots(false);
-        return;
-      }
+    setLoadingSpots(true);
+    
+    if (userGroups.length === 0) {
+      setAvailableSpots({});
+      setLoadingSpots(false);
+      return;
+    }
 
-      const { data: dateRange, error: rangeError } = await supabase
-        .rpc('get_reservable_date_range')
-        .single();
+    // Cargar rango de fechas reservables
+    const dateRangeResult = await safeSupabaseQuery(
+      () => supabase.rpc('get_reservable_date_range').single(),
+      null,
+      { logError: true, context: 'getDateRange' }
+    );
 
-      if (rangeError) {
-        console.error("Error getting date range:", rangeError);
-      }
-
-      const { data: blockedDates, error: blockedError } = await supabase
+    // Cargar fechas bloqueadas
+    const blockedDatesResult = await safeSupabaseQuery(
+      () => supabase
         .from("blocked_dates")
         .select("blocked_date, group_id")
-        .or(`group_id.is.null,group_id.in.(${userGroups.join(',')})`);
+        .or(`group_id.is.null,group_id.in.(${userGroups.join(',')})`),
+      [],
+      { logError: true, context: 'getBlockedDates' }
+    );
 
-      if (blockedError) {
-        console.error("Error getting blocked dates:", blockedError);
+    const dateRange = dateRangeResult.data;
+    const blockedDates = ensureArray(blockedDatesResult.data);
+
+    const blockedDatesMap: Record<string, Set<string>> = {};
+    blockedDates.forEach(bd => {
+      const dateStr = bd.blocked_date;
+      if (!blockedDatesMap[dateStr]) {
+        blockedDatesMap[dateStr] = new Set();
+      }
+      if (bd.group_id === null) {
+        blockedDatesMap[dateStr].add('__GLOBAL__');
+      } else {
+        blockedDatesMap[dateStr].add(bd.group_id);
+      }
+    });
+
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    const days = eachDayOfInterval({ start, end });
+
+    const spotsData: Record<string, number> = {};
+
+    for (const day of days) {
+      const dateStr = format(day, "yyyy-MM-dd");
+      
+      const isOutOfRange = dateRange && (dateStr < dateRange.min_date || dateStr > dateRange.max_date);
+
+      if (isOutOfRange) {
+        spotsData[dateStr] = 0;
+        continue;
       }
 
-      const blockedDatesMap: Record<string, Set<string>> = {};
-      blockedDates?.forEach(bd => {
-        const dateStr = bd.blocked_date;
-        if (!blockedDatesMap[dateStr]) {
-          blockedDatesMap[dateStr] = new Set();
-        }
-        if (bd.group_id === null) {
-          blockedDatesMap[dateStr].add('__GLOBAL__');
-        } else {
-          blockedDatesMap[dateStr].add(bd.group_id);
-        }
-      });
+      const blockedForDate = blockedDatesMap[dateStr];
+      const hasGlobalBlock = blockedForDate && blockedForDate.has('__GLOBAL__');
 
-      const start = startOfMonth(currentMonth);
-      const end = endOfMonth(currentMonth);
-      const days = eachDayOfInterval({ start, end });
+      if (hasGlobalBlock) {
+        spotsData[dateStr] = 0;
+        continue;
+      }
 
-      const spotsData: Record<string, number> = {};
+      const availableGroups = userGroups.filter(gId => 
+        !blockedForDate || !blockedForDate.has(gId)
+      );
 
-      for (const day of days) {
-        const dateStr = format(day, "yyyy-MM-dd");
-        
-        const isOutOfRange = dateRange && (dateStr < dateRange.min_date || dateStr > dateRange.max_date);
+      if (availableGroups.length === 0) {
+        spotsData[dateStr] = 0;
+        continue;
+      }
 
-        if (isOutOfRange) {
-          spotsData[dateStr] = 0;
-          continue;
-        }
-
-        const blockedForDate = blockedDatesMap[dateStr];
-        const hasGlobalBlock = blockedForDate && blockedForDate.has('__GLOBAL__');
-
-        if (hasGlobalBlock) {
-          spotsData[dateStr] = 0;
-          continue;
-        }
-
-        const availableGroups = userGroups.filter(gId => 
-          !blockedForDate || !blockedForDate.has(gId)
-        );
-
-        if (availableGroups.length === 0) {
-          spotsData[dateStr] = 0;
-          continue;
-        }
-
-        const { data: totalSpots, error: spotsError } = await supabase
+      // Cargar plazas totales
+      const totalSpotsResult = await safeSupabaseQuery(
+        () => supabase
           .from("parking_spots")
           .select("id, group_id")
           .eq("is_active", true)
-          .in("group_id", availableGroups);
+          .in("group_id", availableGroups),
+        [],
+        { logError: true, context: 'getTotalSpots' }
+      );
 
-        if (spotsError) throw spotsError;
-
-        const { data: occupied, error: occupiedError } = await supabase
+      // Cargar plazas ocupadas por reservas
+      const occupiedResult = await safeSupabaseQuery(
+        () => supabase
           .from("reservations")
           .select("spot_id")
           .eq("reservation_date", dateStr)
-          .eq("status", "active");
+          .eq("status", "active"),
+        [],
+        { logError: true, context: 'getOccupiedSpots' }
+      );
 
-        if (occupiedError) throw occupiedError;
+      // Cargar plazas ocupadas por ofertas pendientes de waitlist
+      const pendingOffersResult = await safeSupabaseQuery(
+        () => supabase
+          .from("waitlist_offers")
+          .select(`
+            spot_id,
+            waitlist_entries!inner (
+              reservation_date
+            )
+          `)
+          .eq("status", "pending")
+          .gt("expires_at", new Date().toISOString())
+          .eq("waitlist_entries.reservation_date", dateStr),
+        [],
+        { logError: true, context: 'getPendingOffers' }
+      );
 
-        const occupiedIds = occupied?.map(r => r.spot_id) || [];
-        const availableInUserGroups = totalSpots?.filter(spot => !occupiedIds.includes(spot.id)) || [];
-        
-        spotsData[dateStr] = availableInUserGroups.length;
-      }
+      const totalSpots = ensureArray(totalSpotsResult.data);
+      const occupied = ensureArray(occupiedResult.data);
+      const pendingOffers = ensureArray(pendingOffersResult.data);
 
-      setAvailableSpots(spotsData);
-    } catch (error: any) {
-      console.error("Error loading available spots:", error);
-    } finally {
-      setLoadingSpots(false);
+      const occupiedIds = [
+        ...occupied.map(r => r.spot_id),
+        ...pendingOffers.map(o => o.spot_id)
+      ];
+      const availableInUserGroups = totalSpots.filter(spot => !occupiedIds.includes(spot.id));
+      
+      spotsData[dateStr] = availableInUserGroups.length;
     }
+
+    setAvailableSpots(spotsData);
+    setLoadingSpots(false);
   };
 
   /**
@@ -321,10 +399,20 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
    * - If single group: navigates directly to spot selection
    * - If multiple groups: opens group selector modal
    * 
+   * Modo offline: Bloquea creación de reservas con mensaje claro
+   * 
    * @param {Date} date - Selected reservation date
    * @returns {Promise<void>}
    */
   const handleReserve = async (date: Date) => {
+    // Requisito 8.1: Bloquear creación de reservas cuando offline
+    if (!isOnline) {
+      toast.error("No puedes reservar sin conexión", {
+        description: "Conéctate a internet para realizar esta acción",
+      });
+      return;
+    }
+
     const dateStr = format(date, "yyyy-MM-dd");
 
     if (userGroups.length === 0) {
@@ -667,11 +755,36 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
    * Sets status to 'cancelled' and records cancellation timestamp.
    * Reloads reservations and availability after cancellation.
    * 
+   * Modo offline: Permite cancelación con queueAction()
+   * 
    * @param {string} reservationId - Reservation UUID to cancel
    * @returns {Promise<void>}
    */
   const handleCancel = async (reservationId: string) => {
     try {
+      // Requisito 3.3: Permitir cancelación offline con queueAction()
+      if (!isOnline) {
+        await queueAction({
+          type: 'cancel_reservation',
+          data: {
+            reservationId,
+            userId,
+          },
+          timestamp: Date.now(),
+        });
+
+        // Actualizar UI optimísticamente
+        setReservations(prev => prev.filter(r => r.id !== reservationId));
+        
+        toast.success("Cancelación guardada", {
+          description: "Se sincronizará cuando tengas conexión",
+        });
+        
+        if (onReservationUpdate) onReservationUpdate();
+        return;
+      }
+
+      // Online: cancelar directamente
       const { error } = await supabase
         .from("reservations")
         .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
@@ -714,20 +827,13 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
   }, [userGroups]);
 
   // Sincronizar datos cuando se recupera la conexión
-  useOfflineSync(
-    () => {
-      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
-      console.log('[useParkingCalendar] Controles re-habilitados');
-    },
-    () => {
-      // Sincronizar datos después de 3s (Requisito 3.3)
-      if (userGroups.length > 0) {
-        console.log('[useParkingCalendar] Sincronizando reservas y disponibilidad...');
-        loadReservations();
-        loadAvailableSpots();
-      }
+  useEffect(() => {
+    if (isOnline && userGroups.length > 0) {
+      console.log('[useParkingCalendar] Conexión restaurada, sincronizando datos...');
+      loadReservations();
+      loadAvailableSpots();
     }
-  );
+  }, [isOnline]);
 
   useEffect(() => {
     const handleNavigationState = async () => {
@@ -832,6 +938,5 @@ export const useParkingCalendar = (userId: string, onReservationUpdate?: () => v
     handleCancel,
     refreshData,
     isOnline,
-    lastSyncTime,
   };
 };

@@ -227,13 +227,14 @@ export const useWaitlist = () => {
         .from('waitlist_entries')
         .select(`
           *,
-          parking_groups(
+          parking_groups!inner(
             id,
             name,
             description
           )
         `)
         .eq('user_id', user.id)
+        .eq('parking_groups.is_active', true)
         .in('status', ['active', 'offer_pending'])
         .order('created_at', { ascending: true });
 
@@ -351,7 +352,7 @@ export const useWaitlist = () => {
       }
 
       toast.info('Oferta rechazada', {
-        description: 'Sigues en la lista de espera. La plaza se ofrecerá al siguiente usuario.'
+        description: 'Has salido de la lista de espera para este grupo y fecha. La plaza se ofrecerá al siguiente usuario.'
       });
 
       // Invalidate relevant queries

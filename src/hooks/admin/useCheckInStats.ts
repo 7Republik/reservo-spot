@@ -132,10 +132,10 @@ export const useCheckInStats = () => {
 
     return {
       totalReservations: totalReservations || 0,
-      avgMinutes: avgData?.[0]?.avg_minutes || null,
-      peakHour: peakData?.[0]?.hour || null,
-      fastestUser: fastestData?.[0]?.full_name || null,
-      fastestTime: fastestData?.[0]?.fastest_minutes || null,
+      avgMinutes: avgData?.[0]?.avg_minutes ?? null,
+      peakHour: peakData?.[0]?.hour ?? null,
+      fastestUser: fastestData?.[0]?.full_name ?? null,
+      fastestTime: fastestData?.[0]?.fastest_minutes ?? null,
     };
   };
 

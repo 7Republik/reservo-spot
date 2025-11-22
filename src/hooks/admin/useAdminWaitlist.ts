@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type {
@@ -8,8 +8,7 @@ import type {
   WaitlistLogsFilter,
 } from "@/types/waitlist";
 import { useOfflineMode } from "@/hooks/useOfflineMode";
-import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
 
 /**
  * Custom hook for admin management of waitlist system
@@ -68,7 +67,6 @@ export const useAdminWaitlist = () => {
   const logsCache = useRef<WaitlistLogsFilter | null>(null);
   
   const { isOnline } = useOfflineMode();
-  const storage = new OfflineStorageService();
 
   /**
    * Loads global waitlist statistics
@@ -96,7 +94,7 @@ export const useAdminWaitlist = () => {
       setLoading(true);
 
       if (!isOnline) {
-        const cached = await storage.get<AdminWaitlistStats>(cacheKey);
+        const cached = await offlineCache.get<AdminWaitlistStats>(cacheKey);
         if (cached) {
           setStats(cached);
           toast.warning("Mostrando estadísticas en caché", {
@@ -205,17 +203,16 @@ export const useAdminWaitlist = () => {
       setStats(statsData);
 
       // Cache data
-      await storage.set(cacheKey, statsData, {
+      await offlineCache.set(cacheKey, statsData, {
         dataType: 'admin_waitlist_stats',
         userId: 'admin'
       });
-      await storage.recordSync(cacheKey);
 
       statsCache.current = true;
     } catch (error: any) {
       console.error("Error loading waitlist stats:", error);
 
-      const cached = await storage.get<AdminWaitlistStats>(cacheKey);
+      const cached = await offlineCache.get<AdminWaitlistStats>(cacheKey);
       if (cached) {
         setStats(cached);
         toast.warning("Mostrando estadísticas en caché", {
@@ -254,7 +251,7 @@ export const useAdminWaitlist = () => {
       setLoading(true);
 
       if (!isOnline) {
-        const cached = await storage.get<WaitlistEntryWithDetails[]>(cacheKey);
+        const cached = await offlineCache.get<WaitlistEntryWithDetails[]>(cacheKey);
         if (cached) {
           setEntries(cached);
           toast.warning("Mostrando entradas en caché", {
@@ -306,17 +303,16 @@ export const useAdminWaitlist = () => {
       setEntries(entriesWithDetails);
 
       // Cache data
-      await storage.set(cacheKey, entriesWithDetails, {
+      await offlineCache.set(cacheKey, entriesWithDetails, {
         dataType: 'admin_waitlist_entries',
         userId: 'admin'
       });
-      await storage.recordSync(cacheKey);
 
       entriesCache.current = { groupId, date };
     } catch (error: any) {
       console.error("Error loading waitlist entries:", error);
 
-      const cached = await storage.get<WaitlistEntryWithDetails[]>(cacheKey);
+      const cached = await offlineCache.get<WaitlistEntryWithDetails[]>(cacheKey);
       if (cached) {
         setEntries(cached);
         toast.warning("Mostrando entradas en caché", {
@@ -424,7 +420,7 @@ export const useAdminWaitlist = () => {
       setLoading(true);
 
       if (!isOnline) {
-        const cached = await storage.get<WaitlistLogWithDetails[]>(cacheKey);
+        const cached = await offlineCache.get<WaitlistLogWithDetails[]>(cacheKey);
         if (cached) {
           setLogs(cached);
           toast.warning("Mostrando logs en caché", {
@@ -478,17 +474,16 @@ export const useAdminWaitlist = () => {
       setLogs(logsWithDetails);
 
       // Cache data
-      await storage.set(cacheKey, logsWithDetails, {
+      await offlineCache.set(cacheKey, logsWithDetails, {
         dataType: 'admin_waitlist_logs',
         userId: 'admin'
       });
-      await storage.recordSync(cacheKey);
 
       logsCache.current = filters;
     } catch (error: any) {
       console.error("Error loading waitlist logs:", error);
 
-      const cached = await storage.get<WaitlistLogWithDetails[]>(cacheKey);
+      const cached = await offlineCache.get<WaitlistLogWithDetails[]>(cacheKey);
       if (cached) {
         setLogs(cached);
         toast.warning("Mostrando logs en caché", {
@@ -599,15 +594,12 @@ export const useAdminWaitlist = () => {
   };
 
   // Sync data when connection is restored
-  useOfflineSync(
-    () => {
-      console.log('[useAdminWaitlist] Controles re-habilitados');
-    },
-    () => {
+  useEffect(() => {
+    if (isOnline) {
       console.log('[useAdminWaitlist] Sincronizando datos de lista de espera...');
       getWaitlistStats(true);
     }
-  );
+  }, [isOnline]);
 
   return {
     stats,

@@ -4,9 +4,5 @@ import "./index.css";
 import "./styles/visual-effects.css";
 import "./styles/landing.css";
 import "flyonui/flyonui";
-import { initConnectionMonitor } from "./lib/connectionMonitor";
-
-// Inicializar monitor de conexión para adaptar efectos visuales
-initConnectionMonitor();
 
 createRoot(document.getElementById("root")!).render(<App />);

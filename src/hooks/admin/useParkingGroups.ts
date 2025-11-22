@@ -1,10 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ParkingGroup } from "@/types/admin";
 import { useOfflineMode } from "@/hooks/useOfflineMode";
-import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
 
 /**
  * Custom hook for managing parking groups in the admin panel
@@ -60,7 +59,6 @@ export const useParkingGroups = () => {
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
   const { isOnline } = useOfflineMode();
-  const storage = new OfflineStorageService();
 
   /**
    * Loads all parking groups from database with caching
@@ -81,7 +79,7 @@ export const useParkingGroups = () => {
 
       // Si estamos offline, cargar desde cache
       if (!isOnline) {
-        const cached = await storage.get<ParkingGroup[]>(cacheKey);
+        const cached = await offlineCache.get<ParkingGroup[]>(cacheKey);
         if (cached) {
           setParkingGroups(cached);
           toast.warning("Funcionalidad limitada sin conexión", {
@@ -104,18 +102,17 @@ export const useParkingGroups = () => {
       setParkingGroups(data || []);
       
       // Cachear datos
-      await storage.set(cacheKey, data, {
+      await offlineCache.set(cacheKey, data, {
         dataType: 'admin_parking_groups',
         userId: 'admin'
       });
-      await storage.recordSync(cacheKey);
       
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading parking groups:", error);
       
       // Si falla online, intentar cache
-      const cached = await storage.get<ParkingGroup[]>(cacheKey);
+      const cached = await offlineCache.get<ParkingGroup[]>(cacheKey);
       if (cached) {
         setParkingGroups(cached);
         toast.warning("Mostrando datos en caché", {
@@ -406,17 +403,12 @@ export const useParkingGroups = () => {
   };
 
   // Sincronizar datos cuando se recupera la conexión
-  useOfflineSync(
-    () => {
-      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
-      console.log('[useParkingGroups] Controles re-habilitados');
-    },
-    () => {
-      // Sincronizar datos después de 3s (Requisito 3.3)
+  useEffect(() => {
+    if (isOnline) {
       console.log('[useParkingGroups] Sincronizando grupos...');
       loadParkingGroups(true); // forceReload = true
     }
-  );
+  }, [isOnline]);
 
   return {
     parkingGroups,

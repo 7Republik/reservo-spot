@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Calendar, MapPin, AlertTriangle, AlertCircle } from "lucide-react";
+import { getSpotAttributes, SpotAttributeBadge, SpotAttributeConfig } from "@/lib/spotIcons";
 import { format, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
@@ -93,10 +94,11 @@ const ReservationDetailsModal = ({
     setShowIncidentReport(false);
   };
 
-  const attributes = [];
-  if (reservation.isAccessible) attributes.push({ icon: "♿", label: "PMR" });
-  if (reservation.hasCharger) attributes.push({ icon: "⚡", label: "Cargador" });
-  if (reservation.isCompact) attributes.push({ icon: "🚗", label: "Reducida" });
+  const attributes = getSpotAttributes({
+    is_accessible: reservation.isAccessible,
+    has_charger: reservation.hasCharger,
+    is_compact: reservation.isCompact
+  });
 
   return (
     <>
@@ -140,10 +142,8 @@ const ReservationDetailsModal = ({
                 </div>
                 {attributes.length > 0 && (
                   <div className="flex flex-col gap-1 items-end">
-                    {attributes.map((attr, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {attr.icon} {attr.label}
-                      </Badge>
+                    {attributes.map((attr) => (
+                      <SpotAttributeBadge key={attr} type={attr} />
                     ))}
                   </div>
                 )}

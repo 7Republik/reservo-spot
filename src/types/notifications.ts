@@ -57,43 +57,48 @@ export interface PriorityConfig {
   color: string;
   bgColor: string;
   borderColor: string;
-  icon: string;
+  iconColor: string;
 }
 
 export const PRIORITY_CONFIG: Record<NotificationPriority, PriorityConfig> = {
   urgent: {
     color: 'text-red-600',
     bgColor: 'bg-red-50',
-    borderColor: 'border-red-200',
-    icon: '🔴',
+    borderColor: 'border-red-500',
+    iconColor: 'text-red-500',
   },
   high: {
     color: 'text-orange-600',
     bgColor: 'bg-orange-50',
-    borderColor: 'border-orange-200',
-    icon: '🟠',
+    borderColor: 'border-orange-400',
+    iconColor: 'text-orange-500',
   },
   medium: {
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
-    icon: '🔵',
+    borderColor: 'border-blue-400',
+    iconColor: 'text-blue-500',
   },
   low: {
     color: 'text-gray-600',
     bgColor: 'bg-gray-50',
-    borderColor: 'border-gray-200',
-    icon: '⚪',
+    borderColor: 'border-gray-300',
+    iconColor: 'text-gray-400',
   },
 };
 
-// Iconos por categoría
-export const CATEGORY_ICONS: Record<NotificationCategory, string> = {
-  reservation: '🅿️',
-  waitlist: '⏳',
-  warning: '⚠️',
-  incident: '🚨',
-  system: 'ℹ️',
+// Configuración de iconos por categoría
+export interface CategoryIconConfig {
+  icon: string;
+  color: string;
+}
+
+export const CATEGORY_ICON_CONFIG: Record<NotificationCategory, CategoryIconConfig> = {
+  reservation: { icon: 'ParkingSquare', color: 'text-blue-600' },
+  waitlist: { icon: 'Clock', color: 'text-amber-600' },
+  warning: { icon: 'AlertTriangle', color: 'text-orange-600' },
+  incident: { icon: 'AlertCircle', color: 'text-red-600' },
+  system: { icon: 'Info', color: 'text-gray-600' },
 };
 
 // Helper para obtener configuración de prioridad
@@ -101,9 +106,9 @@ export function getPriorityConfig(priority: NotificationPriority): PriorityConfi
   return PRIORITY_CONFIG[priority];
 }
 
-// Helper para obtener icono de categoría
-export function getCategoryIcon(category: NotificationCategory): string {
-  return CATEGORY_ICONS[category];
+// Helper para obtener configuración de icono de categoría
+export function getCategoryIconConfig(category: NotificationCategory): CategoryIconConfig {
+  return CATEGORY_ICON_CONFIG[category];
 }
 
 // Helper para formatear tiempo relativo

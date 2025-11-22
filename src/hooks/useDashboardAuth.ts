@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { clearVisualEditorSession } from "@/lib/visualEditorStorage";
+import { offlineCache } from "@/lib/offlineCache";
 
 /**
  * User status information
@@ -181,6 +182,15 @@ export const useDashboardAuth = () => {
       
       // Clear Visual Editor session state
       clearVisualEditorSession();
+      
+      // Clear offline cache and pending actions
+      try {
+        await offlineCache.clear();
+        console.log("Offline cache cleared on logout");
+      } catch (cacheError) {
+        console.error("Error clearing offline cache:", cacheError);
+        // Don't block logout if cache clearing fails
+      }
       
       if (result === "global") {
         toast.success("Sesión cerrada correctamente");

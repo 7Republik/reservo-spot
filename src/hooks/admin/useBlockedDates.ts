@@ -1,10 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { BlockedDate } from "@/types/admin";
 import { useOfflineMode } from "@/hooks/useOfflineMode";
-import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
 
 /**
  * Custom hook for managing blocked dates (reservation blackouts)
@@ -53,7 +52,6 @@ export const useBlockedDates = () => {
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
   const { isOnline } = useOfflineMode();
-  const storage = new OfflineStorageService();
 
   const loadBlockedDates = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
@@ -68,7 +66,7 @@ export const useBlockedDates = () => {
 
       // Si estamos offline, cargar desde cache
       if (!isOnline) {
-        const cached = await storage.get<BlockedDate[]>(cacheKey);
+        const cached = await offlineCache.get<BlockedDate[]>(cacheKey);
         if (cached) {
           setBlockedDates(cached);
           toast.warning("Funcionalidad limitada sin conexión", {
@@ -94,18 +92,17 @@ export const useBlockedDates = () => {
       setBlockedDates(data || []);
       
       // Cachear datos
-      await storage.set(cacheKey, data, {
+      await offlineCache.set(cacheKey, data, {
         dataType: 'admin_blocked_dates',
         userId: 'admin'
       });
-      await storage.recordSync(cacheKey);
       
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading blocked dates:", error);
       
       // Si falla online, intentar cache
-      const cached = await storage.get<BlockedDate[]>(cacheKey);
+      const cached = await offlineCache.get<BlockedDate[]>(cacheKey);
       if (cached) {
         setBlockedDates(cached);
         toast.warning("Mostrando datos en caché", {
@@ -204,17 +201,12 @@ export const useBlockedDates = () => {
   };
 
   // Sincronizar datos cuando se recupera la conexión
-  useOfflineSync(
-    () => {
-      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
-      console.log('[useBlockedDates] Controles re-habilitados');
-    },
-    () => {
-      // Sincronizar datos después de 3s (Requisito 3.3)
+  useEffect(() => {
+    if (isOnline) {
       console.log('[useBlockedDates] Sincronizando fechas bloqueadas...');
       loadBlockedDates(true); // forceReload = true
     }
-  );
+  }, [isOnline]);
 
   return {
     blockedDates,

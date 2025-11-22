@@ -3,6 +3,7 @@ import { ParkingSquare, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SpotAttributeBadge } from "@/lib/spotIcons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useParkingSpots } from "@/hooks/admin/useParkingSpots";
 import { ParkingSpotsSkeleton } from "../skeletons/AdminSkeletons";
@@ -71,19 +72,13 @@ export const ParkingSpotsTab = ({ parkingGroups, onOpenVisualEditor }: ParkingSp
                       </Badge>
 
                       {spot.is_accessible && (
-                        <Badge variant="outline" className="bg-blue-50 border-blue-200">
-                          ♿ PMR
-                        </Badge>
+                        <SpotAttributeBadge type="accessible" />
                       )}
                       {spot.has_charger && (
-                        <Badge variant="outline" className="bg-yellow-50 border-yellow-200">
-                          ⚡ Cargador
-                        </Badge>
+                        <SpotAttributeBadge type="charger" />
                       )}
                       {spot.is_compact && (
-                        <Badge variant="outline" className="bg-gray-100 border-gray-300">
-                          🚗 Reducida
-                        </Badge>
+                        <SpotAttributeBadge type="compact" />
                       )}
 
                       {spot.position_x !== null && spot.position_y !== null && (

@@ -1,10 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { LicensePlate, ExpirationType } from "@/types/admin";
 import { useOfflineMode } from "@/hooks/useOfflineMode";
-import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
 
 /**
  * Custom hook for managing license plate approvals in the admin panel
@@ -48,7 +47,6 @@ export const useLicensePlates = () => {
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
   const { isOnline } = useOfflineMode();
-  const storage = new OfflineStorageService();
 
   /**
    * Loads all pending license plate requests with user profiles
@@ -69,7 +67,7 @@ export const useLicensePlates = () => {
 
       // Si estamos offline, cargar desde cache
       if (!isOnline) {
-        const cached = await storage.get<LicensePlate[]>(cacheKey);
+        const cached = await offlineCache.get<LicensePlate[]>(cacheKey);
         if (cached) {
           setPendingPlates(cached);
           toast.warning("Funcionalidad limitada sin conexión", {
@@ -111,18 +109,17 @@ export const useLicensePlates = () => {
       setPendingPlates(platesWithProfiles as any);
       
       // Cachear datos
-      await storage.set(cacheKey, platesWithProfiles, {
+      await offlineCache.set(cacheKey, platesWithProfiles, {
         dataType: 'admin_pending_plates',
         userId: 'admin'
       });
-      await storage.recordSync(cacheKey);
       
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading pending plates:", error);
       
       // Si falla online, intentar cache
-      const cached = await storage.get<LicensePlate[]>(cacheKey);
+      const cached = await offlineCache.get<LicensePlate[]>(cacheKey);
       if (cached) {
         setPendingPlates(cached);
         toast.warning("Mostrando datos en caché", {
@@ -309,17 +306,12 @@ export const useLicensePlates = () => {
   };
 
   // Sincronizar datos cuando se recupera la conexión
-  useOfflineSync(
-    () => {
-      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
-      console.log('[useLicensePlates] Controles re-habilitados');
-    },
-    () => {
-      // Sincronizar datos después de 3s (Requisito 3.3)
+  useEffect(() => {
+    if (isOnline) {
       console.log('[useLicensePlates] Sincronizando placas pendientes...');
       loadPendingPlates(true); // forceReload = true
     }
-  );
+  }, [isOnline]);
 
   return {
     pendingPlates,

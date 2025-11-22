@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Accessibility, Zap, Minimize2, Sparkles, Square } from "lucide-react";
 
 /**
  * Colores definidos para cada atributo de plaza
@@ -23,39 +24,54 @@ interface LegendItem {
 const legendItems: LegendItem[] = [
   {
     type: "standard",
-    label: "Plaza Estándar",
+    label: "Estándar",
     colors: [SPOT_COLORS.standard],
-    description: "Plaza sin atributos especiales",
+    description: "Sin atributos especiales",
   },
   {
     type: "accessible",
-    label: "Plaza Accesible (PMR)",
+    label: "PMR",
     colors: [SPOT_COLORS.accessible],
-    icon: "♿",
-    description: "Plaza para personas con movilidad reducida",
+    icon: "accessible",
+    description: "Movilidad reducida",
   },
   {
     type: "charger",
-    label: "Plaza con Cargador",
+    label: "Cargador",
     colors: [SPOT_COLORS.charger],
-    icon: "🔌",
-    description: "Plaza con punto de carga eléctrica",
+    icon: "charger",
+    description: "Punto de carga eléctrica",
   },
   {
     type: "compact",
-    label: "Plaza Compacta",
+    label: "Compacta",
     colors: [SPOT_COLORS.compact],
-    icon: "📏",
-    description: "Plaza de tamaño reducido",
+    icon: "compact",
+    description: "Tamaño reducido",
   },
   {
     type: "multi",
-    label: "Múltiples Atributos",
+    label: "Múltiples",
     colors: [SPOT_COLORS.accessible, SPOT_COLORS.charger],
-    icon: "✨",
-    description: "Plaza con varios atributos (colores divididos)",
+    icon: "multi",
+    description: "Varios atributos",
   },
 ];
+
+const getIconComponent = (iconType?: string) => {
+  switch (iconType) {
+    case "accessible":
+      return <Accessibility className="w-4 h-4" />;
+    case "charger":
+      return <Zap className="w-4 h-4" />;
+    case "compact":
+      return <Minimize2 className="w-4 h-4" />;
+    case "multi":
+      return <Sparkles className="w-4 h-4" />;
+    default:
+      return <Square className="w-4 h-4" />;
+  }
+};
 
 interface LegendPanelProps {
   /**
@@ -141,35 +157,33 @@ export const LegendPanel = ({ onHoverItem }: LegendPanelProps) => {
   };
 
   return (
-    <div className="space-y-3">
-      <h3 className="font-semibold mb-3">Leyenda</h3>
-
-      <div className="space-y-2">
+    <div className="space-y-2">
+      <div className="space-y-1.5">
         {legendItems.map((item) => (
           <div
             key={item.type}
             className={cn(
-              "flex items-center gap-3 p-2 rounded-md transition-all cursor-pointer",
+              "flex items-center gap-2 p-2 rounded-md transition-all cursor-pointer",
               "hover:bg-muted/50",
-              hoveredType === item.type && "bg-muted ring-2 ring-primary/20"
+              hoveredType === item.type && "bg-muted ring-1 ring-primary/30"
             )}
             onMouseEnter={() => handleMouseEnter(item.type)}
             onMouseLeave={handleMouseLeave}
           >
             {/* Ejemplo visual de la plaza */}
             <div
-              className="w-10 h-10 rounded-md flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0"
+              className="w-8 h-8 rounded flex items-center justify-center text-white shadow-sm flex-shrink-0"
               style={getSpotBackground(item.colors)}
             >
-              {item.icon || "A1"}
+              {getIconComponent(item.icon)}
             </div>
 
             {/* Información del tipo de plaza */}
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium flex items-center gap-2">
+              <div className="text-xs font-medium">
                 {item.label}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-[10px] text-muted-foreground leading-tight">
                 {item.description}
               </div>
             </div>
@@ -178,12 +192,9 @@ export const LegendPanel = ({ onHoverItem }: LegendPanelProps) => {
       </div>
 
       {/* Nota informativa */}
-      <div className="text-xs text-muted-foreground pt-3 border-t">
-        <p className="mb-1">
-          <strong>Tip:</strong> Pasa el cursor sobre un elemento para resaltar las plazas correspondientes en el plano.
-        </p>
+      <div className="text-[10px] text-muted-foreground pt-2 border-t">
         <p>
-          Las plazas con múltiples atributos muestran sus colores divididos en secciones.
+          Pasa el cursor para resaltar plazas en el plano
         </p>
       </div>
     </div>

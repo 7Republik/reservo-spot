@@ -1,9 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ReservationSettings } from "@/types/admin";
 import { useOfflineMode } from "@/hooks/useOfflineMode";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
 
 /**
  * Custom hook for managing global reservation settings
@@ -51,7 +51,6 @@ export const useReservationSettings = () => {
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
   const { isOnline } = useOfflineMode();
-  const storage = new OfflineStorageService();
 
   const loadSettings = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
@@ -66,7 +65,7 @@ export const useReservationSettings = () => {
 
       // Si estamos offline, cargar desde cache
       if (!isOnline) {
-        const cached = await storage.get<ReservationSettings>(cacheKey);
+        const cached = await offlineCache.get<ReservationSettings>(cacheKey);
         if (cached) {
           setSettings(cached);
           toast.warning("Funcionalidad limitada sin conexión", {
@@ -94,18 +93,17 @@ export const useReservationSettings = () => {
         setSettings(settingsData);
         
         // Cachear datos
-        await storage.set(cacheKey, settingsData, {
+        await offlineCache.set(cacheKey, settingsData, {
           dataType: 'admin_reservation_settings',
           userId: 'admin'
         });
-        await storage.recordSync(cacheKey);
       }
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading settings:", error);
       
       // Si falla online, intentar cache
-      const cached = await storage.get<ReservationSettings>(cacheKey);
+      const cached = await offlineCache.get<ReservationSettings>(cacheKey);
       if (cached) {
         setSettings(cached);
         toast.warning("Mostrando datos en caché", {

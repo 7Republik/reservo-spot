@@ -67,7 +67,7 @@ const Profile = () => {
   }, [searchParams, setSearchParams]);
 
   // Hooks
-  const { profile, isLoading: profileLoading, updateProfile, updateNotificationPreferences } = useUserProfile();
+  const { profile, isLoading: profileLoading, isOffline, updateProfile, updateNotificationPreferences } = useUserProfile();
   const { warnings, unviewedCount, isLoading: warningsLoading } = useUserWarnings({
     markAsViewed: currentTab === "warnings"
   });
@@ -266,6 +266,7 @@ const Profile = () => {
                 profile={profile}
                 onUpdate={updateProfile}
                 isLoading={profileLoading}
+                isOffline={isOffline}
               />
             )}
 

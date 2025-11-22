@@ -3,9 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useOfflineMode } from "./useOfflineMode";
-import { useOfflineSync } from "./useOfflineSync";
-import { OfflineStorageService } from "@/lib/offlineStorage";
-import { format } from "date-fns";
+import { offlineCache } from "@/lib/offlineCache";
 
 export interface LicensePlate {
   id: string;
@@ -106,7 +104,7 @@ export const plateSchema = z.object({
  * ```
  */
 export const useLicensePlateManager = (userId: string) => {
-  const { isOnline, lastSyncTime } = useOfflineMode();
+  const { isOnline, lastSync } = useOfflineMode();
   const [activePlates, setActivePlates] = useState<LicensePlate[]>([]);
   const [deletedPlates, setDeletedPlates] = useState<LicensePlate[]>([]);
   const [newPlate, setNewPlate] = useState("");
@@ -117,7 +115,6 @@ export const useLicensePlateManager = (userId: string) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [plateToDelete, setPlateToDelete] = useState<LicensePlate | null>(null);
-  const storage = new OfflineStorageService();
 
   /**
    * Loads all license plates for user (active and deleted)
@@ -138,8 +135,7 @@ export const useLicensePlateManager = (userId: string) => {
     try {
       if (!isOnline) {
         // Modo offline: cargar desde cache
-        await storage.init();
-        const cached = await storage.get<LicensePlate[]>(cacheKey);
+        const cached = await offlineCache.get<LicensePlate[]>(cacheKey);
         
         if (cached) {
           const active = cached.filter(p => !p.deleted_at);
@@ -151,7 +147,9 @@ export const useLicensePlateManager = (userId: string) => {
           return;
         }
         
-        toast.error("No hay datos de matrículas en caché");
+        // No hay datos en cache
+        setActivePlates([]);
+        setDeletedPlates([]);
         setLoading(false);
         return;
       }
@@ -171,21 +169,15 @@ export const useLicensePlateManager = (userId: string) => {
       setActivePlates(active);
       setDeletedPlates(deleted);
       
-      // Cachear datos
-      await storage.init();
-      await storage.set(cacheKey, data || [], {
-        dataType: 'license_plates',
-        userId
-      });
-      await storage.recordSync(cacheKey);
+      // Cachear datos automáticamente cuando se cargan online
+      await offlineCache.set(cacheKey, data || []);
       
     } catch (error: any) {
       console.error("Error loading plates:", error);
       
       // Fallback a cache si falla online
       if (isOnline) {
-        await storage.init();
-        const cached = await storage.get<LicensePlate[]>(cacheKey);
+        const cached = await offlineCache.get<LicensePlate[]>(cacheKey);
         
         if (cached) {
           const active = cached.filter(p => !p.deleted_at);
@@ -195,6 +187,8 @@ export const useLicensePlateManager = (userId: string) => {
           setDeletedPlates(deleted);
           toast.warning("Mostrando datos en caché");
         } else {
+          setActivePlates([]);
+          setDeletedPlates([]);
           toast.error("Error al cargar las matrículas");
         }
       }
@@ -356,18 +350,12 @@ export const useLicensePlateManager = (userId: string) => {
     loadPlates();
   }, [userId]);
 
-  // Sincronizar datos cuando se recupera la conexión
-  useOfflineSync(
-    () => {
-      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
-      console.log('[useLicensePlateManager] Controles re-habilitados');
-    },
-    () => {
-      // Sincronizar datos después de 3s (Requisito 3.3)
-      console.log('[useLicensePlateManager] Sincronizando placas...');
+  // Recargar datos cuando se recupera la conexión
+  useEffect(() => {
+    if (isOnline) {
       loadPlates();
     }
-  );
+  }, [isOnline]);
 
   return {
     activePlates,
@@ -391,6 +379,6 @@ export const useLicensePlateManager = (userId: string) => {
     handleDeletePlate,
     openDeleteDialog,
     isOnline,
-    lastSyncTime,
+    lastSyncTime: lastSync,
   };
 };

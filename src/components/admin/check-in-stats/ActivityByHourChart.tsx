@@ -40,12 +40,12 @@ export const ActivityByHourChart = ({
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-64 mt-2" />
+        <CardHeader className="pb-3">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-3 w-56 mt-1" />
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[300px] w-full" />
+          <Skeleton className="h-[280px] w-full" />
         </CardContent>
       </Card>
     );
@@ -53,14 +53,12 @@ export const ActivityByHourChart = ({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Actividad por Hora del Día</CardTitle>
-        <CardDescription>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Actividad por Hora</CardTitle>
+        <CardDescription className="text-xs">
           {totalReservations > 0 ? (
             <>
-              Total de {totalReservations.toLocaleString()} reservas.
-              Hora pico: {String(peakHour.hour).padStart(2, '0')}:00 con{' '}
-              {peakHour.reservations} reservas.
+              {totalReservations.toLocaleString()} reservas · Pico: {String(peakHour.hour).padStart(2, '0')}:00 ({peakHour.reservations})
             </>
           ) : (
             'No hay datos para el periodo seleccionado'
@@ -68,42 +66,48 @@ export const ActivityByHourChart = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
+        <ChartContainer config={chartConfig} className="h-[280px] w-full">
           <BarChart
             accessibilityLayer
             data={chartData}
-            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+            margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
           >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <CartesianGrid 
+              vertical={false} 
+              strokeDasharray="3 3" 
+              className="stroke-muted"
+            />
             <XAxis
               dataKey="hour"
               tickLine={false}
-              tickMargin={10}
+              tickMargin={8}
               axisLine={false}
+              className="text-[10px]"
               tickFormatter={(value) => {
-                // Mostrar solo cada 2 horas en móvil
+                // Mostrar solo cada 3 horas
                 const hour = parseInt(value.split(':')[0]);
-                return hour % 2 === 0 ? value : '';
+                return hour % 3 === 0 ? value.replace(':00', 'h') : '';
               }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              tickMargin={10}
+              tickMargin={8}
               allowDecimals={false}
+              className="text-[10px]"
             />
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  labelFormatter={(value) => `Hora: ${value}`}
-                  formatter={(value) => [`${value} reservas`, 'Reservas']}
+                  labelFormatter={(value) => `${value}`}
+                  formatter={(value) => [`${value}`, 'Reservas']}
                 />
               }
             />
             <Bar
               dataKey="reservations"
               fill="var(--color-reservations)"
-              radius={[4, 4, 0, 0]}
+              radius={[3, 3, 0, 0]}
             />
           </BarChart>
         </ChartContainer>

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { WaitlistSettings, WaitlistSettingsUpdate } from "@/types/waitlist";
 import { useOfflineMode } from "@/hooks/useOfflineMode";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
 
 /**
  * Custom hook for managing waitlist system settings
@@ -63,7 +63,6 @@ export const useWaitlistSettings = () => {
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
   const { isOnline } = useOfflineMode();
-  const storage = new OfflineStorageService();
 
   const loadSettings = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
@@ -78,7 +77,7 @@ export const useWaitlistSettings = () => {
 
       // Si estamos offline, cargar desde cache
       if (!isOnline) {
-        const cached = await storage.get<WaitlistSettings>(cacheKey);
+        const cached = await offlineCache.get<WaitlistSettings>(cacheKey);
         if (cached) {
           setSettings(cached);
           toast.warning("Funcionalidad limitada sin conexión", {
@@ -121,11 +120,7 @@ export const useWaitlistSettings = () => {
         setSettings(settingsData);
         
         // Cachear datos
-        await storage.set(cacheKey, settingsData, {
-          dataType: 'admin_waitlist_settings',
-          userId: 'admin'
-        });
-        await storage.recordSync(cacheKey);
+        await offlineCache.set(cacheKey, settingsData);
       }
       
       isCached.current = true;
@@ -133,7 +128,7 @@ export const useWaitlistSettings = () => {
       console.error("Error loading waitlist settings:", error);
       
       // Si falla online, intentar cache
-      const cached = await storage.get<WaitlistSettings>(cacheKey);
+      const cached = await offlineCache.get<WaitlistSettings>(cacheKey);
       if (cached) {
         setSettings(cached);
         toast.warning("Mostrando datos en caché", {

@@ -1,10 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ParkingSpot } from "@/types/admin";
 import { useOfflineMode } from "@/hooks/useOfflineMode";
-import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { OfflineStorageService } from "@/lib/offlineStorage";
+import { offlineCache } from "@/lib/offlineCache";
 
 /**
  * Custom hook for managing individual parking spots
@@ -56,7 +55,6 @@ export const useParkingSpots = () => {
   const [loading, setLoading] = useState(false);
   const isCached = useRef(false);
   const { isOnline } = useOfflineMode();
-  const storage = new OfflineStorageService();
 
   const loadSpots = async (forceReload = false) => {
     // Si ya está en caché y no se fuerza la recarga, no hacer nada
@@ -71,7 +69,7 @@ export const useParkingSpots = () => {
 
       // Si estamos offline, cargar desde cache
       if (!isOnline) {
-        const cached = await storage.get<ParkingSpot[]>(cacheKey);
+        const cached = await offlineCache.get<ParkingSpot[]>(cacheKey);
         if (cached) {
           setSpots(cached);
           toast.warning("Funcionalidad limitada sin conexión", {
@@ -97,18 +95,17 @@ export const useParkingSpots = () => {
       setSpots(data || []);
       
       // Cachear datos
-      await storage.set(cacheKey, data, {
+      await offlineCache.set(cacheKey, data, {
         dataType: 'admin_parking_spots',
         userId: 'admin'
       });
-      await storage.recordSync(cacheKey);
       
       isCached.current = true;
     } catch (error: any) {
       console.error("Error loading spots:", error);
       
       // Si falla online, intentar cache
-      const cached = await storage.get<ParkingSpot[]>(cacheKey);
+      const cached = await offlineCache.get<ParkingSpot[]>(cacheKey);
       if (cached) {
         setSpots(cached);
         toast.warning("Mostrando datos en caché", {
@@ -206,17 +203,12 @@ export const useParkingSpots = () => {
   };
 
   // Sincronizar datos cuando se recupera la conexión
-  useOfflineSync(
-    () => {
-      // Re-habilitar controles inmediatamente (Requisito 5.5: <2s)
-      console.log('[useParkingSpots] Controles re-habilitados');
-    },
-    () => {
-      // Sincronizar datos después de 3s (Requisito 3.3)
+  useEffect(() => {
+    if (isOnline) {
       console.log('[useParkingSpots] Sincronizando plazas...');
       loadSpots(true); // forceReload = true
     }
-  );
+  }, [isOnline]);
 
   return {
     spots,

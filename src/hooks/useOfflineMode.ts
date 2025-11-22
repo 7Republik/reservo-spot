@@ -1,186 +1,543 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { connectionMonitor } from '@/lib/ConnectionMonitorService';
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { offlineCache } from '@/lib/offlineCache';
+import { toast } from 'sonner';
+import { format, addDays } from 'date-fns';
 
-/**
- * Interface para el retorno del hook useOfflineMode
- */
-export interface UseOfflineModeReturn {
-  isOnline: boolean;           // Estado actual de conexión
-  isOffline: boolean;          // Inverso de isOnline (conveniencia)
-  lastSyncTime: Date | null;   // Última sincronización exitosa
-  checkConnection: () => Promise<boolean>; // Verificación manual
-  retryCount: number;          // Número de reintentos actuales
-  consecutiveFailures: number; // Fallos consecutivos de conectividad
-  isSyncing: boolean;          // Indica si se está sincronizando
+// Tipos para acciones offline
+export interface OfflineAction {
+  id: string;
+  type: 'checkin' | 'checkout' | 'cancel_reservation';
+  data: any;
+  timestamp: number;
 }
 
-/**
- * Hook personalizado para gestionar el modo offline
- * 
- * Integra ConnectionMonitorService para detectar cambios de conectividad
- * y proporciona una API consistente para componentes.
- * 
- * Características:
- * - Detección automática de cambios de conexión
- * - Debounce de 5s para evitar parpadeos
- * - Validación de servidor antes de confirmar online
- * - 3 fallos consecutivos para entrar en modo offline
- * - 2 reintentos automáticos para requests
- * - Sincronización automática al recuperar conexión (3s)
- * 
- * @returns {UseOfflineModeReturn} Estado y funciones de conectividad
- * 
- * @example
- * ```tsx
- * const { isOnline, isOffline, lastSyncTime } = useOfflineMode();
- * 
- * if (isOffline) {
- *   return <OfflineMessage lastSync={lastSyncTime} />;
- * }
- * ```
- */
+// Estado de precarga
+export type PreloadStatus = 'idle' | 'loading' | 'complete' | 'partial';
+
+// Estado detallado de precarga
+export interface PreloadResults {
+  profile: boolean;
+  plates: boolean;
+  groups: boolean;
+  todayReservation: boolean;
+  upcomingReservations: boolean;
+  maps: boolean;
+}
+
+// Interface del hook
+export interface UseOfflineModeReturn {
+  isOnline: boolean;
+  lastSync: Date | null;
+  pendingActions: number;
+  preloadStatus: PreloadStatus;
+  isPreloadComplete: boolean;
+  preloadResults: PreloadResults | null;
+  preloadData: () => Promise<void>;
+  queueAction: (action: Omit<OfflineAction, 'id'>) => Promise<void>;
+  syncPendingActions: () => Promise<void>;
+}
+
 export const useOfflineMode = (): UseOfflineModeReturn => {
-  // Estado de conexión
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [retryCount, setRetryCount] = useState<number>(0);
-  const [consecutiveFailures, setConsecutiveFailures] = useState<number>(0);
-
-  // Referencia para el timer de sincronización
-  const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [pendingActions, setPendingActions] = useState(0);
+  const [preloadStatus, setPreloadStatus] = useState<PreloadStatus>('idle');
+  const [preloadResults, setPreloadResults] = useState<PreloadResults | null>(null);
   
-  // Flag para saber si el monitor ya está iniciado
-  const isMonitorStarted = useRef<boolean>(false);
+  // Refs para control interno
+  const preloadInProgress = useRef(false);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const channel = useRef<BroadcastChannel | null>(null);
 
-  // Flag para indicar si se está sincronizando
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-
-  /**
-   * Sincroniza datos críticos desde el servidor
-   * Esta función se llama automáticamente al recuperar la conexión
-   */
-  const syncCriticalData = useCallback(async () => {
-    if (isSyncing) {
-      console.log('[useOfflineMode] Sincronización ya en progreso, omitiendo...');
-      return;
-    }
-
-    setIsSyncing(true);
-    console.log('[useOfflineMode] Iniciando sincronización de datos críticos...');
-
-    try {
-      // Emitir evento personalizado para que los hooks se suscriban
-      // Los hooks individuales manejarán su propia sincronización
-      const syncEvent = new CustomEvent('offline-mode-sync', {
-        detail: { timestamp: new Date() }
-      });
-      window.dispatchEvent(syncEvent);
-
-      // Actualizar timestamp de última sincronización
-      setLastSyncTime(new Date());
-      console.log('[useOfflineMode] Sincronización completada exitosamente');
-    } catch (error) {
-      console.error('[useOfflineMode] Error durante sincronización:', error);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [isSyncing]);
-
-  /**
-   * Callback que se ejecuta cuando cambia el estado de conexión
-   */
-  const handleConnectionChange = useCallback((online: boolean) => {
-    const wasOffline = !isOnline;
-    setIsOnline(online);
-    
-    // Actualizar contadores desde el servicio
-    const status = connectionMonitor.getStatus();
-    setConsecutiveFailures(status.consecutiveFailures);
-
-    // Si recuperamos la conexión (transición offline -> online)
-    if (online && wasOffline) {
-      console.log('[useOfflineMode] Conexión recuperada, programando sincronización...');
-      
-      // Limpiar timer anterior si existe
-      if (syncTimerRef.current) {
-        clearTimeout(syncTimerRef.current);
-      }
-
-      // Programar sincronización en 3 segundos (Requisito 3.3)
-      syncTimerRef.current = setTimeout(() => {
-        syncCriticalData();
-      }, 3000);
-
-      // Emitir evento de reconexión inmediatamente para re-habilitar controles (Requisito 5.5)
-      // Los controles deben re-habilitarse en <2s, antes de la sincronización
-      const reconnectEvent = new CustomEvent('offline-mode-reconnect', {
-        detail: { timestamp: new Date() }
-      });
-      window.dispatchEvent(reconnectEvent);
-      console.log('[useOfflineMode] Evento de reconexión emitido para re-habilitar controles');
-    }
-  }, [isOnline, syncCriticalData]);
-
-  /**
-   * Función para verificar conexión manualmente
-   */
-  const checkConnection = useCallback(async (): Promise<boolean> => {
-    try {
-      const isConnected = await connectionMonitor.check();
-      setIsOnline(isConnected);
-      
-      if (isConnected) {
-        setLastSyncTime(new Date());
-      }
-      
-      return isConnected;
-    } catch (error) {
-      console.error('[useOfflineMode] Error checking connection:', error);
-      return false;
-    }
-  }, []);
-
-  /**
-   * Inicializar y limpiar el monitor de conexión
-   */
+  // Detectar cambios de conexión con debounce de 5 segundos
   useEffect(() => {
-    // Solo iniciar el monitor una vez (singleton)
-    if (!isMonitorStarted.current) {
-      // Iniciar monitoreo con callback
-      connectionMonitor.start(handleConnectionChange);
-      isMonitorStarted.current = true;
-
-      // Establecer última sincronización inicial si estamos online
-      if (navigator.onLine) {
-        setLastSyncTime(new Date());
+    const handleOnline = () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
       }
-
-      console.log('[useOfflineMode] Monitor iniciado');
-    }
-
-    // Cleanup: detener monitor al desmontar
+      
+      debounceTimer.current = setTimeout(() => {
+        setIsOnline(true);
+        syncPendingActions();
+      }, 5000);
+    };
+    
+    const handleOffline = () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+      
+      debounceTimer.current = setTimeout(() => {
+        setIsOnline(false);
+      }, 5000);
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
     return () => {
-      // Solo detener si este hook fue el que lo inició
-      if (isMonitorStarted.current) {
-        connectionMonitor.stop();
-        isMonitorStarted.current = false;
-        console.log('[useOfflineMode] Monitor detenido');
-      }
-
-      // Limpiar timer de sincronización
-      if (syncTimerRef.current) {
-        clearTimeout(syncTimerRef.current);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
       }
     };
-  }, [handleConnectionChange]);
+  }, []);
+
+  // Configurar BroadcastChannel para sincronización entre pestañas
+  useEffect(() => {
+    channel.current = new BroadcastChannel('reserveo_offline');
+    
+    channel.current.onmessage = (event) => {
+      if (event.data.type === 'action_queued') {
+        setPendingActions(prev => prev + 1);
+      }
+      
+      if (event.data.type === 'sync_complete') {
+        setPendingActions(0);
+        preloadData();
+      }
+      
+      if (event.data.type === 'connection_changed') {
+        setIsOnline(event.data.isOnline);
+      }
+    };
+    
+    return () => {
+      channel.current?.close();
+    };
+  }, []);
+
+  // Notificar cambios de conexión a otras pestañas
+  useEffect(() => {
+    channel.current?.postMessage({
+      type: 'connection_changed',
+      isOnline,
+    });
+  }, [isOnline]);
+
+  // Verificar precarga al montar y cargar contador de acciones pendientes
+  useEffect(() => {
+    const checkPreload = async () => {
+      const complete = await offlineCache.get<boolean>('preload_complete');
+      const results = await offlineCache.get<PreloadResults>('preload_results');
+      
+      if (complete) {
+        setPreloadStatus('complete');
+      } else if (isOnline) {
+        preloadData();
+      }
+      
+      if (results) {
+        setPreloadResults(results);
+      }
+      
+      // Cargar timestamp de última sincronización
+      const lastSyncStr = await offlineCache.get<string>('last_sync');
+      if (lastSyncStr) {
+        setLastSync(new Date(lastSyncStr));
+      }
+      
+      // Cargar contador de acciones pendientes
+      const queue = await offlineCache.get<OfflineAction[]>('action_queue') || [];
+      setPendingActions(queue.length);
+    };
+    
+    checkPreload();
+  }, []);
+
+  // Precargar datos cuando hay conexión
+  // DESHABILITADO: La precarga automática causa errores 406 cuando el usuario no está autenticado
+  // useEffect(() => {
+  //   if (isOnline && preloadStatus === 'idle') {
+  //     preloadData();
+  //   }
+  // }, [isOnline]);
+
+  // Función de precarga de datos
+  const preloadData = async () => {
+    // Evitar múltiples precargas simultáneas
+    if (preloadInProgress.current) {
+      console.log('Preload already in progress');
+      return;
+    }
+    
+    if (!isOnline) {
+      console.log('Cannot preload while offline');
+      return;
+    }
+    
+    preloadInProgress.current = true;
+    setPreloadStatus('loading');
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No user authenticated');
+        setPreloadStatus('idle');
+        return;
+      }
+      
+      const userId = user.id;
+      
+      // Objeto para rastrear resultados de precarga
+      const preloadResults: PreloadResults = {
+        profile: false,
+        plates: false,
+        groups: false,
+        todayReservation: false,
+        upcomingReservations: false,
+        maps: false,
+      };
+      
+      // Cargar datos independientemente con Promise.allSettled
+      const results = await Promise.allSettled([
+        // 1. Perfil
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single()
+          .then(({ data, error }) => {
+            if (!error && data) {
+              return offlineCache.set('profile', data);
+            }
+            throw error || new Error('No profile data');
+          }),
+        
+        // 2. Matrículas
+        supabase
+          .from('license_plates')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_approved', true)
+          .then(({ data, error }) => {
+            if (!error) {
+              return offlineCache.set('plates', data || []);
+            }
+            throw error;
+          }),
+        
+        // 3. Grupos
+        supabase
+          .from('parking_groups')
+          .select('*')
+          .eq('is_active', true)
+          .then(({ data, error }) => {
+            if (!error) {
+              return offlineCache.set('groups', data || []);
+            }
+            throw error;
+          }),
+        
+        // 4. Reserva del día
+        (async () => {
+          const today = format(new Date(), 'yyyy-MM-dd');
+          const { data } = await supabase
+            .from('reservations')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('reservation_date', today)
+            .eq('status', 'active')
+            .single();
+          
+          // No es error si no hay reserva del día
+          await offlineCache.set('today_reservation', data);
+        })(),
+        
+        // 5. Reservas próximos 7 días
+        (async () => {
+          const today = format(new Date(), 'yyyy-MM-dd');
+          const nextWeek = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+          const { data, error } = await supabase
+            .from('reservations')
+            .select('*')
+            .eq('user_id', userId)
+            .gte('reservation_date', today)
+            .lte('reservation_date', nextWeek)
+            .eq('status', 'active');
+          
+          if (!error) {
+            await offlineCache.set('upcoming_reservations', data || []);
+            return data;
+          }
+          throw error;
+        })(),
+        
+        // 6. Mapas de grupos con reservas
+        (async () => {
+          const today = format(new Date(), 'yyyy-MM-dd');
+          const nextWeek = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+          const { data: upcomingReservations, error } = await supabase
+            .from('reservations')
+            .select('spot_id, parking_spots(group_id)')
+            .eq('user_id', userId)
+            .gte('reservation_date', today)
+            .lte('reservation_date', nextWeek)
+            .eq('status', 'active');
+          
+          if (error) throw error;
+          
+          if (upcomingReservations && upcomingReservations.length > 0) {
+            const groupIds = [...new Set(
+              upcomingReservations
+                .map(r => (r.parking_spots as any)?.group_id)
+                .filter(Boolean)
+            )];
+            
+            await Promise.all(
+              groupIds.map(async (groupId) => {
+                const { data: spots, error: spotsError } = await supabase
+                  .from('parking_spots')
+                  .select('*')
+                  .eq('group_id', groupId)
+                  .eq('is_active', true);
+                
+                if (!spotsError) {
+                  await offlineCache.set(`spots_${groupId}`, spots || []);
+                }
+              })
+            );
+          }
+        })(),
+      ]);
+      
+      // Actualizar estado de precarga según resultados
+      preloadResults.profile = results[0].status === 'fulfilled';
+      preloadResults.plates = results[1].status === 'fulfilled';
+      preloadResults.groups = results[2].status === 'fulfilled';
+      preloadResults.todayReservation = results[3].status === 'fulfilled';
+      preloadResults.upcomingReservations = results[4].status === 'fulfilled';
+      preloadResults.maps = results[5].status === 'fulfilled';
+      
+      // Guardar estado de precarga
+      await offlineCache.set('preload_results', preloadResults);
+      setPreloadResults(preloadResults);
+      
+      // Contar éxitos
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const totalCount = results.length;
+      
+      // Actualizar estado según resultado
+      if (successCount === totalCount) {
+        setPreloadStatus('complete');
+        await offlineCache.set('preload_complete', true);
+        // Solo mostrar toast si es la primera vez en esta sesión
+        const toastShown = sessionStorage.getItem('preload_toast_shown');
+        if (!toastShown) {
+          toast.success('Datos preparados para modo offline');
+          sessionStorage.setItem('preload_toast_shown', 'true');
+        }
+      } else if (successCount > 0) {
+        setPreloadStatus('partial');
+        await offlineCache.set('preload_complete', false);
+        const toastShown = sessionStorage.getItem('preload_toast_shown');
+        if (!toastShown) {
+          toast.warning(`${successCount}/${totalCount} datos preparados. Algunos pueden no estar disponibles offline.`);
+          sessionStorage.setItem('preload_toast_shown', 'true');
+        }
+      } else {
+        setPreloadStatus('idle');
+        await offlineCache.set('preload_complete', false);
+        const toastShown = sessionStorage.getItem('preload_toast_shown');
+        if (!toastShown) {
+          toast.error('No se pudieron preparar datos offline. Necesitarás conexión.');
+          sessionStorage.setItem('preload_toast_shown', 'true');
+        }
+      }
+      
+      // Guardar timestamp de última sincronización
+      const now = new Date();
+      setLastSync(now);
+      await offlineCache.set('last_sync', now.toISOString());
+      
+    } catch (error) {
+      console.error('Preload failed:', error);
+      setPreloadStatus('idle');
+      // No mostrar error al usuario, solo log
+    } finally {
+      preloadInProgress.current = false;
+    }
+  };
+
+  // Añadir acción a la cola
+  const queueAction = async (action: Omit<OfflineAction, 'id'>) => {
+    const actionWithId: OfflineAction = {
+      ...action,
+      id: crypto.randomUUID(),
+    };
+    
+    // Obtener cola actual
+    const queue = await offlineCache.get<OfflineAction[]>('action_queue') || [];
+    
+    // Añadir nueva acción
+    queue.push(actionWithId);
+    
+    // Guardar cola actualizada
+    await offlineCache.set('action_queue', queue);
+    
+    setPendingActions(queue.length);
+    
+    // Notificar a otras pestañas
+    channel.current?.postMessage({
+      type: 'action_queued',
+      action: actionWithId,
+    });
+    
+    // Si estamos online, sincronizar inmediatamente
+    if (isOnline) {
+      await syncPendingActions();
+    }
+  };
+
+  // Sincronizar acciones pendientes con validación de conflictos
+  const syncPendingActions = async () => {
+    if (!isOnline) return;
+    
+    const queue = await offlineCache.get<OfflineAction[]>('action_queue') || [];
+    if (queue.length === 0) return;
+    
+    const failedActions: OfflineAction[] = [];
+    const conflictActions: OfflineAction[] = [];
+    let successCount = 0;
+    
+    for (const action of queue) {
+      try {
+        // Validar que la acción sigue siendo válida antes de ejecutar
+        let isValid = true;
+        let conflictReason = '';
+        
+        if (action.type === 'checkin' || action.type === 'checkout') {
+          // Verificar que la reserva sigue activa
+          const { data: reservation, error } = await supabase
+            .from('reservations')
+            .select('status, reservation_date')
+            .eq('id', action.data.reservationId)
+            .single();
+          
+          if (error || !reservation) {
+            isValid = false;
+            conflictReason = 'La reserva ya no existe';
+          } else if (reservation.status !== 'active') {
+            isValid = false;
+            conflictReason = `La reserva ya no está activa (estado: ${reservation.status})`;
+          }
+          
+          if (!isValid) {
+            conflictActions.push(action);
+            const actionName = action.type === 'checkin' ? 'check-in' : 'check-out';
+            toast.error(`No se pudo hacer ${actionName}: ${conflictReason}`);
+            continue;
+          }
+        }
+        
+        if (action.type === 'cancel_reservation') {
+          // Verificar que la reserva no está ya cancelada
+          const { data: reservation, error } = await supabase
+            .from('reservations')
+            .select('status')
+            .eq('id', action.data.reservationId)
+            .single();
+          
+          if (error || !reservation) {
+            isValid = false;
+            conflictReason = 'La reserva ya no existe';
+          } else if (reservation.status === 'cancelled') {
+            isValid = false;
+            conflictReason = 'La reserva ya estaba cancelada';
+          }
+          
+          if (!isValid) {
+            conflictActions.push(action);
+            // Para cancelaciones ya hechas, es un warning no un error
+            if (conflictReason === 'La reserva ya estaba cancelada') {
+              toast.warning(conflictReason);
+            } else {
+              toast.error(`No se pudo cancelar: ${conflictReason}`);
+            }
+            continue;
+          }
+        }
+        
+        // Si la acción es válida, ejecutarla
+        switch (action.type) {
+          case 'checkin':
+            await supabase.rpc('perform_checkin', {
+              p_reservation_id: action.data.reservationId,
+              p_user_id: action.data.userId,
+            });
+            break;
+            
+          case 'checkout':
+            await supabase.rpc('perform_checkout', {
+              p_reservation_id: action.data.reservationId,
+              p_user_id: action.data.userId,
+            });
+            break;
+            
+          case 'cancel_reservation':
+            await supabase
+              .from('reservations')
+              .update({ 
+                status: 'cancelled', 
+                cancelled_at: new Date().toISOString() 
+              })
+              .eq('id', action.data.reservationId);
+            break;
+        }
+        
+        successCount++;
+        
+      } catch (error) {
+        console.error(`Failed to sync action ${action.id}:`, error);
+        failedActions.push(action);
+      }
+    }
+    
+    // Actualizar cola solo con acciones que fallaron (no conflictos)
+    await offlineCache.set('action_queue', failedActions);
+    setPendingActions(failedActions.length);
+    
+    // Mostrar feedback específico según resultados
+    if (conflictActions.length > 0) {
+      toast.warning(
+        `${conflictActions.length} ${conflictActions.length === 1 ? 'acción' : 'acciones'} no se ${conflictActions.length === 1 ? 'pudo' : 'pudieron'} aplicar por cambios en el servidor`
+      );
+    }
+    
+    if (successCount > 0) {
+      toast.success(
+        `${successCount} ${successCount === 1 ? 'acción sincronizada' : 'acciones sincronizadas'} correctamente`
+      );
+    }
+    
+    if (failedActions.length > 0) {
+      toast.error(
+        `${failedActions.length} ${failedActions.length === 1 ? 'acción falló' : 'acciones fallaron'}. Se reintentará más tarde.`
+      );
+    }
+    
+    // Si hubo éxitos o conflictos resueltos, recargar datos frescos
+    if (successCount > 0 || conflictActions.length > 0) {
+      await preloadData();
+      
+      // Notificar a otras pestañas
+      channel.current?.postMessage({
+        type: 'sync_complete',
+      });
+    }
+  };
 
   return {
     isOnline,
-    isOffline: !isOnline,
-    lastSyncTime,
-    checkConnection,
-    retryCount,
-    consecutiveFailures,
-    isSyncing,
+    lastSync,
+    pendingActions,
+    preloadStatus,
+    isPreloadComplete: preloadStatus === 'complete',
+    preloadResults,
+    preloadData,
+    queueAction,
+    syncPendingActions,
   };
 };
