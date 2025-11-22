@@ -31,14 +31,16 @@ interface TodayCheckinCardProps {
  */
 export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckinCardProps) => {
   const { checkin, checkout, isLoading } = useCheckin();
-  const { isOnline, isOffline, queueAction, pendingActions } = useOfflineMode();
+  const { isOnline, queueAction, pendingActions } = useOfflineMode();
   const [showAnimation, setShowAnimation] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [pendingCheckin, setPendingCheckin] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState(false);
+  const [localCheckinTime, setLocalCheckinTime] = useState<Date | null>(null);
 
-  const hasCheckin = reservation.checkin?.checkin_at;
+  const hasCheckin = reservation.checkin?.checkin_at || localCheckinTime;
   const hasCheckout = reservation.checkin?.checkout_at;
+  const isOffline = !isOnline;
 
   // Staggered entrance animation (delay 100ms)
   React.useEffect(() => {
@@ -57,18 +59,22 @@ export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckin
   }, [isOnline, pendingActions]);
 
   const handleCheckin = async () => {
+    const now = new Date();
+    
     if (isOffline) {
-      // Modo offline: guardar acción en cola
+      // Modo offline: guardar acción en cola con hora exacta
       await queueAction({
         type: 'checkin',
         data: {
           reservationId: reservation.id,
           userId: reservation.user_id,
-          timestamp: Date.now()
+          timestamp: now.getTime() // Hora exacta del click
         },
-        timestamp: Date.now()
+        timestamp: now.getTime()
       });
       
+      // Guardar hora local para mostrar en UI
+      setLocalCheckinTime(now);
       setPendingCheckin(true);
       setShowAnimation(true);
       setTimeout(() => setShowAnimation(false), 1000);
@@ -88,16 +94,18 @@ export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckin
   };
 
   const handleCheckout = async () => {
+    const now = new Date();
+    
     if (isOffline) {
-      // Modo offline: guardar acción en cola
+      // Modo offline: guardar acción en cola con hora exacta
       await queueAction({
         type: 'checkout',
         data: {
           reservationId: reservation.id,
           userId: reservation.user_id,
-          timestamp: Date.now()
+          timestamp: now.getTime() // Hora exacta del click
         },
-        timestamp: Date.now()
+        timestamp: now.getTime()
       });
       
       setPendingCheckout(true);
@@ -208,6 +216,9 @@ export const TodayCheckinCard = ({ reservation, onCheckinSuccess }: TodayCheckin
                   <span className="text-sm md:text-base font-medium">
                     {format(new Date(hasCheckin), "HH:mm", { locale: es })}
                   </span>
+                  {pendingCheckin && (
+                    <span className="text-xs text-orange-600 dark:text-orange-400">(pendiente)</span>
+                  )}
                 </div>
               )}
             </div>

@@ -6,6 +6,8 @@ import { Calendar } from "lucide-react";
 import { TodaySection } from "./TodaySection";
 import ParkingCalendar from "@/components/ParkingCalendar";
 import { IncidentReportFlow } from "@/components/incidents/IncidentReportFlow";
+import { IncidentOfflineModal } from "@/components/IncidentOfflineModal";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
 
 interface CalendarTabContentProps {
   userId: string;
@@ -18,8 +20,10 @@ interface CalendarTabContentProps {
  */
 export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps) => {
   const navigate = useNavigate();
+  const { isOnline } = useOfflineMode();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
+  const [offlineModalOpen, setOfflineModalOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<any>(null);
 
   // Función para forzar actualización de la sección HOY
@@ -44,9 +48,16 @@ export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps
 
   // Abrir modal de reporte de incidencia
   const handleReportIncident = useCallback((reservation: any) => {
+    // Si estamos offline, mostrar modal informativo
+    if (!isOnline) {
+      setOfflineModalOpen(true);
+      return;
+    }
+    
+    // Si estamos online, abrir flujo normal
     setSelectedReservation(reservation);
     setIncidentDialogOpen(true);
-  }, []);
+  }, [isOnline]);
 
   // Cerrar modal y refrescar
   const handleIncidentComplete = useCallback(() => {
@@ -118,6 +129,12 @@ export const CalendarTabContent = ({ userId, userRole }: CalendarTabContentProps
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal Informativo Offline */}
+      <IncidentOfflineModal
+        open={offlineModalOpen}
+        onClose={() => setOfflineModalOpen(false)}
+      />
     </>
   );
 };
