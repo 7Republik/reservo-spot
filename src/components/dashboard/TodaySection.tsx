@@ -70,8 +70,14 @@ export const TodaySection = ({
         .eq("status", "active");
 
       if (error) {
-        // No loggear errores, solo manejarlos silenciosamente
-        setTodayReservations([]);
+        // Intentar cargar desde caché si falla
+        const { offlineCache } = await import('@/lib/offlineCache');
+        const cached = await offlineCache.get<any[]>('today_reservation');
+        if (cached) {
+          setTodayReservations([cached]);
+        } else {
+          setTodayReservations([]);
+        }
         setLoading(false);
         return;
       }

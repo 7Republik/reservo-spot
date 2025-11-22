@@ -33,7 +33,7 @@ export const OfflineIndicator = () => {
   return (
     <div
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 px-4 py-2 text-center text-sm font-medium transition-all duration-300',
+        'fixed top-0 left-0 right-0 z-[60] px-4 py-2 text-center text-sm font-medium transition-all duration-300',
         isOnline
           ? 'bg-green-500 text-white'
           : 'bg-red-500 text-white'

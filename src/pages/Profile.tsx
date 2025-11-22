@@ -71,8 +71,8 @@ const Profile = () => {
   const { warnings, unviewedCount, isLoading: warningsLoading } = useUserWarnings({
     markAsViewed: currentTab === "warnings"
   });
-  const { stats } = useUserStats();
-  const { blocks, infractionCounts, isLoading: blocksLoading } = useUserBlocks();
+  const { stats, isLoading: statsLoading, error: statsError } = useUserStats();
+  const { blocks, infractionCounts, isLoading: blocksLoading, error: blocksError } = useUserBlocks();
 
   // Get user session
   useEffect(() => {
@@ -132,7 +132,7 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background">
       {/* Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -274,16 +274,24 @@ const Profile = () => {
             <NotificationPreferences />
 
             {/* Active Blocks Section */}
-            <ActiveBlocksCard
-              blocks={blocks}
-              infractionCounts={infractionCounts}
-              isLoading={blocksLoading}
-              onWarningClick={(warningId) => {
-                // Navigate to warnings tab and highlight the warning
-                setSearchParams({ tab: "warnings" });
-                console.log("Navigate to warning:", warningId);
-              }}
-            />
+            {isOffline && blocksError ? (
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  <p className="text-sm">Información de bloqueos no disponible offline</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <ActiveBlocksCard
+                blocks={blocks}
+                infractionCounts={infractionCounts}
+                isLoading={blocksLoading}
+                onWarningClick={(warningId) => {
+                  // Navigate to warnings tab and highlight the warning
+                  setSearchParams({ tab: "warnings" });
+                  console.log("Navigate to warning:", warningId);
+                }}
+              />
+            )}
           </TabsContent>
 
           {/* Warnings Tab */}
@@ -317,7 +325,13 @@ const Profile = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-                <UserStats />
+                {isOffline && statsError ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <p className="text-sm">Estadísticas no disponibles offline</p>
+                  </div>
+                ) : (
+                  <UserStats />
+                )}
               </CardContent>
             </Card>
           </TabsContent>
