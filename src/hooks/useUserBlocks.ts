@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserBlockWithWarning, InfractionCounts } from "@/types/profile";
 import { toast } from "sonner";
+import { useOfflineMode } from "./useOfflineMode";
 
 /**
  * Return type for useUserBlocks hook
@@ -22,6 +23,7 @@ export interface UseUserBlocksReturn {
  * - Loading infraction counts (pending infractions not yet converted to warnings)
  * - Error handling and user feedback
  * - Loading and error states
+ * - Offline mode support (returns empty data)
  * 
  * @returns Blocks data, infraction counts, loading state, error state, and utility functions
  */
@@ -30,6 +32,7 @@ export const useUserBlocks = (): UseUserBlocksReturn => {
   const [infractionCounts, setInfractionCounts] = useState<InfractionCounts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isOnline } = useOfflineMode();
 
   /**
    * Loads active blocks and infraction counts for the current user
@@ -38,6 +41,14 @@ export const useUserBlocks = (): UseUserBlocksReturn => {
     try {
       setIsLoading(true);
       setError(null);
+
+      // Si estamos offline, retornar datos vacíos sin error
+      if (!isOnline) {
+        setBlocks([]);
+        setInfractionCounts({ checkin_infractions: 0, checkout_infractions: 0, total_infractions: 0 });
+        setIsLoading(false);
+        return;
+      }
 
       // Get current user
       const { data: { user }, error: authError } = await supabase.auth.getUser();

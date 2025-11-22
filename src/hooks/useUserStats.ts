@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserStatistics } from "@/types/profile";
 import { toast } from "sonner";
+import { useOfflineMode } from "./useOfflineMode";
 
 /**
  * Return type for useUserStats hook
@@ -25,12 +26,15 @@ export interface UseUserStatsReturn {
  * - Total warnings count
  * - Member since date
  * 
+ * Offline mode: Returns null stats without errors
+ * 
  * @returns Statistics data, loading state, error state, and refetch function
  */
 export const useUserStats = (): UseUserStatsReturn => {
   const [stats, setStats] = useState<UserStatistics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isOnline } = useOfflineMode();
 
   /**
    * Loads all user statistics using parallel queries for optimal performance
@@ -39,6 +43,13 @@ export const useUserStats = (): UseUserStatsReturn => {
     try {
       setIsLoading(true);
       setError(null);
+
+      // Si estamos offline, retornar null sin error
+      if (!isOnline) {
+        setStats(null);
+        setIsLoading(false);
+        return;
+      }
 
       // Get current user
       const { data: { user }, error: authError } = await supabase.auth.getUser();

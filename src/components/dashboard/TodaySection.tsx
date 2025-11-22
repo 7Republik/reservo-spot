@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { GradientText } from "@/components/ui/gradient-text";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { getIconProps } from "@/lib/iconConfig";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
+import { offlineCache } from "@/lib/offlineCache";
 
 interface TodaySectionProps {
   userId: string;
@@ -38,9 +40,28 @@ export const TodaySection = ({
   const [todayReservations, setTodayReservations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkinEnabled, setCheckinEnabled] = useState(false);
+  const { isOnline } = useOfflineMode();
 
   const loadTodayReservations = useCallback(async () => {
     try {
+      setLoading(true);
+      
+      // Usar fecha local del usuario (España: UTC+1)
+      const today = format(new Date(), "yyyy-MM-dd");
+      const cacheKey = `today_reservation_${userId}_${today}`;
+
+      // Si estamos offline, cargar solo desde caché
+      if (!isOnline) {
+        const cached = await offlineCache.get<any>(cacheKey);
+        if (cached) {
+          setTodayReservations(Array.isArray(cached) ? cached : [cached]);
+        } else {
+          setTodayReservations([]);
+        }
+        setLoading(false);
+        return;
+      }
+
       // Verificar que el usuario esté autenticado
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -48,9 +69,6 @@ export const TodaySection = ({
         setLoading(false);
         return;
       }
-
-      // Usar fecha local del usuario (España: UTC+1)
-      const today = format(new Date(), "yyyy-MM-dd");
       
       // Cargar configuración de check-in
       const { data: settings } = await supabase
@@ -71,10 +89,9 @@ export const TodaySection = ({
 
       if (error) {
         // Intentar cargar desde caché si falla
-        const { offlineCache } = await import('@/lib/offlineCache');
-        const cached = await offlineCache.get<any[]>('today_reservation');
+        const cached = await offlineCache.get<any>(cacheKey);
         if (cached) {
-          setTodayReservations([cached]);
+          setTodayReservations(Array.isArray(cached) ? cached : [cached]);
         } else {
           setTodayReservations([]);
         }
@@ -136,17 +153,29 @@ export const TodaySection = ({
       });
 
       setTodayReservations(formattedReservations);
+      
+      // Guardar en caché para uso offline
+      if (formattedReservations.length > 0) {
+        await offlineCache.set(cacheKey, formattedReservations);
+      }
     } else {
       setTodayReservations([]);
     }
     
     setLoading(false);
     } catch (err) {
-      // Manejar errores silenciosamente
-      setTodayReservations([]);
+      // Intentar cargar desde caché en caso de error
+      const today = format(new Date(), "yyyy-MM-dd");
+      const cacheKey = `today_reservation_${userId}_${today}`;
+      const cached = await offlineCache.get<any>(cacheKey);
+      if (cached) {
+        setTodayReservations(Array.isArray(cached) ? cached : [cached]);
+      } else {
+        setTodayReservations([]);
+      }
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, isOnline]);
 
   useEffect(() => {
     // Solo cargar si hay userId válido

@@ -118,14 +118,19 @@ export const useOfflineMode = (): UseOfflineModeReturn => {
   }, [isOnline]);
 
   // Verificar precarga al montar y cargar contador de acciones pendientes
+  // Requisito 1.8: Precarga al abrir la app (no solo al login)
   useEffect(() => {
     const checkPreload = async () => {
+      // Inicializar offlineCache
+      await offlineCache.init();
+      
       const complete = await offlineCache.get<boolean>('preload_complete');
       const results = await offlineCache.get<PreloadResults>('preload_results');
       
       if (complete) {
         setPreloadStatus('complete');
       } else if (isOnline) {
+        // Requisito 1.8: Precargar automáticamente al abrir la app
         preloadData();
       }
       
@@ -142,12 +147,15 @@ export const useOfflineMode = (): UseOfflineModeReturn => {
       // Cargar contador de acciones pendientes
       const queue = await offlineCache.get<OfflineAction[]>('action_queue') || [];
       setPendingActions(queue.length);
+      
+      // Requisito 10.1: Limpiar datos antiguos automáticamente
+      await offlineCache.cleanOldData();
     };
     
     checkPreload();
   }, []);
 
-  // Precargar datos cuando hay conexión
+  // Precargar datos cuando hay conexión (pero no duplicar si ya se está precargando)
   // DESHABILITADO: La precarga automática causa errores 406 cuando el usuario no está autenticado
   // useEffect(() => {
   //   if (isOnline && preloadStatus === 'idle') {

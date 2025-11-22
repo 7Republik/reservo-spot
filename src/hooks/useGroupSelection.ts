@@ -56,6 +56,14 @@ export const useGroupSelection = (
   const loadGroupsWithAvailability = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // Si no hay grupos asignados, retornar vacío sin error
+      if (!userGroups || userGroups.length === 0) {
+        setGroups([]);
+        setLoading(false);
+        return;
+      }
+
       const dateStr = format(selectedDate!, "yyyy-MM-dd");
       const cacheKey = `groups_${userId}_${dateStr}`;
 
@@ -64,10 +72,10 @@ export const useGroupSelection = (
         const cached = await offlineCache.get<GroupWithAvailability[]>(cacheKey);
         if (cached) {
           setGroups(cached);
-          setLoading(false);
-          return;
+        } else {
+          // No mostrar error, solo retornar vacío
+          setGroups([]);
         }
-        toast.error("No hay datos de grupos en caché");
         setLoading(false);
         return;
       }
