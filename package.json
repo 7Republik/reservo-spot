@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "verify:pwa": "node scripts/verify-pwa.js",
     "test:k6": "./scripts/run-k6-tests.sh",
     "test:k6:smoke": "./scripts/run-k6-tests.sh smoke",
     "test:k6:load": "./scripts/run-k6-tests.sh load",

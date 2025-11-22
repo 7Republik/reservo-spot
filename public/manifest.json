@@ -1,0 +1,92 @@
+{
+  "name": "RESERVEO",
+  "short_name": "RESERVEO",
+  "description": "Sistema inteligente de gestión de aparcamiento corporativo",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-48x48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo_reserveo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Ver mis reservas",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/favicon.png",
+          "sizes": "32x32"
+        }
+      ]
+    },
+    {
+      "name": "Nueva Reserva",
+      "short_name": "Reservar",
+      "description": "Crear nueva reserva",
+      "url": "/select-parking-spot",
+      "icons": [
+        {
+          "src": "/favicon.png",
+          "sizes": "32x32"
+        }
+      ]
+    },
+    {
+      "name": "Lista de Espera",
+      "short_name": "Waitlist",
+      "description": "Ver lista de espera",
+      "url": "/waitlist",
+      "icons": [
+        {
+          "src": "/favicon.png",
+          "sizes": "32x32"
+        }
+      ]
+    },
+    {
+      "name": "Mi Perfil",
+      "short_name": "Perfil",
+      "description": "Ver mi perfil",
+      "url": "/profile",
+      "icons": [
+        {
+          "src": "/favicon.png",
+          "sizes": "32x32"
+        }
+      ]
+    }
+  ]
+}
