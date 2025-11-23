@@ -20,6 +20,7 @@ interface CacheEntry<T = any> {
   timestamp: number;
   lastAccessed: number; // Para estrategia LRU
   compressed?: boolean; // Indica si los datos están comprimidos
+  appVersion?: string; // Versión de la app que guardó estos datos
 }
 
 class OfflineCache {
@@ -31,6 +32,7 @@ class OfflineCache {
   private useFallback = false;
   private maxSize = 10 * 1024 * 1024; // 10 MB
   private maxAge = 7 * 24 * 60 * 60 * 1000; // 7 días en milisegundos
+  private appVersion = '1.0.0'; // Versión actual de la app
 
   /**
    * Inicializa el servicio de cache
@@ -46,9 +48,40 @@ class OfflineCache {
       }
 
       await this.initIndexedDB();
+      
+      // Limpiar caché de versiones antiguas
+      await this.clearOldVersionCache();
     } catch (error) {
       console.warn('Error al inicializar IndexedDB, usando fallback a Map:', error);
       this.useFallback = true;
+    }
+  }
+
+  /**
+   * Limpia la caché de versiones antiguas de la app
+   */
+  private async clearOldVersionCache(): Promise<void> {
+    try {
+      const keys = await this.getAllKeys();
+      let clearedCount = 0;
+
+      for (const key of keys) {
+        const entry = await this.get(key);
+        if (entry) {
+          const cacheEntry = entry as CacheEntry;
+          // Si no tiene versión o es diferente a la actual, eliminar
+          if (!cacheEntry.appVersion || cacheEntry.appVersion !== this.appVersion) {
+            await this.remove(key);
+            clearedCount++;
+          }
+        }
+      }
+
+      if (clearedCount > 0) {
+        console.log(`Limpieza de caché: ${clearedCount} entradas de versiones antiguas eliminadas`);
+      }
+    } catch (error) {
+      console.warn('Error al limpiar caché de versiones antiguas:', error);
     }
   }
 
@@ -131,7 +164,8 @@ class OfflineCache {
         data: entryData,
         timestamp: Date.now(),
         lastAccessed: Date.now(),
-        compressed
+        compressed,
+        appVersion: this.appVersion
       };
 
       // Verificar tamaño antes de guardar
@@ -286,6 +320,44 @@ class OfflineCache {
       });
     } catch (error) {
       console.error('Error al eliminar del cache:', error);
+    }
+  }
+
+  /**
+   * Obtiene todas las claves del cache
+   */
+  async getAllKeys(): Promise<string[]> {
+    try {
+      if (this.useFallback) {
+        return Array.from(this.fallbackMap.keys());
+      }
+
+      if (!this.db) {
+        await this.init();
+      }
+
+      return new Promise((resolve) => {
+        try {
+          const transaction = this.db!.transaction([this.storeName], 'readonly');
+          const store = transaction.objectStore(this.storeName);
+          const request = store.getAllKeys();
+
+          request.onsuccess = () => {
+            resolve(request.result as string[]);
+          };
+
+          request.onerror = () => {
+            console.error('Error al obtener claves:', request.error);
+            resolve([]);
+          };
+        } catch (error) {
+          console.error('Error en getAllKeys:', error);
+          resolve([]);
+        }
+      });
+    } catch (error) {
+      console.error('Error al obtener claves del cache:', error);
+      return [];
     }
   }
 

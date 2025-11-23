@@ -98,6 +98,27 @@ Sistema completo de lista de espera para cuando no hay plazas disponibles.
 - **Trabajos Programados**:
   - Expiración de ofertas cada 5 minutos
   - Limpieza diaria a las 00:00
+
+### PWA (Progressive Web App) ✅ IMPLEMENTADO
+Aplicación web progresiva instalable con experiencia nativa.
+
+#### Funcionalidades
+- **Instalación**: Banner inteligente para instalar la app en dispositivos móviles
+- **Modo Standalone**: La app abre directamente en el dashboard (no en landing)
+- **Service Worker**: Caché de recursos críticos para funcionamiento offline
+- **Manifest Completo**: Iconos, shortcuts, y configuración de tema
+- **Auto-actualización**: Detección y aplicación automática de nuevas versiones
+- **Offline Support**: Funciona sin conexión con datos cacheados
+- **Cross-platform**: Compatible con iOS Safari, Chrome Android, y navegadores desktop
+
+#### Características Técnicas
+- **Start URL**: `/dashboard` - Abre directamente en el dashboard
+- **Display Mode**: `standalone` - Sin barra de navegador
+- **Caché Strategy**: Network First con fallback a caché
+- **Shortcuts**: Accesos rápidos a Dashboard, Reservar, Waitlist, Perfil
+- **Theme Color**: `#6366f1` (color de marca)
+- **Verificación**: Script `verify-pwa.js` para validar configuración
+- **Documentación**: Guía completa en `docs/PWA-SETUP.md`
   - Recordatorios cada 15 minutos
 
 ### Gestión de Matrículas
@@ -382,29 +403,32 @@ RESEND_API_KEY="re_xxxxxxxxxx"  # Configurar en Supabase Edge Functions
 
 ### Arquitectura de Base de Datos
 - **26 tablas principales**: 
-  - Core: profiles, user_roles, parking_groups, parking_spots, reservations, license_plates
+  - Core: profiles, user_roles, organizations, parking_groups, parking_spots, reservations, license_plates
   - Gestión: user_group_assignments, blocked_dates, reservation_settings, reservation_cancellation_log
   - Incidentes: incident_reports, user_warnings
   - Check-in: reservation_checkins, checkin_infractions, checkin_settings, parking_group_checkin_config, user_blocks
-  - Waitlist: waitlist_entries, waitlist_offers, waitlist_logs, waitlist_penalties
-  - Notificaciones: organizations, notifications, notification_preferences
-- **40+ funciones SQL**: 
+  - Waitlist: waitlist_entries, waitlist_offers, waitlist_logs, waitlist_penalties, waitlist_cron_logs
+  - Notificaciones: notifications, notification_preferences, checkin_notifications
+- **84 funciones SQL**: 
   - Validación y lógica de negocio
   - Check-in/check-out automático
   - Procesamiento de lista de espera
   - Detección de infracciones
   - Generación de amonestaciones
-- **15+ triggers**: 
+  - Sistema de notificaciones
+  - Estadísticas y reportes
+- **27 triggers**: 
   - Creación automática de perfiles
   - Cancelación de reservas
   - Procesamiento de waitlist
+  - Triggers de notificaciones
   - Actualizaciones de timestamps
-- **60+ políticas RLS**: Seguridad a nivel de fila en todas las tablas sensibles
-- **2 buckets de Storage**: `floor-plans` para mapas de aparcamiento, `incident-photos` para evidencia de incidentes
-- **12+ trabajos programados (pg_cron)**:
-  - Check-in: reset diario, detección de infracciones, generación de amonestaciones, recordatorios
+- **106 políticas RLS**: Seguridad a nivel de fila en todas las tablas sensibles con control de acceso completo
+- **3 buckets de Storage**: `floor-plans` (mapas de aparcamiento), `incident-photos` (evidencia de incidentes), `landing-screenshots` (assets de landing page)
+- **10 trabajos programados (pg_cron)**:
+  - Check-in: reset diario, detección de infracciones, generación de amonestaciones, expiración de bloqueos, recordatorios
   - Waitlist: expiración de ofertas, limpieza de entradas, recordatorios
-  - Notificaciones: limpieza de notificaciones antiguas, recordatorios de ofertas waitlist
+  - Notificaciones: limpieza de notificaciones antiguas, procesamiento de emails pendientes
 
 ## Comandos Útiles
 
@@ -469,7 +493,7 @@ src/
 
 supabase/
 ├── config.toml         # Configuración local de Supabase
-└── migrations/         # Archivos de migración de base de datos (20 migraciones)
+└── migrations/         # Archivos de migración de base de datos (54+ migraciones)
 
 docs/                   # Documentación del proyecto
 ```

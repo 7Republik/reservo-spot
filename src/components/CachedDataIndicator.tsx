@@ -38,7 +38,7 @@ export const CachedDataIndicator = ({
     <div
       className={`
         flex items-center gap-2 px-3 py-2 rounded-lg text-sm
-        ${isOnline ? 'bg-muted text-muted-foreground' : 'bg-destructive/10 text-destructive'}
+        ${isOnline ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' : 'bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300'}
         ${className}
       `}
     >
@@ -48,7 +48,10 @@ export const CachedDataIndicator = ({
         <CloudOff className="h-4 w-4" />
       )}
       <span>
-        {isOnline ? 'Datos en caché' : 'Sin conexión'} · Última sincronización: {relativeTime}
+        {isOnline 
+          ? `Mostrando información guardada · Actualizado ${relativeTime}` 
+          : `Sin conexión · Última actualización ${relativeTime}`
+        }
       </span>
     </div>
   );
