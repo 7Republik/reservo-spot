@@ -33,11 +33,17 @@ export const OfflineIndicator = () => {
   return (
     <div
       className={cn(
-        'fixed top-0 left-0 right-0 z-[60] px-4 py-2 text-center text-sm font-medium transition-all duration-300',
+        'fixed bottom-0 left-0 right-0 z-[60] px-4 py-3 text-center text-sm font-medium transition-all duration-300 shadow-lg',
+        // Asegurar que esté por encima de todo pero debajo de modales
+        'safe-area-inset-bottom', // Respeta el notch en móviles
         isOnline
           ? 'bg-green-500 text-white'
           : 'bg-red-500 text-white'
       )}
+      style={{
+        // Asegurar compatibilidad con todos los dispositivos
+        paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+      }}
     >
       <div className="container mx-auto flex items-center justify-center gap-2 flex-wrap">
         {/* Icono de estado */}
