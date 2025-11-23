@@ -136,13 +136,11 @@ const Profile = () => {
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="bg-white/10 backdrop-blur-sm p-1.5 sm:p-2 rounded-lg">
-                <img 
-                  src={logoReserveo} 
-                  alt="Logo RESERVEO" 
-                  className="h-6 w-6 sm:h-7 sm:w-7 object-contain"
-                />
-              </div>
+              <img 
+                src={logoReserveo} 
+                alt="Logo RESERVEO" 
+                className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
+              />
               <div>
                 <h1 className="text-base sm:text-xl font-bold text-foreground">RESERVEO</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
