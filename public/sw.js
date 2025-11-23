@@ -1,8 +1,8 @@
 // Service Worker para RESERVEO PWA
-// Versión: 1.0.0
+// Versión: 1.1.0 - Fix 406 errors
 
-const CACHE_NAME = 'reserveo-v1';
-const RUNTIME_CACHE = 'reserveo-runtime-v1';
+const CACHE_NAME = 'reserveo-v1.1';
+const RUNTIME_CACHE = 'reserveo-runtime-v1.1';
 
 // Recursos críticos para cachear en instalación
 const PRECACHE_URLS = [
@@ -53,7 +53,18 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   // No cachear requests a Supabase (siempre fresh data)
+  // Pasar directamente a la red sin caché
   if (event.request.url.includes('supabase.co')) {
+    event.respondWith(
+      fetch(event.request, {
+        cache: 'no-store', // Forzar no usar caché HTTP
+        headers: {
+          ...event.request.headers,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      })
+    );
     return;
   }
 
