@@ -399,7 +399,6 @@ export type Database = {
           email_reservation_cancelled: boolean | null
           email_waitlist_offers: boolean | null
           email_warnings: boolean | null
-          organization_id: string
           updated_at: string | null
           user_id: string
         }
@@ -412,7 +411,6 @@ export type Database = {
           email_reservation_cancelled?: boolean | null
           email_waitlist_offers?: boolean | null
           email_warnings?: boolean | null
-          organization_id?: string
           updated_at?: string | null
           user_id: string
         }
@@ -425,19 +423,10 @@ export type Database = {
           email_reservation_cancelled?: boolean | null
           email_waitlist_offers?: boolean | null
           email_warnings?: boolean | null
-          organization_id?: string
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "notification_preferences_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -450,7 +439,6 @@ export type Database = {
           id: string
           is_read: boolean
           message: string
-          organization_id: string
           priority: string
           read_at: string | null
           reference_id: string | null
@@ -468,7 +456,6 @@ export type Database = {
           id?: string
           is_read?: boolean
           message: string
-          organization_id?: string
           priority?: string
           read_at?: string | null
           reference_id?: string | null
@@ -486,45 +473,12 @@ export type Database = {
           id?: string
           is_read?: boolean
           message?: string
-          organization_id?: string
           priority?: string
           read_at?: string | null
           reference_id?: string | null
           title?: string
           type?: string
           user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      organizations: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          slug: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          slug: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          slug?: string
-          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1291,6 +1245,10 @@ export type Database = {
         Args: { p_entry_id: string }
         Returns: number
       }
+      can_create_resource: {
+        Args: { org_id: string; resource_type: string }
+        Returns: boolean
+      }
       cancel_all_user_future_reservations: {
         Args: { _user_id: string }
         Returns: number
@@ -1456,7 +1414,6 @@ export type Database = {
       get_peak_hour: {
         Args: { p_end_date: string; p_group_id?: string; p_start_date: string }
         Returns: {
-          count: number
           hour: number
         }[]
       }
@@ -1501,6 +1458,17 @@ export type Database = {
         }[]
       }
       get_user_organization: { Args: { _user_id: string }; Returns: string }
+      get_user_organization_id: { Args: never; Returns: string }
+      get_user_organizations: {
+        Args: { user_id: string }
+        Returns: {
+          organization_id: string
+          organization_name: string
+          role: string
+          slug: string
+          subdomain: string
+        }[]
+      }
       get_user_role_priority: { Args: { _user_id: string }; Returns: number }
       get_user_warning_count: { Args: { _user_id: string }; Returns: number }
       get_waitlist_settings: {
@@ -1514,6 +1482,10 @@ export type Database = {
           priority_by_role: boolean
           waitlist_enabled: boolean
         }[]
+      }
+      has_feature_enabled: {
+        Args: { feature_name: string; org_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
@@ -1544,14 +1516,32 @@ export type Database = {
         Args: { _notification_id: string; _user_id: string }
         Returns: boolean
       }
-      perform_checkin: {
-        Args: { p_reservation_id: string; p_user_id: string }
-        Returns: Json
-      }
-      perform_checkout: {
-        Args: { p_reservation_id: string; p_user_id: string }
-        Returns: Json
-      }
+      perform_checkin:
+        | {
+            Args: { p_reservation_id: string; p_user_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_checkin_time?: string
+              p_reservation_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+      perform_checkout:
+        | {
+            Args: { p_reservation_id: string; p_user_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_checkout_time?: string
+              p_reservation_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       permanently_delete_user: {
         Args: {
           _admin_id: string
@@ -1560,6 +1550,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      process_pending_notification_emails: { Args: never; Returns: undefined }
       process_waitlist_for_spot: {
         Args: { p_date: string; p_spot_id: string }
         Returns: string
@@ -1595,6 +1586,7 @@ export type Database = {
           user_name: string
         }[]
       }
+      send_waitlist_reminders: { Args: never; Returns: number }
       should_send_email: {
         Args: { _notification_type: string; _user_id: string }
         Returns: boolean
@@ -1609,7 +1601,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "general" | "preferred" | "director" | "visitor" | "admin"
+      app_role:
+        | "general"
+        | "preferred"
+        | "director"
+        | "visitor"
+        | "admin"
+        | "super_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1740,7 +1738,14 @@ export const Constants = {
   },
   public: {
     Enums: {
-      app_role: ["general", "preferred", "director", "visitor", "admin"],
+      app_role: [
+        "general",
+        "preferred",
+        "director",
+        "visitor",
+        "admin",
+        "super_admin",
+      ],
     },
   },
 } as const
