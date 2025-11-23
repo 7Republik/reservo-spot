@@ -52,20 +52,10 @@ self.addEventListener('fetch', (event) => {
   // Solo cachear GET requests
   if (event.request.method !== 'GET') return;
 
-  // No cachear requests a Supabase (siempre fresh data)
-  // Pasar directamente a la red sin caché
+  // No interceptar requests a Supabase - dejar que el navegador las maneje directamente
+  // Esto evita problemas de Content-Type y caché
   if (event.request.url.includes('supabase.co')) {
-    event.respondWith(
-      fetch(event.request, {
-        cache: 'no-store', // Forzar no usar caché HTTP
-        headers: {
-          ...event.request.headers,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      })
-    );
-    return;
+    return; // No hacer nada, dejar pasar la request sin interceptar
   }
 
   event.respondWith(
